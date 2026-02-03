@@ -1,10 +1,12 @@
 import os
 import sqlite3
-import pandas as pd
-import requests
 import json
+import time
+import requests
+import pandas as pd
 import secrets
 from dotenv import load_dotenv
+
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -97,20 +99,44 @@ async def upload_excel(file: UploadFile = File(...), username: str = Depends(get
         cursor = conn.cursor()
         cursor.execute("DELETE FROM idle_land") # 기존 데이터 초기화
         
-        count = 0        
+        # 1차 시도: 모든 데이터 DB 추가 (경계선 없어도 저장)
+        print("🚀 1차 데이터 저장 시작...")        
         for _, row in df.head(20).iterrows(): # 테스트를 위해 20개만 로드
             addr = row['소재지(지번)']
-            geom_data = get_parcel_geom(addr)
-            if geom_data:
-                cursor.execute("""
-                    INSERT INTO idle_land (address, land_type, area, description, contact, geom) 
-                    VALUES (?,?,?,?,?,?)
-                """, (str(addr), str(row['(공부상)지목']), float(row['(공부상)면적(㎡)']), 
-                      str(row['유휴사유 상세설명']), str(row['담당자연락처']), geom_data))
-                count += 1
+            geom_data = get_parcel_geom(addr)            
+            cursor.execute("""
+                INSERT INTO idle_land (address, land_type, area, description, contact, geom) 
+                VALUES (?,?,?,?,?,?)
+            """, (str(addr), str(row['(공부상)지목']), float(row['(공부상)면적(㎡)']), 
+                  str(row['유휴사유 상세설명']), str(row['담당자연락처']), geom_data))            
         conn.commit()
+        
+        # 2차 시도: geom이 None인 항목만 다시 시도
+        print("🔄 경계선 획득 실패 항목 재시도 중...")
+        cursor.execute("SELECT id, address FROM idle_land WHERE geom IS NULL")
+        failed_items = cursor.fetchall()
+        
+        retry_count = 0
+        for item_id, address in failed_items:
+            # 재시도 전에는 조금 더 긴 휴식 (0.5초)
+            time.sleep(0.5)
+            geom_data = get_parcel_geom(address)
+            if geom_data:
+                cursor.execute("UPDATE idle_land SET geom = ? WHERE id = ?", (geom_data, item_id))
+                retry_count += 1
+        
+        conn.commit()
+        
+        # 최종 상태 확인 (여전히 실패한 건수 계산)
+        cursor.execute("SELECT COUNT(*) FROM idle_land WHERE geom IS NULL")
+        final_failed = cursor.fetchone()[0]
+        
+        total_count = len(df)
         conn.close()
-        return {"success": True, "message": f"{count}건의 데이터 업데이트 완료"}    
+        return {
+            "success": True,
+            "message": f"총 {total_count}건 처리 완료. (재시도 성공: {retry_count}건, 최종 실패: {final_failed}건)"
+        }
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
@@ -125,7 +151,8 @@ async def get_lands():
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM idle_land")
+    # 경계선 데이터(geom)가 있는 것만 지도에 표시
+    cursor.execute("SELECT * FROM idle_land WHERE geom IS NOT NULL")
     rows = cursor.fetchall()
     conn.close()
     # 결과가 없으면 빈 리스트를 반환하여 프론트엔드 에러 방지
