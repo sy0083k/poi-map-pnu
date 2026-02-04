@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # 2. 세션 미들웨어 설정
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=None, https_only=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -125,7 +125,7 @@ async def upload_excel(request: Request, file: UploadFile = File(...)):
         
         # 1차 시도: 모든 데이터 DB 추가 (경계선 없어도 저장)
         print("🚀 1차 데이터 저장 시작...")        
-        for _, row in df.head(20).iterrows(): # 테스트를 위해 20개만 로드
+        for _, row in df.iterrows():
             addr = row['소재지(지번)']
             geom_data = get_parcel_geom(addr)            
             cursor.execute("""
