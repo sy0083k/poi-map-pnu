@@ -6,7 +6,6 @@ import requests
 import pandas as pd
 import secrets
 from dotenv import load_dotenv
-
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request,Form
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -15,16 +14,43 @@ from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, Redirect
 from contextlib import asynccontextmanager
 from starlette.middleware.sessions import SessionMiddleware
 
+# ==========================================
 # 1. 환경 설정 및 보안 변수
+# ==========================================
 load_dotenv()
 VWORLD_KEY = os.getenv("VWORLD_KEY")
 ADMIN_ID = os.getenv("ADMIN_ID")
 ADMIN_PW = os.getenv("ADMIN_PW")
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key") # 세션 암호화용 키
-
-# --- [함수] 주소로 필지 경계선 가져오기 ---
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+    
+# ==========================================
+# 2. DB 초기화 및 Lifespan
+# ==========================================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 서버 실행 시 database.db 파일과 테이블이 없으면 생성합니다.
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS idle_land (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            address TEXT,
+            land_type TEXT,
+            area REAL,
+            description TEXT,
+            contact TEXT,
+            geom TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    yield
+    
+# ==========================================
+# 3. 유틸리티 함수
+# ==========================================
 def get_parcel_geom(address):
-    """주소를 받아 브이월드에서 필지 경계선(Polygon) 데이터를 가져옵니다."""
+    """주소를 받아 브이월드에서 필지 경계선(Polygon) 데이터를 가져옴"""
     geo_url = f"https://api.vworld.kr/req/address?service=address&request=getcoord&address={address}&key={VWORLD_KEY}&type=parcel"
     try:
         res = requests.get(geo_url).json()
@@ -46,41 +72,48 @@ def get_parcel_geom(address):
         print(f"경계선 획득 실패 ({address}): {e}")
     return None
 
-# --- [서버 시작 시 실행] DB 및 테이블 생성 ---
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 서버 실행 시 database.db 파일과 테이블이 없으면 생성합니다.
+def retry_failed_geoms():
+    """DB를 조회하여 geom이 없는 항목들에 대해 경계선 데이터를 다시 가져옵니다."""
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS idle_land (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            address TEXT,
-            land_type TEXT,
-            area REAL,
-            description TEXT,
-            contact TEXT,
-            geom TEXT
-        )
-    ''')
+    
+    # 1. geom 데이터가 없는 항목들 조회
+    cursor.execute("SELECT id, address FROM idle_land WHERE geom IS NULL")
+    failed_items = cursor.fetchall()
+    
+    retry_count = 0
+    for item_id, address in failed_items:
+        # API 부하 방지를 위한 미세 지연 (선택 사항)
+        time.sleep(0.5) 
+        geom_data = get_parcel_geom(address)
+        if geom_data:
+            cursor.execute("UPDATE idle_land SET geom = ? WHERE id = ?", (geom_data, item_id))
+            retry_count += 1
+            
     conn.commit()
+    
+    # 최종 상태 확인 (여전히 실패한 건수 계산)
+    cursor.execute("SELECT COUNT(*) FROM idle_land WHERE geom IS NULL")
+    failed = cursor.fetchone()[0]
+    
     conn.close()
-    yield
-
+    return retry_count, failed
+    
+def is_authenticated(request: Request):
+    """세션 인증 확인"""
+    return request.session.get("user") == ADMIN_ID
+    
+# ==========================================
+# 4. 앱 초기화 및 미들웨어 설정
+# ==========================================
 app = FastAPI(lifespan=lifespan)
-
-# 2. 세션 미들웨어 설정
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=None, https_only=True)
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# --- [인증 확인 유틸리티] ---
-def is_authenticated(request: Request):
-    """현재 세션에 관리자 정보가 있는지 확인합니다."""
-    return request.session.get("user") == ADMIN_ID
-
-# --- [API] 로그인 및 로그아웃 ---
+# ==========================================
+# 5. API 엔드포인트 (Auth & Data)
+# ==========================================
 @app.post("/api/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
     """로그인 처리 및 세션 생성"""
@@ -94,24 +127,31 @@ async def logout(request: Request):
     """세션 삭제 및 로그인 페이지로 리다이렉트"""
     request.session.clear()
     return RedirectResponse(url="/admin/login")
-
-# --- [페이지 라우팅] ---
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-@app.get("/admin/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    """로그인 폼 페이지"""
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.get("/admin", response_class=HTMLResponse)
-async def admin_page(request: Request):
-    """관리자 메인 페이지 (세션 체크)"""
-    if not is_authenticated(request):
-        return RedirectResponse(url="/admin/login")
-    return templates.TemplateResponse("admin.html", {"request": request})
-
+    
+@app.get("/api/config")
+async def get_config():
+    """프론트엔드에 VWorld API 키를 전달"""
+    return {"vworldKey": VWORLD_KEY}
+    
+@app.get("/api/lands")
+async def get_lands():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    # 경계선 데이터(geom)가 있는 것만 지도에 표시
+    cursor.execute("SELECT * FROM idle_land WHERE geom IS NOT NULL")
+    rows = cursor.fetchall()
+    conn.close()
+    # 결과가 없으면 빈 리스트를 반환하여 프론트엔드 에러 방지
+    features = []
+    for row in rows:
+        features.append({
+            "type": "Feature",
+            "geometry": json.loads(row['geom']),
+            "properties": dict(row)
+        })
+    return {"type": "FeatureCollection", "features": features}
+    
 @app.post("/api/admin/upload")
 async def upload_excel(request: Request, file: UploadFile = File(...)):
     if not is_authenticated(request):
@@ -135,60 +175,54 @@ async def upload_excel(request: Request, file: UploadFile = File(...)):
                   str(row['유휴사유 상세설명']), str(row['담당자연락처']), geom_data))            
         conn.commit()
         
-        # 2차 시도: geom이 None인 항목만 다시 시도
-        print("🔄 경계선 획득 실패 항목 재시도 중...")
-        cursor.execute("SELECT id, address FROM idle_land WHERE geom IS NULL")
-        failed_items = cursor.fetchall()
-        
-        retry_count = 0
-        for item_id, address in failed_items:
-            # 재시도 전에는 조금 더 긴 휴식 (0.5초)
-            time.sleep(0.5)
-            geom_data = get_parcel_geom(address)
-            if geom_data:
-                cursor.execute("UPDATE idle_land SET geom = ? WHERE id = ?", (geom_data, item_id))
-                retry_count += 1
-        
-        conn.commit()
-        
-        # 최종 상태 확인 (여전히 실패한 건수 계산)
+        # 상태 확인 (실패한 건수 계산)
         cursor.execute("SELECT COUNT(*) FROM idle_land WHERE geom IS NULL")
-        final_failed = cursor.fetchone()[0]
+        failed = cursor.fetchone()[0]
         
         total_count = len(df)
         conn.close()
         return {
             "success": True,
-            "message": f"총 {total_count}건 처리 완료. (재시도 성공: {retry_count}건, 최종 실패: {final_failed}건)"
+            "message": f"총 {total_count}건 중 {failed}건 경계선 획득 실패"
         }
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
+        
+@app.post("/api/admin/retry")
+async def manual_retry(request: Request):
+    # 1. 여기서 먼저 인증을 확인합니다.
+    if not is_authenticated(request):
+        return JSONResponse(status_code=401, content={"success": False, "message": "권한이 없습니다."})
+    
+    # 2. 인증된 경우에만 핵심 로직 함수를 호출합니다.
+    retry_count, failed = retry_failed_geoms()
+    
+    return {"success": True, "message": f"총 {retry_count}건 중 {failed}건 경계선 획득 실패"}
+        
+# ==========================================
+# 6. 페이지 라우팅 (HTML)
+# ==========================================
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-# --- [API] 데이터 조회 ---
-@app.get("/api/config")
-async def get_config():
-    return {"vworldKey": VWORLD_KEY}
+@app.get("/admin/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """로그인 폼 페이지"""
+    return templates.TemplateResponse("login.html", {"request": request})
 
-@app.get("/api/lands")
-async def get_lands():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    # 경계선 데이터(geom)가 있는 것만 지도에 표시
-    cursor.execute("SELECT * FROM idle_land WHERE geom IS NOT NULL")
-    rows = cursor.fetchall()
-    conn.close()
-    # 결과가 없으면 빈 리스트를 반환하여 프론트엔드 에러 방지
-    features = []
-    for row in rows:
-        features.append({
-            "type": "Feature",
-            "geometry": json.loads(row['geom']),
-            "properties": dict(row)
-        })
-    return {"type": "FeatureCollection", "features": features}
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(request: Request):
+    """관리자 메인 페이지 (세션 체크)"""
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login")
+    return templates.TemplateResponse("admin.html", {"request": request})
 
+# ==========================================
+# 7. 서버 실행 (Entry Point)
+# ==========================================
 if __name__ == "__main__":
     import uvicorn
+    # 앱 실행 시 필요한 설정을 로드하여 서버 시작
     uvicorn.run(app, host="0.0.0.0", port=8000)

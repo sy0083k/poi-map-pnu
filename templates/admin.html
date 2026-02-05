@@ -4,26 +4,36 @@
     <meta charset="UTF-8">
     <title>관리자 페이지</title>
     <style>
+        /* 기존 스타일 그대로 유지 */
         body { font-family: 'Malgun Gothic', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
         .admin-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 400px; }
         h2 { color: #2c3e50; margin-bottom: 20px; }
         input[type="file"] { margin: 20px 0; border: 1px solid #ddd; padding: 10px; width: 100%; box-sizing: border-box; }
-        button { background: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; }
+        button { background: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; margin-bottom: 10px; }
         button:hover { background: #2980b9; }
-        #status { margin-top: 20px; font-size: 14px; }
+        
+        /* 재시도 버튼 전용 스타일 (오렌지색 계열) */
+        #retryBtn { background: #e67e22; display: none; } 
+        #retryBtn:hover { background: #d35400; }
+        
+        #status { margin-top: 20px; font-size: 14px; white-space: pre-line; }
     </style>
 </head>
 <body>
     <div class="admin-card">
-		<div style="text-align: right;"><a href="/api/logout" style="font-size: 12px; color: #666;">로그아웃</a></div>
+        <div style="text-align: right;"><a href="/api/logout" style="font-size: 12px; color: #666;">로그아웃</a></div>
         <h2>📊 관리자 페이지</h2>
         <p>최신 유휴재산 엑셀 파일을 업로드하세요.</p>
+        
         <input type="file" id="excelFile" accept=".xlsx">
         <button onclick="handleUpload()">DB 업데이트 시작</button>
+        
+        <button id="retryBtn" onclick="handleRetry()">경계선 획득 재시도</button>
+        
         <div id="status"></div>
     </div>
-	
-    <script>
+
+	<script>
         async function handleUpload() {
             const fileInput = document.getElementById('excelFile');
             if (!fileInput.files[0]) return alert("파일을 선택해주세요.");
@@ -32,26 +42,50 @@
             formData.append('file', fileInput.files[0]);
 
             const status = document.getElementById('status');
-            status.innerText = "처리 중...";
+            const retryBtn = document.getElementById('retryBtn');
+            
+            status.style.color = "black";
+            status.innerText = "데이터 처리 및 1차 경계선 획득 중...";
+            retryBtn.style.display = "none";
 
             try {
-                const res = await fetch('/api/admin/upload', {
-                    method: 'POST',
-                    body: formData
-                    // 브라우저가 자동으로 Basic Auth 인증 정보를 포함합니다.
-                });
-
-                if (res.status === 401) {
-                    alert("권한이 없습니다. 다시 로그인해주세요.");
-                    location.reload();
-                    return;
-                }
-
+                const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
                 const result = await res.json();
+                
                 status.style.color = result.success ? "green" : "red";
-                status.innerText = result.message || result.detail;
+                status.innerText = result.message;
+
+                // 백엔드에서 넘겨준 최종 실패 건수가 0보다 크면 재시도 버튼 활성화
+                if (result.failed > 0) {
+                    retryBtn.style.display = "block";
+                }
             } catch (e) {
-                status.innerText = "오류 발생: " + e.message;
+                status.style.color = "red";
+                status.innerText = "오류 발생: " + e;
+            }
+        }
+
+        async function handleRetry() {
+            const status = document.getElementById('status');
+            const retryBtn = document.getElementById('retryBtn');
+            
+            status.style.color = "black";
+            status.innerText = "경계선 데이터 재취득 시도 중...";
+
+            try {
+                const res = await fetch('/api/admin/retry', { method: 'POST' });
+                const result = await res.json();
+                
+                status.style.color = "green";
+                status.innerText = result.message;
+
+                // 더 이상 실패 건수가 없으면 버튼 숨김
+                if (result.failed === 0) {
+                    retryBtn.style.display = "none";
+                }
+            } catch (e) {
+                status.style.color = "red";
+                status.innerText = "재시도 처리 중 오류가 발생했습니다.";
             }
         }
     </script>
