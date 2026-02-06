@@ -256,7 +256,7 @@
                     map.getView().fit(extent, { 
                         padding: [100, 100, 100, 100], // 상, 우, 하, 좌 (좌측 대폭 확보)
                         duration: 800, 
-                        maxZoom: 17
+                        maxZoom: 19
                     });
                 }
                 
@@ -274,7 +274,7 @@
 
         function showPopup(feature, coordinate) {
             const p = feature.getProperties();
-            content.innerHTML = `📍 <b>주소:</b> ${p.address}<br>📏 <b>면적:</b> ${p.area}㎡<br>📂 <b>지목:</b> ${p.land_type}`;
+            content.innerHTML = `📍 <b>주소:</b> ${p.address}<br>📏 <b>면적:</b> ${p.area}㎡<br>📂 <b>지목:</b> ${p.land_type}<br>📞 <b>문의:</b> ${p.contact}`;
             overlay.setPosition(coordinate);
         }
 
