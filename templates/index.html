@@ -120,7 +120,7 @@
         const content = document.getElementById('popup-content');
         const closer = document.getElementById('popup-closer');
         const overlay = new ol.Overlay({ element: container, autoPan: true, autoPanAnimation: { duration: 250 } });
-
+		
         closer.onclick = () => { overlay.setPosition(undefined); return false; };
 
         fetch('/api/config')
@@ -156,7 +156,7 @@
                 view: new ol.View({
                     center: ol.proj.fromLonLat([126.4500, 36.7848]),
                     zoom: 13,
-                    maxZoom: 19,
+                    maxZoom: 22,
 					minZoom: 7,
                     constrainResolution: false
                 })
@@ -174,7 +174,8 @@
             });
         }
 
-        function changeLayer(type) {
+		function changeLayer(type) {
+			if (map.getView().getZoom() >= 20) map.getView().setZoom(19);
             baseLayer.setVisible(type === 'Base');
             satLayer.setVisible(type === 'Satellite' || type === 'Hybrid');
             hybLayer.setVisible(type === 'Hybrid');
