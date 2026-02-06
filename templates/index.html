@@ -64,34 +64,9 @@
         </div>
         <div id="filter-section">
             <div class="filter-group">
-                <label>행정구역 (읍면동)</label>
-                <select id="filter-district">
-                    <option value="all">전체보기</option>
-					<option value="읍내동">읍내동</option>
-					<option value="동문동">동문동</option>
-					<option value="갈산동">갈산동</option>
-					<option value="온석동">온석동</option>
-					<option value="잠홍동">잠홍동</option>
-					<option value="수석동">수석동</option>
-					<option value="석림동">석림동</option>
-					<option value="석남동">석남동</option>
-					<option value="예천동">예천동</option>
-					<option value="죽성동">죽성동</option>
-					<option value="양대동">양대동</option>
-					<option value="오남동">오남동</option>
-					<option value="장동">장동</option>
-					<option value="덕지천동">덕지천동</option>
-					<option value="대산읍">대산읍</option>
-					<option value="인지면">인지면</option>
-					<option value="부석면">부석면</option>
-					<option value="팔봉면">팔봉면</option>
-					<option value="지곡면">지곡면</option>
-					<option value="성연면">성연면</option>
-					<option value="음암면">음암면</option>
-					<option value="운산면">운산면</option>
-					<option value="해미면">해미면</option>
-					<option value="고북면">고북면</option>
-                </select>
+                <label>지역명 검색 (예: 대산읍, 동문동)</label>
+                <input type="text" id="region-search" placeholder="읍/면/동 이름을 입력하세요..." 
+					style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
             </div>
             <div class="filter-group">
                 <label>면적 직접 입력 (㎡)</label>
@@ -133,7 +108,8 @@
         let currentFeaturesData = []; 
         let currentIndex = -1;       
 
-        const container = document.getElementById('popup');
+        const regionSearchInput = document.getElementById('region-search');
+		const container = document.getElementById('popup');
         const content = document.getElementById('popup-content');
         const closer = document.getElementById('popup-closer');
         const overlay = new ol.Overlay({ element: container, autoPan: true, autoPanAnimation: { duration: 250 } });
@@ -147,6 +123,14 @@
                 initMap(vworldKey);
                 loadLandData();
             });
+			
+		regionSearchInput.addEventListener('keydown', (event) => {
+			// 사용자가 누른 키가 'Enter'인지 확인
+			if (event.key === 'Enter') {
+				event.preventDefault(); // 엔터 키의 기본 동작(폼 제출 등) 방지
+				applyFilters();        // 필터링 함수 실행
+			}
+		});
 
         function initMap(key) {
             const commonSource = (type) => new ol.source.XYZ({
@@ -199,14 +183,14 @@
         }
 
         function applyFilters() {
-            const district = document.getElementById('filter-district').value;
+			const searchTerm = regionSearchInput.value.trim(); // 사용자가 입력한 텍스트
             const minArea = parseFloat(document.getElementById('min-area').value) || 0;
             const maxArea = parseFloat(document.getElementById('max-area').value) || Infinity;
 
             const filteredFeatures = originalData.features.filter(f => {
-                const matchDistrict = (district === 'all' || f.properties.address.includes(district));
+                const matchRegion = (searchTerm === '' || f.properties.address.includes(searchTerm));
                 const matchArea = (f.properties.area >= minArea && f.properties.area <= maxArea);
-                return matchDistrict && matchArea;
+                return matchRegion && matchArea;
             });
 
             updateMapAndList({ type: 'FeatureCollection', features: filteredFeatures });
