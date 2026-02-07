@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>{{ request.app.state.config.MUNICIPALITY_NAME }} 유휴공유재산 지도</title>
+    <title>{{ request.app.state.config.APP_NAME }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css">
     <style>
         body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; }
@@ -62,7 +62,7 @@
 <body>
     <div id="sidebar">
         <div id="header">
-            <h2 style="margin:0; font-size: 1.2em;">{{ request.app.state.config.MUNICIPALITY_NAME }} 유휴지 확인</h2>
+            <h2 style="margin:0; font-size: 1.2em;">{{ request.app.state.config.APP_NAME }}</h2>
             <p style="margin:5px 0 0; font-size: 0.8em; opacity: 0.8;">공유재산 필지 검색 서비스</p>
         </div>
         <div id="filter-section">
@@ -126,8 +126,18 @@
         fetch('/api/config')
             .then(res => res.json())
             .then(config => {
+                // 콘솔 로그로 데이터가 잘 들어오는지 확인 (디버깅용)
+                console.log("서버 설정값:", config); 
+                
+                if (!config.center) {
+                    console.error("오류: 서버에서 좌표(center) 데이터를 받지 못했습니다.");
+                    return;
+                }
+
                 vworldKey = config.vworldKey;
-                initMap(vworldKey);
+                // 1. 지도 초기화 실행 (백엔드에서 받은 center, zoom 적용)
+                initMap(vworldKey, config.center, config.zoom);
+                // 2. 토지 데이터 로드
                 loadLandData();
             });
 			
@@ -139,7 +149,8 @@
 			}
 		});
 
-        function initMap(key) {
+        function initMap(key, center, zoom) {
+            console.log("전달된 좌표:", center); // 브라우저 개발자 도구(F12)에서 확인용
             const commonSource = (type) => new ol.source.XYZ({
                 url: `https://api.vworld.kr/req/wmts/1.0.0/${key}/${type}/{z}/{y}/{x}.${type === 'Satellite' ? 'jpeg' : 'png'}`,
                 crossOrigin: 'anonymous'
@@ -154,8 +165,8 @@
                 layers: [baseLayer, satLayer, hybLayer],
                 overlays: [overlay],
                 view: new ol.View({
-                    center: ol.proj.fromLonLat([126.4500, 36.7848]),
-                    zoom: 13,
+                    center: ol.proj.fromLonLat(center),
+                    zoom: zoom,
                     maxZoom: 22,
 					minZoom: 7,
                     constrainResolution: false
