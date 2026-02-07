@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, RedirectResponse
 from contextlib import asynccontextmanager
 from starlette.middleware.sessions import SessionMiddleware
+from passlib.context import CryptContext
 
 # ==========================================
 # 1. 환경 설정 및 보안 변수
@@ -25,6 +26,7 @@ ADMIN_PW = os.getenv("ADMIN_PW")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 raw_ips = os.getenv("ALLOWED_IPS", "127.0.0.1")
 ALLOWED_IP_PREFIXES = [ip.strip() for ip in raw_ips.split(",") if ip.strip()]
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     
 # ==========================================
 # 2. DB 초기화 및 Lifespan
@@ -176,11 +178,23 @@ app.state.config = Config()
 # ==========================================
 @app.post("/api/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    """로그인 처리 및 세션 생성"""
-    if username == ADMIN_ID and password == ADMIN_PW:
+    """로그인 처리 및 세션 생성 (해시 검증 방식)"""
+    
+    # 1. 아이디 일치 확인
+    is_id_match = (username == ADMIN_ID)
+    
+    # 2. 비밀번호 해시 검증 (평문 password와 해시된 ADMIN_PW 비교)
+    # pwd_context.verify 함수가 내부적으로 복잡한 비교 과정을 처리합니다.
+    is_pw_match = pwd_context.verify(password, ADMIN_PW)
+    
+    if is_id_match and is_pw_match:
         request.session["user"] = username
         return {"success": True}
-    return JSONResponse(status_code=401, content={"success": False, "message": "아이디 또는 비밀번호가 틀립니다."})
+        
+    return JSONResponse(
+        status_code=401, 
+        content={"success": False, "message": "아이디 또는 비밀번호가 틀립니다."}
+    )
 
 @app.get("/api/logout")
 async def logout(request: Request):
