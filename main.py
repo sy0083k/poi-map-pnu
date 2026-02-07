@@ -170,7 +170,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 class Config:
-    MUNICIPALITY_NAME = os.getenv("MUNICIPALITY_NAME")
+    APP_NAME = os.getenv("APP_NAME")
 
 app.state.config = Config()
 # ==========================================
@@ -204,8 +204,15 @@ async def logout(request: Request):
     
 @app.get("/api/config")
 async def get_config():
-    """프론트엔드에 VWorld API 키를 전달"""
-    return {"vworldKey": VWORLD_KEY}
+    """프론트엔드에 설정값 전달"""
+    return {
+        "vworldKey": VWORLD_KEY,
+        "center": [
+            float(os.getenv("MAP_CENTER_LON", 126.4500)), 
+            float(os.getenv("MAP_CENTER_LAT", 36.7848))
+        ],
+        "zoom": int(os.getenv("MAP_DEFAULT_ZOOM", 13))
+    }
     
 @app.get("/api/lands")
 async def get_lands():
