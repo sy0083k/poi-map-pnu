@@ -1,0 +1,104 @@
+body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; }
+
+/* 사이드바 레이아웃 */
+#sidebar { 
+    width: 350px; 
+    height: 100vh;
+    border-right: 1px solid #ccc; 
+    display: flex; 
+    flex-direction: column; 
+    background: #fff; 
+    z-index: 10; 
+}
+#header { flex-shrink: 0; padding: 20px; background: #2c3e50; color: white; }
+#filter-section { flex-shrink: 0; padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+.filter-group { margin-bottom: 12px; }
+.filter-group label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; color: #555; }
+.checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; padding: 10px; background: #ebf5fb; border-radius: 4px; border: 1px solid #d4e6f1; }
+.checkbox-group input { width: 18px; height: 18px; cursor: pointer; }
+.checkbox-group label { display: inline; font-size: 0.9em; color: #2980b9; cursor: pointer; font-weight: bold; margin-bottom: 0; }
+.area-input-container { display: flex; align-items: center; gap: 5px; }
+.area-input-container input { width: 45%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em; }
+#btn-search { width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+
+/* 리스트 영역 */
+#list-container { flex: 1; overflow-y: auto; }
+.list-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
+.list-item:hover { background: #f1f4f6; }
+.list-item.selected { background: #e3f2fd; border-left: 4px solid #3498db; }
+
+/* 하단 네비게이션 */
+#nav-footer { 
+    flex-shrink: 0; 
+    padding: 12px; 
+    background: #eee; 
+    border-top: 1px solid #ccc; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+.nav-btn { flex: 1; padding: 10px; margin: 0 5px; background: #fff; border: 1px solid #bbb; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85em; }
+.nav-btn:disabled { color: #ccc; background: #f9f9f9; cursor: not-allowed; border-color: #ddd; }
+#nav-info { font-size: 0.85em; color: #333; font-weight: bold; min-width: 60px; text-align: center; }
+
+/* 지도 및 팝업 */
+#map { flex: 1; position: relative; }
+.map-controls { position: absolute; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 5px; background: rgba(255, 255, 255, 0.9); padding: 6px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+.map-controls button { border: 1px solid #ddd; background: #fff; padding: 8px 15px; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 4px; }
+.map-controls button.active { background: #2c3e50; color: white; border-color: #2c3e50; }
+
+.ol-popup { position: absolute; background-color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; border: 1px solid #cccccc; bottom: 12px; left: -50px; min-width: 350px; }
+.ol-popup:after { top: 100%; border: solid transparent; content: " "; height: 0; width: 0; position: absolute; border-top-color: white; border-width: 10px; left: 48px; margin-left: -10px; }
+.ol-popup-closer { text-decoration: none; position: absolute; top: 2px; right: 8px; color: #666; font-weight: bold; }
+
+/* 모바일 대응: 화면 폭이 768px 이하일 때 */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column !important;
+    }
+
+    /* 바텀 시트 스타일 */
+    #sidebar {
+        width: 100% !important;
+        height: 45vh !important;    /* 시트의 높이 설정 */
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 20px 20px 0 0; /* 상단 모서리 둥글게 */
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.15); /* 위쪽으로 그림자 */
+        z-index: 9999;
+        transition: transform 0.3s ease-out; /* 나중에 열고 닫는 효과용 */
+    }
+
+    /* 모바일 핸들 바 디자인 */
+    .mobile-handle {
+        display: block;
+        width: 40px;
+        height: 5px;
+        background-color: #ccc;
+        border-radius: 10px;
+        margin: 10px auto; /* 중앙 정렬 */
+    }
+
+    #map {
+        width: 100% !important;
+        height: 55vh !important; /* 지도가 상단 절반 이상 차지 */
+    }
+
+    /* 모바일에서는 헤더 패딩 축소 */
+    #header {
+        padding: 10px 20px;
+    }
+    #header h1 {
+        font-size: 1.2rem;
+    }
+}
+
+/* PC 버전에서는 핸들 바 숨김 */
+@media (min-width: 769px) {
+    .mobile-handle {
+        display: none;
+    }
+}
