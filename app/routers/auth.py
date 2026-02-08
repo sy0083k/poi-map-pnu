@@ -37,7 +37,8 @@ async def login(request: Request, username: str = Form(...), password: str = For
     )
 
 @router.get("/logout")
-async def logout():
+async def logout(request: Request):
+    request.session.clear()
     response = RedirectResponse(url="admin/login", status_code=303)
-    response.delete_cookie("session")
+    response.delete_cookie("session", path="/")
     return response

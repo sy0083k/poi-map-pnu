@@ -3,6 +3,7 @@ import os
 import shutil
 from fastapi import APIRouter, Request, UploadFile, File, Depends
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from app.utils import get_parcel_geom, update_geoms
 
 router = APIRouter()
 
