@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 VWORLD_KEY = os.getenv("VWORLD_KEY")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def init_db():
     """DB 초기화 로직 (lifespan에서 호출)"""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(os.path.join(BASE_DIR, "data/database.db"))
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS idle_land (
@@ -52,7 +53,7 @@ def get_parcel_geom(address):
 
 def update_geoms(max_retries=5):
     """DB를 조회하여 geom이 없는 항목들에 대해 경계선 데이터를 다시 가져옵니다."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(os.path.join(BASE_DIR, "data/database.db"))
     cursor = conn.cursor()
     
     retry_count = 0

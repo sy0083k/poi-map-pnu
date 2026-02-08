@@ -1,8 +1,11 @@
 # app/routers/admin.py
 import os
+import sqlite3
 import shutil
-from fastapi import APIRouter, Request, UploadFile, File, Depends
+import pandas as pd
+from fastapi import APIRouter, Request, UploadFile, File, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from app.dependencies import is_authenticated
 from app.utils import get_parcel_geom, update_geoms
 
 router = APIRouter()
@@ -25,26 +28,37 @@ async def admin_root(request: Request):
     return templates.TemplateResponse("admin.html", {"request": request})
 
 @router.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...)):
+async def upload_excel(request: Request, background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     config = request.app.state.config
-    
-    # 1. 저장할 디렉토리 설정 (예: static/uploads)
-    upload_dir = os.path.join(config.BASE_DIR, "static", "uploads")
-    
-    # 폴더가 없으면 생성
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
+    if not is_authenticated(request):
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
         
-    # 2. 파일 저장 경로
-    file_path = os.path.join(upload_dir, file.filename)
-    
-    # 3. 파일 저장 실행
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"message": f"파일 저장 실패: {str(e)}"})
-    finally:
-        file.file.close()
+        df = pd.read_excel(file.file, sheet_name="목록")
+        conn = sqlite3.connect(os.path.join(config.BASE_DIR, "data/database.db"))
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM idle_land") # 기존 데이터 초기화
+        
+        print("🚀 엑셀 데이터 저장 시작...")        
+        for _, row in df.iterrows():
+            addr = row['소재지(지번)']        
+            cursor.execute("""
+                INSERT INTO idle_land (address, land_type, area, adm_property, gen_property, contact, geom) 
+                VALUES (?,?,?,?,?,?,NULL)
+            """, (str(addr), str(row['(공부상)지목']), float(row['(공부상)면적(㎡)']), 
+                  str(row['행정재산']), str(row['일반재산']), str(row['담당자연락처'])))            
+        conn.commit()      
+        conn.close()
+        
+        # 🚀 핵심: 엑셀 저장이 끝나면 백그라운드 작업으로 경계선 획득 실행
+        # 이 코드가 실행되면 서버는 클라이언트에게 즉시 응답을 보내고, 작업은 따로 수행됩니다.
+        background_tasks.add_task(update_geoms, 5)
+        
+        return {
+            "success": True,
+            "total": len(df),
+            "message": "엑셀 데이터 입력 완료"
+        }
 
-    return {"message": "업로드 성공", "filename": file.filename}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"success": False, "message": str(e)})

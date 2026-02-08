@@ -19,7 +19,7 @@ async def get_config(request: Request):
 @router.get("/lands")
 async def get_lands(request: Request):
     config = request.app.state.config
-    conn = sqlite3.connect(os.path.join(config.BASE_DIR, "database.db"))
+    conn = sqlite3.connect(os.path.join(config.BASE_DIR, "data/database.db"))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     # 경계선 데이터(geom)가 있는 것만 지도에 표시
