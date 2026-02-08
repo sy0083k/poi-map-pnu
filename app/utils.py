@@ -3,6 +3,10 @@ import requests
 import json
 import time
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+VWORLD_KEY = os.getenv("VWORLD_KEY")
 
 def init_db():
     """DB 초기화 로직 (lifespan에서 호출)"""
@@ -25,8 +29,6 @@ def init_db():
 
 def get_parcel_geom(address):
     """주소를 받아 브이월드에서 필지 경계선(Polygon) 데이터를 가져옴"""
-    config = request.app.state.config
-    VWORLD_KEY = config.VWORLD_KEY
     geo_url = f"https://api.vworld.kr/req/address?service=address&request=getcoord&address={address}&key={VWORLD_KEY}&type=parcel"
     try:
         res = requests.get(geo_url).json()
