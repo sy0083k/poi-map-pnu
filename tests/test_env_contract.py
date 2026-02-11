@@ -18,7 +18,8 @@ def parse_env_keys(path: Path) -> set[str]:
 def test_env_example_matches_runtime_contract():
     keys = parse_env_keys(ROOT / ".env.example")
     required = {
-        "VWORLD_KEY",
+        "VWORLD_WMTS_KEY",
+        "VWORLD_GEOCODER_KEY",
         "ADMIN_ID",
         "ADMIN_PW_HASH",
         "SECRET_KEY",

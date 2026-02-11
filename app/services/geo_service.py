@@ -19,7 +19,7 @@ def init_db() -> None:
 def update_geoms(max_retries: int = 5) -> tuple[int, int]:
     settings = get_settings()
     client = VWorldClient(
-        api_key=settings.vworld_key,
+        api_key=settings.vworld_geocoder_key,
         timeout_s=settings.vworld_timeout_s,
         retries=settings.vworld_retries,
         backoff_s=settings.vworld_backoff_s,

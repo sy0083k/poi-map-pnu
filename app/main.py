@@ -80,7 +80,8 @@ class Config:
     CENTER_LON = settings.map_center_lon
     CENTER_LAT = settings.map_center_lat
     DEFAULT_ZOOM = settings.map_default_zoom
-    VWORLD_KEY = settings.vworld_key
+    VWORLD_WMTS_KEY = settings.vworld_wmts_key
+    VWORLD_GEOCODER_KEY = settings.vworld_geocoder_key
     BASE_DIR = settings.base_dir
     ADMIN_ID = settings.admin_id
     ADMIN_PW_HASH = settings.admin_pw_hash

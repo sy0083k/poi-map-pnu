@@ -77,7 +77,7 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 
 ## 설정
 `app/core/config.py`가 환경변수에서 로드한다. 필수:
-- `VWORLD_KEY`, `ADMIN_ID`, `ADMIN_PW_HASH`, `SECRET_KEY`
+- `VWORLD_WMTS_KEY`, `VWORLD_GEOCODER_KEY`, `ADMIN_ID`, `ADMIN_PW_HASH`, `SECRET_KEY`
 선택:
 - `ALLOWED_IPS`, `MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`, `LOGIN_MAX_ATTEMPTS`,
   `LOGIN_COOLDOWN_SECONDS`, `VWORLD_TIMEOUT_S`, `VWORLD_RETRIES`, `VWORLD_BACKOFF_S`,
@@ -85,5 +85,5 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 
 ## 운영 참고
 - 관리자 엔드포인트는 내부 IP 허용 목록과 세션 인증으로 보호된다.
-- VWorld API 키는 지도 사용을 위해 `/api/config`에서 제공된다.
+- VWorld WMTS 키는 지도 사용을 위해 `/api/config`에서 제공된다. Geocoder 키는 서버 전용이다.
 - 지오메트리 업데이트는 백그라운드 작업이며 VWorld 가용성에 의존한다.
