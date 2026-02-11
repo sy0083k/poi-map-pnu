@@ -9,7 +9,7 @@ router = APIRouter()
 async def get_config(request: Request):
     config = request.app.state.config
     return {
-        "vworldKey": config.VWORLD_KEY,
+        "vworldKey": config.VWORLD_WMTS_KEY,
         "center": [config.CENTER_LON, config.CENTER_LAT],
         "zoom": config.DEFAULT_ZOOM,
     }

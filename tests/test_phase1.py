@@ -33,7 +33,8 @@ class ConfigTests(unittest.TestCase):
         with temp_env(
             {
                 "SECRET_KEY": "",
-                "VWORLD_KEY": "key",
+                "VWORLD_WMTS_KEY": "key",
+                "VWORLD_GEOCODER_KEY": "key",
                 "ADMIN_ID": "admin",
                 "ADMIN_PW_HASH": "hash",
             }
@@ -48,7 +49,8 @@ class ConfigTests(unittest.TestCase):
         with temp_env(
             {
                 "SECRET_KEY": "secret",
-                "VWORLD_KEY": "key",
+                "VWORLD_WMTS_KEY": "key",
+                "VWORLD_GEOCODER_KEY": "key",
                 "ADMIN_ID": "admin",
                 "ADMIN_PW_HASH": "plaintext-password",
             }
@@ -64,7 +66,8 @@ class AppSmokeTests(unittest.TestCase):
             "MAP_CENTER_LON": "126.45",
             "MAP_CENTER_LAT": "36.78",
             "MAP_DEFAULT_ZOOM": "14",
-            "VWORLD_KEY": "test-key",
+            "VWORLD_WMTS_KEY": "test-key",
+            "VWORLD_GEOCODER_KEY": "test-key",
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": "$2b$12$uYvkCs.waU3zAbFG8sM4xONVkRuA6xk//0A8I1yKTPfUFihhsN0.q",
             "SECRET_KEY": "test-secret-key",
@@ -91,7 +94,7 @@ class AppSmokeTests(unittest.TestCase):
                     self.assertEqual(cfg.status_code, 200)
                     payload = cfg.json()
                     self.assertIn("center", payload)
-                    self.assertEqual(payload["vworldKey"], "test-key")
+                self.assertEqual(payload["vworldKey"], "test-key")
 
             anyio.run(run_flow)
 

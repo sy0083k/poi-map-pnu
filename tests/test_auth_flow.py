@@ -39,7 +39,8 @@ def build_test_app():
 class AuthFlowTests(unittest.TestCase):
     def test_login_success_and_rate_limit(self):
         env = {
-            "VWORLD_KEY": "test-key",
+            "VWORLD_WMTS_KEY": "test-key",
+            "VWORLD_GEOCODER_KEY": "test-key",
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": ADMIN_PASSWORD_HASH,
             "SECRET_KEY": "test-secret-key",
@@ -94,7 +95,8 @@ class AuthFlowTests(unittest.TestCase):
 
     def test_login_rejects_bad_csrf(self):
         env = {
-            "VWORLD_KEY": "test-key",
+            "VWORLD_WMTS_KEY": "test-key",
+            "VWORLD_GEOCODER_KEY": "test-key",
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": ADMIN_PASSWORD_HASH,
             "SECRET_KEY": "test-secret-key",

@@ -18,7 +18,8 @@ class Settings:
     map_center_lon: float
     map_center_lat: float
     map_default_zoom: int
-    vworld_key: str
+    vworld_wmts_key: str
+    vworld_geocoder_key: str
     admin_id: str
     admin_pw_hash: str
     secret_key: str
@@ -116,7 +117,8 @@ def get_settings() -> Settings:
         map_center_lon=float(os.getenv("MAP_CENTER_LON", "126.4500")),
         map_center_lat=float(os.getenv("MAP_CENTER_LAT", "36.7848")),
         map_default_zoom=int(os.getenv("MAP_DEFAULT_ZOOM", "14")),
-        vworld_key=_get_required_env("VWORLD_KEY"),
+        vworld_wmts_key=_get_required_env("VWORLD_WMTS_KEY"),
+        vworld_geocoder_key=_get_required_env("VWORLD_GEOCODER_KEY"),
         admin_id=_get_required_env("ADMIN_ID"),
         admin_pw_hash=_validate_admin_hash(_get_required_env("ADMIN_PW_HASH")),
         secret_key=_get_required_env("SECRET_KEY"),

@@ -8,7 +8,8 @@
 
 ## 환경 변수
 필수:
-- `VWORLD_KEY`
+- `VWORLD_WMTS_KEY`
+- `VWORLD_GEOCODER_KEY`
 - `ADMIN_ID`
 - `ADMIN_PW_HASH`
 - `SECRET_KEY`

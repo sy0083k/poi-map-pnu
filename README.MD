@@ -41,14 +41,15 @@
 ### 1단계: 필수 소프트웨어 설치
 
 1. **Python 설치:** `https://www.python.org/`에서 최신 버전을 설치합니다. (설치 시 'Add Python to PATH' 체크 필수)
-2. **V-World API 키 발급:** `https://www.vworld.kr/`에서 인증키를 발급받습니다.
+2. **V-World API 키 발급:** `https://www.vworld.kr/`에서 WMTS/Geocoder 키를 발급받습니다.
 
 ### 2단계: 프로젝트 설정
 
 프로젝트 폴더 안에 `.env` 파일을 만들고 아래 내용을 입력합니다.
 
 ```env
-VWORLD_KEY=여기에_발급받은_키_입력
+VWORLD_WMTS_KEY=여기에_발급받은_WMTS_키_입력
+VWORLD_GEOCODER_KEY=여기에_발급받은_GEOCODER_키_입력
 ADMIN_ID=admin
 ADMIN_PW_HASH=여기에_bcrypt_해시값_입력
 SECRET_KEY=충분히_긴_랜덤_문자열
