@@ -168,8 +168,8 @@
 
 ## 8) 즉시 실행 가능한 체크리스트 (2주)
 - [x] 업로드 파일 크기/행 수 제한 구현
-- [ ] V-World 호출 timeout/retry 공통화
-- [ ] `map_router` 응답 필드 화이트리스트 적용
+- [x] V-World 호출 timeout/retry 공통화
+- [x] `map_router` 응답 필드 화이트리스트 적용
 - [x] 구조화 로깅 + 요청 ID 도입
 - [ ] 보안 회귀 테스트 5개 추가(CSRF, 인증, 내부망, 파일검증, 권한)
 - [ ] CI에 `ruff`, `black --check`, `pytest`, `pip-audit` 추가
@@ -183,3 +183,11 @@
 - [x] 공통 예외 핸들러 골격(`exceptions`) 도입
 - [ ] 위협 모델링(STRIDE-lite) 산출물 문서화
 
+
+## 10) Phase 2 실행 결과 (이번 변경)
+
+- [x] 로그인 시도 제한(실패 누적 기반 쿨다운) 적용
+- [x] 로그인 성공 시 세션 초기화 후 재생성(session clear 후 user/csrf 재설정)
+- [x] 지도 데이터 응답 속성 화이트리스트 적용(`contact`, `geom` 제외)
+- [x] V-World API 호출 공통 클라이언트화(timeout/retry/backoff)
+- [x] 인증 성공/실패/차단 감사 로그 추가(request-id 포함)

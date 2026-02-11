@@ -12,6 +12,7 @@ from app.utils import init_db
 from app.core import get_settings
 from app.logging_utils import configure_logging, RequestIdFilter
 from app.exceptions import http_exception_handler, unhandled_exception_handler
+from app.auth_security import LoginAttemptLimiter
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -87,9 +88,18 @@ class Config:
     ALLOWED_IP_PREFIXES = settings.allowed_ip_prefixes
     MAX_UPLOAD_SIZE_MB = settings.max_upload_size_mb
     MAX_UPLOAD_ROWS = settings.max_upload_rows
+    LOGIN_MAX_ATTEMPTS = settings.login_max_attempts
+    LOGIN_COOLDOWN_SECONDS = settings.login_cooldown_seconds
+    VWORLD_TIMEOUT_S = settings.vworld_timeout_s
+    VWORLD_RETRIES = settings.vworld_retries
+    VWORLD_BACKOFF_S = settings.vworld_backoff_s
 
 app.state.config = Config()
 app.state.templates = templates
+app.state.login_limiter = LoginAttemptLimiter(
+    max_attempts=settings.login_max_attempts,
+    cooldown_seconds=settings.login_cooldown_seconds,
+)
 
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
