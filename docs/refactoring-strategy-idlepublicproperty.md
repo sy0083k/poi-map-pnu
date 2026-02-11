@@ -167,10 +167,19 @@
 ---
 
 ## 8) 즉시 실행 가능한 체크리스트 (2주)
-- [ ] 업로드 파일 크기/행 수 제한 구현
+- [x] 업로드 파일 크기/행 수 제한 구현
 - [ ] V-World 호출 timeout/retry 공통화
 - [ ] `map_router` 응답 필드 화이트리스트 적용
-- [ ] 구조화 로깅 + 요청 ID 도입
+- [x] 구조화 로깅 + 요청 ID 도입
 - [ ] 보안 회귀 테스트 5개 추가(CSRF, 인증, 내부망, 파일검증, 권한)
 - [ ] CI에 `ruff`, `black --check`, `pytest`, `pip-audit` 추가
+
+
+## 9) Phase 1 실행 결과 (이번 변경)
+
+- [x] 업로드 파일 크기 제한(`MAX_UPLOAD_SIZE_MB`, 기본 10MB) 적용
+- [x] 업로드 최대 행 수 제한(`MAX_UPLOAD_ROWS`, 기본 5000행) 적용
+- [x] 공통 로깅 골격(`logging_utils`) 및 Request ID 추적(`X-Request-ID`) 도입
+- [x] 공통 예외 핸들러 골격(`exceptions`) 도입
+- [ ] 위협 모델링(STRIDE-lite) 산출물 문서화
 
