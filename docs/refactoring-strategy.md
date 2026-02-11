@@ -192,3 +192,74 @@
 - [x] V-World API 호출 공통 클라이언트화(timeout/retry/backoff)
 - [x] 인증 성공/실패/차단 감사 로그 추가(request-id 포함)
 
+
+## 11) Phase 3 실행 트래커 (3~4주)
+
+### 목표
+- [ ] 라우터-서비스-리포지토리 계층 분리 완료
+- [ ] 브이월드 연동과 주소/데이터 정규화 모듈 재사용화
+- [ ] 기존 API 동작/응답 호환성 유지
+
+### PR-1: Foundation and Contracts (Week 1)
+- [x] `app/schemas/` 도입 (요청/응답 DTO 골격)
+- [x] `app/db/connection.py` 도입 (공통 sqlite connection/context helper)
+- [x] 기존 라우터 동작 변경 없음(무중단 스캐폴딩)
+- [x] `python -m compileall -q app tests` 통과
+
+Definition of Done:
+- [x] 스키마/DB 헬퍼 모듈이 생성되어 import 가능
+- [x] 기존 엔드포인트 기능 회귀 없음
+
+### PR-2: Repository Extraction (Week 1~2)
+- [x] `app/repositories/idle_land_repository.py` 추가
+- [x] 라우터/유틸의 직접 SQL 로직을 리포지토리로 이동
+- [x] 리포지토리 메서드 기준 트랜잭션 경계 정의
+- [x] 라우터에서 raw SQL 제거
+
+Definition of Done:
+- [x] DB 접근 경로가 리포지토리로 일원화
+- [x] 핵심 조회/저장 경로 테스트 통과
+
+### PR-3: VWorld Client + Validators (Week 2)
+- [x] `app/clients/vworld_client.py`로 브이월드 연동 이관
+- [x] `app/validators/land_validators.py` 추가
+- [x] 업로드 데이터 정규화/검증 실패 사유 표준화
+- [x] 실패 항목 리포트 구조 정의
+
+Definition of Done:
+- [x] 브이월드 호출은 단일 클라이언트 경유
+- [x] 업로드 검증 로직이 재사용 가능한 함수로 분리
+
+### PR-4: Service Layer Introduction (Week 2~3)
+- [x] `app/services/auth_service.py` 추가
+- [x] `app/services/upload_service.py` 추가
+- [x] `app/services/land_service.py` 추가
+- [x] 라우터에서 비즈니스 로직 제거(서비스 호출만 유지)
+
+Definition of Done:
+- [x] 라우터는 입출력/상태코드 매핑 책임만 보유
+- [x] 도메인 로직은 서비스 계층으로 이동 완료
+
+### PR-5: Router Migration + Compatibility (Week 3)
+- [x] `auth/admin/map_router`를 서비스 기반으로 전환
+- [x] 기존 프론트와 응답 계약 호환성 유지
+- [x] 필요 시 API 응답 버전 스캐폴딩(v1) 도입
+
+Definition of Done:
+- [x] 프론트엔드 수정 없이 주요 플로우 동작
+- [x] 회귀 테스트/스모크 테스트 통과
+
+### PR-6: Cleanup and Boundary Hardening (Week 3~4)
+- [x] `app/utils.py`의 잔여 레거시 로직 정리
+- [x] 중복/미사용 모듈 제거
+- [x] 아키텍처/흐름 문서 업데이트
+
+Definition of Done:
+- [x] 레이어 경계 위반 import/호출 제거
+- [x] 유지보수 문서 최신화
+
+### 공통 품질 게이트 (각 PR마다)
+- [x] `python -m compileall -q app tests`
+- [x] `python -m pytest -q tests`
+- [x] 라우터에 신규 raw SQL 추가 금지
+- [x] 브이월드 직접 호출 위치 표준 준수(클라이언트 계층)

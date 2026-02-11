@@ -50,31 +50,34 @@
 ```env
 VWORLD_KEY=여기에_발급받은_키_입력
 ADMIN_ID=admin
-ADMIN_PW=password123
-
+ADMIN_PW_HASH=여기에_bcrypt_해시값_입력
+SECRET_KEY=충분히_긴_랜덤_문자열
+ALLOWED_IPS=127.0.0.1/32,::1/128
+SESSION_HTTPS_ONLY=false
 ```
+
+`ADMIN_PW_HASH`는 평문 비밀번호가 아니라 bcrypt 해시값이어야 합니다.  
+해시는 `python create_hash.py`로 생성할 수 있습니다.
 
 ### 3단계: 라이브러리 설치
 
 터미널(또는 CMD)을 열고 아래 명령어를 입력하여 필요한 도구들을 설치합니다.
 
 ```bash
-pip install fastapi uvicorn pandas openpyxl requests python-dotenv
-
+pip install -r requirements.txt
 ```
 
 ### 4단계: 서버 실행
 
 ```bash
-python main.py
-
+uvicorn app.main:app --reload
 ```
 
 서버가 실행되면 웹 브라우저 주소창에 `http://127.0.0.1:8000`을 입력합니다.
 
 ### 5단계: 관리자 기능 사용
 
-1. `http://127.0.0.1:8000/login`으로 접속합니다.
+1. `http://127.0.0.1:8000/admin/login`으로 접속합니다.
 2. 설정한 아이디/비밀번호로 로그인합니다.
 3. 관리자 페이지에서 **'주소, 면적, 지목, 문의'** 컬럼이 포함된 엑셀 파일을 업로드합니다.
 4. 업로드가 완료되면 메인 지도 화면에서 데이터가 시각화되는 것을 확인합니다.
@@ -85,9 +88,14 @@ python main.py
 
 ```text
 project-root/
-│  main.py            # 서버 로직 (FastAPI)
 │  .env               # API 키 및 로그인 정보
-│  database.db        # 데이터 저장소 (자동 생성)
+│  requirements.txt   # Python 의존성 목록
+│
+├─app/
+│  └─main.py          # FastAPI 엔트리포인트
+│
+├─data/
+│  └─database.db      # 데이터 저장소 (자동 생성)
 │
 ├─templates/          # HTML 파일 보관함
 │      index.html     # 메인 지도 화면
@@ -95,7 +103,6 @@ project-root/
 │      admin.html     # 관리자 업로드 화면
 │
 └─static/             # CSS, 이미지 등 (필요 시)
-
 ```
 
 ---
