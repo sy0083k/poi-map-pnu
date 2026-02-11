@@ -191,3 +191,4 @@
 - [x] 지도 데이터 응답 속성 화이트리스트 적용(`contact`, `geom` 제외)
 - [x] V-World API 호출 공통 클라이언트화(timeout/retry/backoff)
 - [x] 인증 성공/실패/차단 감사 로그 추가(request-id 포함)
+
