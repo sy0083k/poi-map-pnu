@@ -1,9 +1,9 @@
 import importlib
 import os
 import sys
-from pathlib import Path
 import unittest
 from contextlib import contextmanager
+from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -41,6 +41,21 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(config.SettingsError):
                 config.get_settings()
 
+    def test_invalid_admin_hash_rejected(self):
+        from app.core import config
+
+        config.get_settings.cache_clear()
+        with temp_env(
+            {
+                "SECRET_KEY": "secret",
+                "VWORLD_KEY": "key",
+                "ADMIN_ID": "admin",
+                "ADMIN_PW_HASH": "plaintext-password",
+            }
+        ):
+            with self.assertRaises(config.SettingsError):
+                config.get_settings()
+
 
 class AppSmokeTests(unittest.TestCase):
     def test_root_and_config_routes(self):
@@ -53,7 +68,8 @@ class AppSmokeTests(unittest.TestCase):
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": "$2b$12$uYvkCs.waU3zAbFG8sM4xONVkRuA6xk//0A8I1yKTPfUFihhsN0.q",
             "SECRET_KEY": "test-secret-key",
-            "ALLOWED_IPS": "127.0.0.1",
+            "ALLOWED_IPS": "127.0.0.1/32,::1/128",
+            "SESSION_HTTPS_ONLY": "false",
         }
         with temp_env(env):
             from app.core import config
@@ -62,17 +78,22 @@ class AppSmokeTests(unittest.TestCase):
             app_main = importlib.import_module("app.main")
             app_main = importlib.reload(app_main)
 
-            from fastapi.testclient import TestClient
+            import anyio
+            import httpx
 
-            with TestClient(app_main.app) as client:
-                root = client.get("/")
-                self.assertEqual(root.status_code, 200)
+            async def run_flow():
+                transport = httpx.ASGITransport(app=app_main.app, client=("127.0.0.1", 50000))
+                async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+                    root = await client.get("/")
+                    self.assertEqual(root.status_code, 200)
 
-                cfg = client.get("/api/config")
-                self.assertEqual(cfg.status_code, 200)
-                payload = cfg.json()
-                self.assertIn("center", payload)
-                self.assertEqual(payload["vworldKey"], "test-key")
+                    cfg = await client.get("/api/config")
+                    self.assertEqual(cfg.status_code, 200)
+                    payload = cfg.json()
+                    self.assertIn("center", payload)
+                    self.assertEqual(payload["vworldKey"], "test-key")
+
+            anyio.run(run_flow)
 
 
 if __name__ == "__main__":

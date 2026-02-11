@@ -1,6 +1,31 @@
-database.db
+# --- Database ---
+*.db
+
+# --- Python ---
 __pycache__/
+*.py[cod]
+
+# --- Virtual environments ---
+.venv/
 venv/
+
+# --- Environment variables ---
 .env
+
+# --- Editor / IDE ---
 .vscode/
-/main.py
+.idea/
+
+# --- OS / temp ---
+.DS_Store
+
+# --- Test / coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Logs ---
+*.log
+
+# Windows Zone Identifier (NTFS ADS)
+*:Zone.Identifier

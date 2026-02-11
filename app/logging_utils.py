@@ -7,6 +7,11 @@ def configure_logging() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s [%(name)s] [req:%(request_id)s] %(message)s",
     )
+    request_filter = RequestIdFilter()
+    root_logger = logging.getLogger()
+    root_logger.addFilter(request_filter)
+    for handler in root_logger.handlers:
+        handler.addFilter(request_filter)
 
 
 class RequestIdFilter(logging.Filter):

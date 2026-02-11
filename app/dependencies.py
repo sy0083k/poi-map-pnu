@@ -1,4 +1,5 @@
 import secrets
+from ipaddress import ip_address
 from fastapi import Request, HTTPException, status
 
 
@@ -8,19 +9,23 @@ def is_authenticated(request: Request):
     return request.session.get("user") == config.ADMIN_ID
 
 
-def require_authenticated(request: Request) -> None:
+async def require_authenticated(request: Request) -> None:
     """세션 인증을 강제하는 공통 의존성."""
     if not is_authenticated(request):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증이 필요합니다.")
 
 
-def check_internal_network(request: Request):
+async def check_internal_network(request: Request):
     config = request.app.state.config
     if not request.client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Client Unknown")
 
-    client_ip = request.client.host
-    is_allowed = any(client_ip.startswith(prefix) for prefix in config.ALLOWED_IP_PREFIXES)
+    try:
+        client_ip = ip_address(request.client.host)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Client IP")
+
+    is_allowed = any(client_ip in network for network in config.ALLOWED_IP_NETWORKS)
 
     if not is_allowed:
         raise HTTPException(
