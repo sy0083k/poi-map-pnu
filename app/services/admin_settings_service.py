@@ -5,6 +5,7 @@ from pathlib import Path
 from app.core import get_settings
 
 WHITELIST_KEYS = {
+    "APP_NAME",
     "VWORLD_WMTS_KEY",
     "VWORLD_GEOCODER_KEY",
     "ALLOWED_IPS",
@@ -34,6 +35,7 @@ BOOL_KEYS = {"SESSION_HTTPS_ONLY"}
 def get_current_settings() -> dict[str, str]:
     settings = get_settings()
     return {
+        "APP_NAME": settings.app_name,
         "VWORLD_WMTS_KEY": settings.vworld_wmts_key,
         "VWORLD_GEOCODER_KEY": settings.vworld_geocoder_key,
         "ALLOWED_IPS": ",".join(str(n) for n in settings.allowed_ip_networks),

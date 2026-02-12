@@ -287,6 +287,10 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                             <div class="field">
+                                <label>서비스명</label>
+                                <input type="text" name="app_name" value="{{ settings['APP_NAME'] }}">
+                            </div>
+                            <div class="field">
                                 <label>브이월드 API 키(WMTS)</label>
                                 <input type="text" name="vworld_wmts_key" value="{{ settings['VWORLD_WMTS_KEY'] }}">
                             </div>
