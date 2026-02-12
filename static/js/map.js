@@ -12,6 +12,11 @@ let startY = 0;
 let startHeight = 0;
 const sidebar = document.getElementById('sidebar');
 const handle = document.querySelector('.mobile-handle');
+const snapHeights = {
+    collapsed: 0.15,
+    mid: 0.4,
+    expanded: 0.85,
+};
 
 // 3. 지도 초기화 함수
 function initMap(key, center, zoom) {
@@ -63,20 +68,20 @@ if (handle) {
         const deltaY = startY - touchY;
         const newHeight = startHeight + deltaY;
 
-        if (newHeight > window.innerHeight * 0.15 && newHeight < window.innerHeight * 0.9) {
+        if (newHeight > window.innerHeight * 0.12 && newHeight < window.innerHeight * 0.9) {
             sidebar.style.height = `${newHeight}px`;
         }
     });
 
     handle.addEventListener('touchend', () => {
         sidebar.style.transition = 'height 0.3s ease-out';
-        const currentHeight = sidebar.offsetHeight;
-        if (currentHeight > window.innerHeight * 0.6) {
-            sidebar.style.height = '85vh';
-        } else if (currentHeight < window.innerHeight * 0.3) {
-            sidebar.style.height = '15vh'; // 최소화
+        const currentRatio = sidebar.offsetHeight / window.innerHeight;
+        if (currentRatio >= 0.6) {
+            sidebar.style.height = `${snapHeights.expanded * 100}vh`;
+        } else if (currentRatio <= 0.25) {
+            sidebar.style.height = `${snapHeights.collapsed * 100}vh`;
         } else {
-            sidebar.style.height = '40vh'; // 중간 유지
+            sidebar.style.height = `${snapHeights.mid * 100}vh`;
         }
     });
 }
