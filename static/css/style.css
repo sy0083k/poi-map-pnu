@@ -22,7 +22,7 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 #btn-search { width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; }
 
 /* 리스트 영역 */
-#list-container { flex: 1; overflow-y: auto; }
+#list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .list-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
 .list-item:hover { background: #f1f4f6; }
 .list-item.selected { background: #e3f2fd; border-left: 4px solid #3498db; }
@@ -51,6 +51,12 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 .ol-popup:after { top: 100%; border: solid transparent; content: " "; height: 0; width: 0; position: absolute; border-top-color: white; border-width: 10px; left: 48px; margin-left: -10px; }
 .ol-popup-closer { text-decoration: none; position: absolute; top: 2px; right: 8px; color: #666; font-weight: bold; }
 
+/* 태블릿 대응 */
+@media (max-width: 1024px) {
+    #sidebar { width: 320px; }
+    .map-controls { top: 12px; right: 12px; }
+}
+
 /* 모바일 대응: 화면 폭이 768px 이하일 때 */
 @media (max-width: 768px) {
     body {
@@ -60,7 +66,7 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     /* 바텀 시트 스타일 */
     #sidebar {
         width: 100% !important;
-        height: 45vh !important;    /* 시트의 높이 설정 */
+        height: 40vh !important;    /* 기본 중간 상태 */
         position: fixed;
         bottom: 0;
         left: 0;
@@ -70,6 +76,7 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
         box-shadow: 0 -5px 15px rgba(0,0,0,0.15); /* 위쪽으로 그림자 */
         z-index: 9999;
         transition: transform 0.3s ease-out; /* 나중에 열고 닫는 효과용 */
+        overscroll-behavior: contain;
     }
 
     /* 모바일 핸들 바 디자인 */
@@ -80,12 +87,23 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
         background-color: #ccc;
         border-radius: 10px;
         margin: 10px auto; /* 중앙 정렬 */
+        touch-action: none;
     }
 
     #map {
         width: 100% !important;
         height: 55vh !important; /* 지도가 상단 절반 이상 차지 */
     }
+
+    /* 터치 타겟/가독성 */
+    #btn-search { padding: 12px; font-size: 1rem; }
+    .nav-btn { padding: 12px; font-size: 0.95em; }
+    .list-item { padding: 16px; }
+    .map-controls { right: 10px; top: 10px; }
+    .map-controls button { padding: 10px 14px; font-size: 12px; }
+
+    /* 팝업 모바일 대응 */
+    .ol-popup { min-width: auto; max-width: 90vw; left: -20px; }
 
     /* 모바일에서는 헤더 패딩 축소 */
     #header {
@@ -101,4 +119,12 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     .mobile-handle {
         display: none;
     }
+}
+
+/* 소형 모바일 */
+@media (max-width: 480px) {
+    #header h2 { font-size: 1rem; }
+    #filter-section { padding: 12px; }
+    .area-input-container input { padding: 10px; }
+    .ol-popup { padding: 12px; }
 }
