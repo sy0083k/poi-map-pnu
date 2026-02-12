@@ -49,6 +49,7 @@ async def update_settings(
     request: Request,
     csrf_token: str = Form(default=""),
     settings_password: str = Form(default=""),
+    app_name: str = Form(default=""),
     vworld_wmts_key: str = Form(default=""),
     vworld_geocoder_key: str = Form(default=""),
     allowed_ips: str = Form(default=""),
@@ -72,6 +73,7 @@ async def update_settings(
         raise HTTPException(status_code=401, detail="관리자 비밀번호가 올바르지 않습니다.")
 
     updates = {
+        "APP_NAME": app_name,
         "VWORLD_WMTS_KEY": vworld_wmts_key,
         "VWORLD_GEOCODER_KEY": vworld_geocoder_key,
         "ALLOWED_IPS": allowed_ips,
