@@ -1,3 +1,22 @@
+import "ol/ol.css";
+import Feature from "ol/Feature";
+import GeoJSON from "ol/format/GeoJSON";
+import type Geometry from "ol/geom/Geometry";
+import Overlay from "ol/Overlay";
+import TileLayer from "ol/layer/Tile";
+import VectorLayer from "ol/layer/Vector";
+import Map from "ol/Map";
+import View from "ol/View";
+import { getCenter } from "ol/extent";
+import { fromLonLat } from "ol/proj";
+import VectorSource from "ol/source/Vector";
+import XYZ from "ol/source/XYZ";
+import Fill from "ol/style/Fill";
+import Stroke from "ol/style/Stroke";
+import Style from "ol/style/Style";
+
+import { HttpError, fetchJson } from "./http";
+
 type MapConfig = {
   vworldKey: string;
   center: [number, number];
@@ -25,15 +44,21 @@ type LandFeatureCollection = {
   features: LandFeature[];
 };
 
-let map: any;
-let baseLayer: any;
-let satLayer: any;
-let hybLayer: any;
-let vectorLayer: any;
+type LandsPageResponse = LandFeatureCollection & {
+  nextCursor: string | null;
+};
+
+type BaseType = "Base" | "Satellite" | "Hybrid";
+
+let map: Map | null = null;
+let baseLayer: TileLayer<XYZ> | null = null;
+let satLayer: TileLayer<XYZ> | null = null;
+let hybLayer: TileLayer<XYZ> | null = null;
+let vectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
 let originalData: LandFeatureCollection | null = null;
 let currentFeaturesData: LandFeature[] = [];
 let currentIndex = -1;
-let overlay: any;
+let overlay: Overlay | null = null;
 let content: HTMLElement | null = null;
 let regionSearchInput: HTMLInputElement | null = null;
 
@@ -47,23 +72,36 @@ const snapHeights = {
   expanded: 0.85
 };
 
+function setListStatus(message: string, color = "#999"): void {
+  const listArea = document.getElementById("list-container");
+  if (!listArea) {
+    return;
+  }
+
+  const status = document.createElement("p");
+  status.style.padding = "20px";
+  status.style.color = color;
+  status.textContent = message;
+  listArea.replaceChildren(status);
+}
+
 function initMap(key: string, center: [number, number], zoom: number): void {
-  const commonSource = (type: string) =>
-    new ol.source.XYZ({
+  const commonSource = (type: BaseType) =>
+    new XYZ({
       url: `https://api.vworld.kr/req/wmts/1.0.0/${key}/${type}/{z}/{y}/{x}.${type === "Satellite" ? "jpeg" : "png"}`,
       crossOrigin: "anonymous"
     });
 
-  baseLayer = new ol.layer.Tile({ source: commonSource("Base"), visible: true, zIndex: 0 });
-  satLayer = new ol.layer.Tile({ source: commonSource("Satellite"), visible: false, zIndex: 0 });
-  hybLayer = new ol.layer.Tile({ source: commonSource("Hybrid"), visible: false, zIndex: 1 });
+  baseLayer = new TileLayer({ source: commonSource("Base"), visible: true, zIndex: 0 });
+  satLayer = new TileLayer({ source: commonSource("Satellite"), visible: false, zIndex: 0 });
+  hybLayer = new TileLayer({ source: commonSource("Hybrid"), visible: false, zIndex: 1 });
 
-  map = new ol.Map({
+  map = new Map({
     target: "map",
     layers: [baseLayer, satLayer, hybLayer],
-    overlays: [overlay],
-    view: new ol.View({
-      center: ol.proj.fromLonLat(center),
+    overlays: overlay ? [overlay] : [],
+    view: new View({
+      center: fromLonLat(center),
       zoom,
       maxZoom: 22,
       minZoom: 7,
@@ -71,34 +109,63 @@ function initMap(key: string, center: [number, number], zoom: number): void {
     })
   });
 
-  map.on("singleclick", (evt: any) => {
-    const feature = map.forEachFeatureAtPixel(evt.pixel, (item: any) => item);
-    if (feature) {
-      const idx = feature.getId();
+  map.on("singleclick", (evt) => {
+    if (!map) {
+      return;
+    }
+    const clickedFeature = map.forEachFeatureAtPixel(evt.pixel, (item) => item);
+    if (clickedFeature) {
+      const idx = clickedFeature.getId();
       if (idx !== undefined) {
         selectItem(Number(idx), false);
       }
-      showPopup(feature, evt.coordinate);
+      showPopup(clickedFeature, evt.coordinate as number[], true);
     } else {
       overlay?.setPosition(undefined);
     }
   });
 }
 
-function changeLayer(type: "Base" | "Satellite" | "Hybrid"): void {
-  if (!map) return;
-  if (map.getView().getZoom() >= 20) map.getView().setZoom(19);
+function changeLayer(type: BaseType): void {
+  if (!map || !baseLayer || !satLayer || !hybLayer) {
+    return;
+  }
+
+  const view = map.getView();
+  if (view.getZoom() >= 20) {
+    view.setZoom(19);
+  }
+
   baseLayer.setVisible(type === "Base");
   satLayer.setVisible(type === "Satellite" || type === "Hybrid");
   hybLayer.setVisible(type === "Hybrid");
+
   document.querySelectorAll(".map-controls button").forEach((btn) => btn.classList.remove("active"));
   document.getElementById(`btn-${type}`)?.classList.add("active");
 }
 
 async function loadLandData(): Promise<void> {
-  const res = await fetch("/api/lands");
-  const data = (await res.json()) as LandFeatureCollection;
-  originalData = data;
+  const allFeatures: LandFeature[] = [];
+  let cursor: string | null = null;
+
+  setListStatus("데이터를 불러오는 중입니다...");
+
+  while (true) {
+    const query = new URLSearchParams({ limit: "500" });
+    if (cursor) {
+      query.set("cursor", cursor);
+    }
+
+    const page = await fetchJson<LandsPageResponse>(`/api/lands?${query.toString()}`, { timeoutMs: 20000 });
+    allFeatures.push(...page.features);
+
+    if (!page.nextCursor) {
+      break;
+    }
+    cursor = page.nextCursor;
+  }
+
+  originalData = { type: "FeatureCollection", features: allFeatures };
   applyFilters();
 }
 
@@ -138,41 +205,43 @@ function applyFilters(): void {
 }
 
 function updateMapAndList(data: LandFeatureCollection): void {
-  if (!map) return;
+  if (!map) {
+    return;
+  }
 
   currentFeaturesData = data.features;
   currentIndex = -1;
 
-  if (vectorLayer) map.removeLayer(vectorLayer);
+  if (vectorLayer) {
+    map.removeLayer(vectorLayer);
+  }
 
-  const vectorSource = new ol.source.Vector();
-  const features = new ol.format.GeoJSON().readFeatures(data, { featureProjection: "EPSG:3857" });
+  const vectorSource = new VectorSource<Feature<Geometry>>();
+  const parsedFeatures = new GeoJSON().readFeatures(data, { featureProjection: "EPSG:3857" }) as Feature<Geometry>[];
 
-  features.forEach((feature: any, idx: number) => {
+  parsedFeatures.forEach((feature, idx) => {
     feature.setId(idx);
     vectorSource.addFeature(feature);
   });
 
-  vectorLayer = new ol.layer.Vector({
+  vectorLayer = new VectorLayer({
     source: vectorSource,
     zIndex: 10,
-    style: new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: "#ff3333", width: 3 }),
-      fill: new ol.style.Fill({ color: "rgba(255, 51, 51, 0.2)" })
+    style: new Style({
+      stroke: new Stroke({ color: "#ff3333", width: 3 }),
+      fill: new Fill({ color: "rgba(255, 51, 51, 0.2)" })
     })
   });
   map.addLayer(vectorLayer);
 
   const listArea = document.getElementById("list-container");
-  if (!listArea) return;
+  if (!listArea) {
+    return;
+  }
   listArea.replaceChildren();
 
   if (!data.features.length) {
-    const empty = document.createElement("p");
-    empty.style.padding = "20px";
-    empty.style.color = "red";
-    empty.textContent = "결과 없음";
-    listArea.appendChild(empty);
+    setListStatus("결과 없음", "red");
   }
 
   data.features.forEach((feature, idx) => {
@@ -196,32 +265,54 @@ function updateMapAndList(data: LandFeatureCollection): void {
   });
 
   if (data.features.length > 0) {
-    map.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50], duration: 1000 });
+    map.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50], duration: 500 });
   }
 
   updateNavigationUI();
 }
 
 function selectItem(idx: number, shouldFit = true): void {
-  if (!vectorLayer || idx < 0 || idx >= currentFeaturesData.length) return;
+  if (!vectorLayer || !map || idx < 0 || idx >= currentFeaturesData.length) {
+    return;
+  }
 
   currentIndex = idx;
-  const feature = vectorLayer.getSource().getFeatureById(idx);
+  const feature = vectorLayer.getSource()?.getFeatureById(idx) as Feature<Geometry> | null;
 
   if (feature) {
     const geometry = feature.getGeometry();
-    const extent = geometry.getExtent();
-    const center = ol.extent.getCenter(extent);
+    if (geometry) {
+      const extent = geometry.getExtent();
+      const focusCoord = getCenter(extent);
 
-    if (shouldFit) {
-      map.getView().fit(extent, {
-        padding: [100, 100, 100, 100],
-        duration: 800,
-        maxZoom: 19
-      });
+      if (shouldFit) {
+        const view = map.getView();
+        const [minX, minY, maxX, maxY] = extent;
+        const isPointLike = minX === maxX && minY === maxY;
+        if (isPointLike) {
+          view.animate({
+            center: focusCoord,
+            duration: 300
+          });
+          if (view.getZoom() < 19) {
+            view.setZoom(19);
+          }
+        } else {
+          view.fit(extent, {
+            padding: [100, 100, 100, 100],
+            duration: 300,
+            maxZoom: 19
+          });
+        }
+      }
+
+      showPopup(feature, focusCoord, false);
+      if (shouldFit) {
+        window.setTimeout(() => {
+          map?.getView().animate({ center: focusCoord, duration: 120 });
+        }, 220);
+      }
     }
-
-    showPopup(feature, center);
   }
 
   updateNavigationUI();
@@ -232,16 +323,19 @@ function selectItem(idx: number, shouldFit = true): void {
   }
 }
 
-function showPopup(feature: any, coordinate: any): void {
-  if (!content || !overlay) return;
-  const p = feature.getProperties();
+function showPopup(feature: Feature<Geometry>, coordinate: number[], panIntoView = false): void {
+  if (!content || !overlay) {
+    return;
+  }
+
+  const props = feature.getProperties() as LandFeatureProperties;
   content.replaceChildren();
 
   const rows = [
-    ["📍 주소", p.address],
-    ["📏 면적", `${p.area}㎡`],
-    ["📂 지목", p.land_type],
-    ["📞 문의", p.contact]
+    ["📍 주소", props.address],
+    ["📏 면적", `${props.area}㎡`],
+    ["📂 지목", props.land_type],
+    ["📞 문의", props.contact]
   ];
 
   rows.forEach(([label, value]) => {
@@ -251,6 +345,9 @@ function showPopup(feature: any, coordinate: any): void {
   });
 
   overlay.setPosition(coordinate);
+  if (panIntoView) {
+    overlay.panIntoView({ animation: { duration: 250 } });
+  }
 }
 
 function navigateItem(direction: number): void {
@@ -270,8 +367,12 @@ function updateNavigationUI(): void {
     navInfo.innerText = total > 0 ? `${currentIndex + 1} / ${total}` : "0 / 0";
   }
 
-  if (prevBtn) prevBtn.disabled = currentIndex <= 0;
-  if (nextBtn) nextBtn.disabled = currentIndex >= total - 1 || total === 0;
+  if (prevBtn) {
+    prevBtn.disabled = currentIndex <= 0;
+  }
+  if (nextBtn) {
+    nextBtn.disabled = currentIndex >= total - 1 || total === 0;
+  }
 
   document.querySelectorAll(".list-item").forEach((item, idx) => {
     item.classList.toggle("selected", idx === currentIndex);
@@ -279,12 +380,14 @@ function updateNavigationUI(): void {
 }
 
 function initBottomSheet(): void {
-  if (!handle || !sidebar) return;
+  if (!handle || !sidebar) {
+    return;
+  }
 
   handle.addEventListener("touchstart", (event: TouchEvent) => {
     startY = event.touches[0].clientY;
     startHeight = sidebar.offsetHeight;
-    sidebar.style.transition = "none";
+    (sidebar as HTMLElement).style.transition = "none";
   });
 
   handle.addEventListener("touchmove", (event: TouchEvent) => {
@@ -293,19 +396,19 @@ function initBottomSheet(): void {
     const newHeight = startHeight + deltaY;
 
     if (newHeight > window.innerHeight * 0.12 && newHeight < window.innerHeight * 0.9) {
-      sidebar.style.height = `${newHeight}px`;
+      (sidebar as HTMLElement).style.height = `${newHeight}px`;
     }
   });
 
   handle.addEventListener("touchend", () => {
-    sidebar.style.transition = "height 0.3s ease-out";
-    const currentRatio = sidebar.offsetHeight / window.innerHeight;
+    (sidebar as HTMLElement).style.transition = "height 0.3s ease-out";
+    const currentRatio = sidebar.clientHeight / window.innerHeight;
     if (currentRatio >= 0.6) {
-      sidebar.style.height = `${snapHeights.expanded * 100}vh`;
+      (sidebar as HTMLElement).style.height = `${snapHeights.expanded * 100}vh`;
     } else if (currentRatio <= 0.25) {
-      sidebar.style.height = `${snapHeights.collapsed * 100}vh`;
+      (sidebar as HTMLElement).style.height = `${snapHeights.collapsed * 100}vh`;
     } else {
-      sidebar.style.height = `${snapHeights.mid * 100}vh`;
+      (sidebar as HTMLElement).style.height = `${snapHeights.mid * 100}vh`;
     }
   });
 }
@@ -320,19 +423,18 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
-  overlay = new ol.Overlay({ element: popupElement, autoPan: true, autoPanAnimation: { duration: 250 } });
+  overlay = new Overlay({ element: popupElement, autoPan: false });
 
   if (closer) {
     closer.addEventListener("click", (event) => {
       event.preventDefault();
-      overlay.setPosition(undefined);
+      overlay?.setPosition(undefined);
     });
   }
 
   document.getElementById("btn-search")?.addEventListener("click", applyFilters);
   const rentOnlyFilter = document.getElementById("rent-only-filter");
   rentOnlyFilter?.addEventListener("change", applyFilters);
-  rentOnlyFilter?.addEventListener("click", applyFilters);
   document.getElementById("btn-Base")?.addEventListener("click", () => changeLayer("Base"));
   document.getElementById("btn-Satellite")?.addEventListener("click", () => changeLayer("Satellite"));
   document.getElementById("btn-Hybrid")?.addEventListener("click", () => changeLayer("Hybrid"));
@@ -350,14 +452,14 @@ async function bootstrap(): Promise<void> {
 
   initBottomSheet();
 
-  const configResponse = await fetch("/api/config");
-  const config = (await configResponse.json()) as MapConfig;
-  if (!config.center) {
-    return;
+  try {
+    const config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
+    initMap(config.vworldKey, config.center, config.zoom);
+    await loadLandData();
+  } catch (error) {
+    const message = error instanceof HttpError ? error.message : "지도를 초기화하지 못했습니다.";
+    setListStatus(message, "red");
   }
-
-  initMap(config.vworldKey, config.center, config.zoom);
-  await loadLandData();
 }
 
 document.addEventListener("DOMContentLoaded", () => {

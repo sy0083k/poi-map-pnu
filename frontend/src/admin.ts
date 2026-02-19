@@ -1,7 +1,10 @@
+import { HttpError, fetchJson } from "./http";
+
 type UploadResponse = {
   success: boolean;
   total?: number;
   message: string;
+  geomJobId?: number;
 };
 
 function requireElement<T extends Element>(id: string, type: { new (): T }): T | null {
@@ -51,19 +54,21 @@ async function handleUpload(csrfToken: string): Promise<void> {
 
   try {
     status.innerText = "1단계: 엑셀 파일 입력 중...";
-    const res = await fetch("/admin/upload", { method: "POST", body: formData });
-    const result = (await res.json()) as UploadResponse;
-
-    if (!res.ok || !result.success) {
-      throw new Error(result.message || "업로드 실패");
-    }
+    const result = await fetchJson<UploadResponse>("/admin/upload", {
+      method: "POST",
+      body: formData,
+      timeoutMs: 45000
+    });
 
     status.style.color = "green";
-    status.innerText = `✅ ${result.message}`;
-    alert("서버에서 데이터 처리를 시작했습니다.\n이제 이 창을 닫으셔도 작업은 중단되지 않습니다.");
+    status.innerText = result.geomJobId
+      ? `업로드 완료 (작업 ID: ${result.geomJobId}). 경계선 보강이 백그라운드에서 진행됩니다.`
+      : `업로드 완료: ${result.message}`;
+    alert("서버에서 데이터 처리를 시작했습니다. 창을 닫아도 작업은 계속됩니다.");
   } catch (error) {
     status.style.color = "red";
-    status.innerText = `오류 발생: ${String(error)}`;
+    const message = error instanceof HttpError ? error.message : String(error);
+    status.innerText = `오류 발생: ${message}`;
   }
 }
 

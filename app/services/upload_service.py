@@ -9,7 +9,7 @@ from app.db.connection import db_connection
 from app.dependencies import validate_csrf_token
 from app.logging_utils import RequestIdFilter
 from app.repositories import idle_land_repository
-from app.services.geo_service import update_geoms
+from app.services.geo_service import enqueue_geom_update_job, run_geom_update_job
 from app.validators import land_validators
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,8 @@ def handle_excel_upload(
 
             conn.commit()
 
-        background_tasks.add_task(update_geoms, 5)
+        job_id = enqueue_geom_update_job()
+        background_tasks.add_task(run_geom_update_job, job_id, 5)
 
         logger.info(
             "upload accepted: %s rows",
@@ -127,7 +128,12 @@ def handle_excel_upload(
                 "status": 200,
             },
         )
-        return {"success": True, "total": len(df), "message": "엑셀 데이터 입력 완료"}
+        return {
+            "success": True,
+            "total": len(df),
+            "message": "엑셀 데이터 입력 완료",
+            "geomJobId": job_id,
+        }
 
     except HTTPException:
         raise

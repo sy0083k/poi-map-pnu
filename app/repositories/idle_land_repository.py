@@ -18,12 +18,43 @@ def init_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS geom_update_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            attempts INTEGER NOT NULL DEFAULT 0,
+            updated_count INTEGER NOT NULL DEFAULT 0,
+            failed_count INTEGER NOT NULL DEFAULT 0,
+            error_message TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
     conn.commit()
 
 
 def fetch_lands_with_geom(conn: sqlite3.Connection) -> Sequence[sqlite3.Row]:
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM idle_land WHERE geom IS NOT NULL")
+    return cursor.fetchall()
+
+
+def fetch_lands_with_geom_page(
+    conn: sqlite3.Connection,
+    *,
+    after_id: int | None,
+    limit: int,
+) -> Sequence[sqlite3.Row]:
+    cursor = conn.cursor()
+    if after_id is None:
+        cursor.execute("SELECT * FROM idle_land WHERE geom IS NOT NULL ORDER BY id LIMIT ?", (limit,))
+    else:
+        cursor.execute(
+            "SELECT * FROM idle_land WHERE geom IS NOT NULL AND id > ? ORDER BY id LIMIT ?",
+            (after_id, limit),
+        )
     return cursor.fetchall()
 
 
@@ -78,3 +109,62 @@ def count_missing_geom(conn: sqlite3.Connection) -> int:
     cursor.execute("SELECT COUNT(*) FROM idle_land WHERE geom IS NULL")
     row = cursor.fetchone()
     return int(row[0]) if row else 0
+
+
+def create_geom_update_job(conn: sqlite3.Connection) -> int:
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO geom_update_jobs (status) VALUES ('pending')")
+    return int(cursor.lastrowid)
+
+
+def mark_geom_job_running(conn: sqlite3.Connection, job_id: int) -> None:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE geom_update_jobs
+           SET status = 'running',
+               attempts = attempts + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?
+        """,
+        (job_id,),
+    )
+
+
+def mark_geom_job_done(conn: sqlite3.Connection, job_id: int, *, updated_count: int, failed_count: int) -> None:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE geom_update_jobs
+           SET status = 'done',
+               updated_count = ?,
+               failed_count = ?,
+               error_message = NULL,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?
+        """,
+        (updated_count, failed_count, job_id),
+    )
+
+
+def mark_geom_job_failed(
+    conn: sqlite3.Connection,
+    job_id: int,
+    *,
+    updated_count: int,
+    failed_count: int,
+    error_message: str,
+) -> None:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE geom_update_jobs
+           SET status = 'failed',
+               updated_count = ?,
+               failed_count = ?,
+               error_message = ?,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?
+        """,
+        (updated_count, failed_count, error_message, job_id),
+    )

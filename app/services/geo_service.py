@@ -16,6 +16,41 @@ def init_db() -> None:
         idle_land_repository.init_db(conn)
 
 
+def enqueue_geom_update_job() -> int:
+    with db_connection() as conn:
+        job_id = idle_land_repository.create_geom_update_job(conn)
+        conn.commit()
+    return job_id
+
+
+def run_geom_update_job(job_id: int, max_retries: int = 5) -> tuple[int, int]:
+    with db_connection() as conn:
+        idle_land_repository.mark_geom_job_running(conn, job_id)
+        conn.commit()
+
+    updated_count = 0
+    failed_count = 0
+    try:
+        updated_count, failed_count = update_geoms(max_retries=max_retries)
+        with db_connection() as conn:
+            idle_land_repository.mark_geom_job_done(
+                conn, job_id, updated_count=updated_count, failed_count=failed_count
+            )
+            conn.commit()
+    except Exception as exc:
+        with db_connection() as conn:
+            idle_land_repository.mark_geom_job_failed(
+                conn,
+                job_id,
+                updated_count=updated_count,
+                failed_count=failed_count,
+                error_message=str(exc)[:2000],
+            )
+            conn.commit()
+        raise
+    return updated_count, failed_count
+
+
 def update_geoms(max_retries: int = 5) -> tuple[int, int]:
     settings = get_settings()
     client = VWorldClient(
