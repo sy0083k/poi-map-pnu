@@ -12,6 +12,11 @@ from starlette.requests import Request
 from app.services import upload_service
 
 
+class DummyExcelFile:
+    def __init__(self, *_args: object, sheet_names: list[str] | None = None, **_kwargs: object) -> None:
+        self.sheet_names = sheet_names or ["목록"]
+
+
 def _make_request(app: FastAPI, *, csrf_token: str) -> Request:
     scope = {
         "type": "http",
@@ -65,6 +70,7 @@ def test_upload_service_success(
             "담당자연락처": ["010"],
         }
     )
+    monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
     monkeypatch.setattr(pd, "read_excel", lambda *_args, **_kwargs: df)
 
     result = upload_service.handle_excel_upload(
@@ -107,6 +113,7 @@ def test_upload_service_rejects_bad_content_type(
             "담당자연락처": ["010"],
         }
     )
+    monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
     monkeypatch.setattr(pd, "read_excel", lambda *_args, **_kwargs: df)
 
     with pytest.raises(HTTPException) as exc:
@@ -128,6 +135,7 @@ def test_upload_service_missing_columns(
         "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     df = pd.DataFrame({"소재지(지번)": ["addr"]})
+    monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
     monkeypatch.setattr(pd, "read_excel", lambda *_args, **_kwargs: df)
 
     with pytest.raises(HTTPException) as exc:
@@ -138,3 +146,46 @@ def test_upload_service_missing_columns(
             file=file,
         )
     assert exc.value.status_code == 400
+
+
+def test_upload_service_sheet_name_fallback(
+    build_app: Any, monkeypatch: MonkeyPatch, db_path: Any
+) -> None:
+    app = build_app()
+    from app.db.connection import db_connection
+    from app.repositories import idle_land_repository
+
+    with db_connection() as conn:
+        idle_land_repository.init_db(conn)
+    request = _make_request(app, csrf_token="csrf")
+    file = _make_upload_file(
+        "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    df = pd.DataFrame(
+        {
+            "소재지(지번)": ["addr"],
+            "(공부상)지목": ["답"],
+            "(공부상)면적(㎡)": [12.5],
+            "행정재산": ["Y"],
+            "일반재산": ["N"],
+            "담당자연락처": ["010"],
+        }
+    )
+
+    called: dict[str, object] = {}
+
+    def _read_excel(_excel: object, *, sheet_name: str) -> pd.DataFrame:
+        called["sheet_name"] = sheet_name
+        return df
+
+    monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["시트1"]))
+    monkeypatch.setattr(pd, "read_excel", _read_excel)
+
+    result = upload_service.handle_excel_upload(
+        request=request,
+        background_tasks=BackgroundTasks(),
+        csrf_token="csrf",
+        file=file,
+    )
+    assert result["success"] is True
+    assert called["sheet_name"] == "시트1"

@@ -28,7 +28,7 @@
 ## 🛠 2. 사용 기술 (Tech Stack)
 
 * **Backend:** Python 3.10+, FastAPI
-사용허가/대부 불가 토지 제외* **Frontend:** TypeScript, Vite, OpenLayers (지도 라이브러리)
+* **Frontend:** TypeScript, Vite, OpenLayers (지도 라이브러리)
 * **Database:** SQLite3 (파일 기반 경량 DB)
 * **API:** V-World 요청 API (주소 검색 및 Feature 서비스)
 
@@ -55,6 +55,9 @@ ADMIN_PW_HASH=여기에_bcrypt_해시값_입력
 SECRET_KEY=충분히_긴_랜덤_문자열
 ALLOWED_IPS=127.0.0.1/32,::1/128
 SESSION_HTTPS_ONLY=false
+TRUST_PROXY_HEADERS=false
+TRUSTED_PROXY_IPS=
+UPLOAD_SHEET_NAME=목록
 ```
 
 `ADMIN_PW_HASH`는 평문 비밀번호가 아니라 bcrypt 해시값이어야 합니다.  

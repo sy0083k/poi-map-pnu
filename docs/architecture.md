@@ -81,9 +81,10 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 선택:
 - `ALLOWED_IPS`, `MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`, `LOGIN_MAX_ATTEMPTS`,
   `LOGIN_COOLDOWN_SECONDS`, `VWORLD_TIMEOUT_S`, `VWORLD_RETRIES`, `VWORLD_BACKOFF_S`,
-  `SESSION_HTTPS_ONLY`
+  `SESSION_HTTPS_ONLY`, `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`, `UPLOAD_SHEET_NAME`
 
 ## 운영 참고
 - 관리자 엔드포인트는 내부 IP 허용 목록과 세션 인증으로 보호된다.
+- 프록시 환경에서는 신뢰 프록시(`TRUSTED_PROXY_IPS`) 경유 요청에 한해 `X-Forwarded-For`를 사용한다.
 - VWorld WMTS 키는 지도 사용을 위해 `/api/config`에서 제공된다. Geocoder 키는 서버 전용이다.
 - 지오메트리 업데이트는 백그라운드 작업이며 VWorld 가용성에 의존한다.

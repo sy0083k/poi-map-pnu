@@ -32,6 +32,9 @@ class Settings:
     vworld_retries: int
     vworld_backoff_s: float
     session_https_only: bool
+    trust_proxy_headers: bool
+    trusted_proxy_networks: tuple[IPAddressNetwork, ...]
+    upload_sheet_name: str
     base_dir: str
 
 
@@ -88,6 +91,21 @@ def _parse_allowed_ips(raw_ips: str) -> tuple[IPAddressNetwork, ...]:
     return tuple(networks)
 
 
+def _parse_network_list(raw_value: str) -> tuple[IPAddressNetwork, ...]:
+    networks: list[IPAddressNetwork] = []
+    for raw_entry in raw_value.split(","):
+        entry = raw_entry.strip()
+        if not entry:
+            continue
+        try:
+            networks.append(ip_network(entry, strict=False))
+        except ValueError as exc:
+            raise SettingsError(
+                f"Invalid network entry: {entry}. Use CIDR or exact IP (e.g. 10.0.0.0/24)."
+            ) from exc
+    return tuple(networks)
+
+
 def _parse_bool_env(name: str, default: bool) -> bool:
     raw_value = os.getenv(name)
     if raw_value is None:
@@ -131,5 +149,8 @@ def get_settings() -> Settings:
         vworld_retries=int(os.getenv("VWORLD_RETRIES", "3")),
         vworld_backoff_s=float(os.getenv("VWORLD_BACKOFF_S", "0.5")),
         session_https_only=_parse_bool_env("SESSION_HTTPS_ONLY", True),
+        trust_proxy_headers=_parse_bool_env("TRUST_PROXY_HEADERS", False),
+        trusted_proxy_networks=_parse_network_list(os.getenv("TRUSTED_PROXY_IPS", "")),
+        upload_sheet_name=os.getenv("UPLOAD_SHEET_NAME", "목록").strip() or "목록",
         base_dir=str(base_dir),
     )

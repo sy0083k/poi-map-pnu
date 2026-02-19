@@ -1,5 +1,6 @@
 # app/routers/admin.py
 import bcrypt
+import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from typing import cast
@@ -11,9 +12,12 @@ from app.dependencies import (
     require_authenticated,
     validate_csrf_token,
 )
+from app.logging_utils import RequestIdFilter
 from app.services import admin_settings_service, upload_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+logger.addFilter(RequestIdFilter())
 
 
 @router.get("/", response_class=HTMLResponse, dependencies=[Depends(check_internal_network)])
@@ -96,6 +100,18 @@ async def update_settings(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     admin_settings_service.update_env_file(request.app.state.config.BASE_DIR, cleaned)
+    request_id = getattr(request.state, "request_id", "-")
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(
+        "admin settings updated",
+        extra={
+            "request_id": request_id,
+            "event": "admin.settings.updated",
+            "actor": request.session.get("user", "anonymous"),
+            "ip": client_ip,
+            "status": 303,
+        },
+    )
     return RedirectResponse(url="/admin/?updated=1", status_code=303)
 
 
@@ -125,4 +141,16 @@ async def update_password(
 
     new_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     admin_settings_service.update_admin_password_hash(config.BASE_DIR, new_hash)
+    request_id = getattr(request.state, "request_id", "-")
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(
+        "admin password updated",
+        extra={
+            "request_id": request_id,
+            "event": "admin.password.updated",
+            "actor": request.session.get("user", "anonymous"),
+            "ip": client_ip,
+            "status": 303,
+        },
+    )
     return RedirectResponse(url="/admin/?updated=1", status_code=303)

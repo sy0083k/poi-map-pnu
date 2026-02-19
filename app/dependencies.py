@@ -1,5 +1,5 @@
 import secrets
-from ipaddress import ip_address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from fastapi import Request, HTTPException, status
 
 
@@ -20,11 +20,7 @@ async def check_internal_network(request: Request) -> bool:
     if not request.client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Client Unknown")
 
-    try:
-        client_ip = ip_address(request.client.host)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Client IP")
-
+    client_ip = _resolve_client_ip(request)
     is_allowed = any(client_ip in network for network in config.ALLOWED_IP_NETWORKS)
 
     if not is_allowed:
@@ -33,6 +29,38 @@ async def check_internal_network(request: Request) -> bool:
             detail="관리자 페이지는 내부 행정망에서만 접근 가능합니다.",
         )
     return True
+
+
+def _resolve_client_ip(request: Request) -> IPv4Address | IPv6Address:
+    config = request.app.state.config
+
+    try:
+        peer_ip = ip_address(request.client.host)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Client IP")
+
+    if not config.TRUST_PROXY_HEADERS:
+        return peer_ip
+
+    is_trusted_proxy = any(peer_ip in network for network in config.TRUSTED_PROXY_NETWORKS)
+    if not is_trusted_proxy:
+        return peer_ip
+
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if not forwarded_for:
+        return peer_ip
+
+    first_hop = forwarded_for.split(",")[0].strip()
+    if not first_hop:
+        return peer_ip
+
+    try:
+        return ip_address(first_hop)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid X-Forwarded-For IP",
+        )
 
 
 def get_or_create_csrf_token(request: Request) -> str:

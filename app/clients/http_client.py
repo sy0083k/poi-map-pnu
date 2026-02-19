@@ -10,6 +10,10 @@ logger = logging.getLogger(__name__)
 logger.addFilter(RequestIdFilter())
 
 
+class NonRetryableHTTPError(RuntimeError):
+    """Raised when retrying will not fix the HTTP error."""
+
+
 def get_json_with_retry(
     url: str,
     *,
@@ -24,8 +28,12 @@ def get_json_with_retry(
     for attempt in range(1, retries + 1):
         try:
             response = requests.get(url, timeout=timeout_s)
+            if 400 <= response.status_code < 500 and response.status_code != 429:
+                raise NonRetryableHTTPError(f"non-retryable status: {response.status_code}")
             response.raise_for_status()
             return response.json()
+        except NonRetryableHTTPError:
+            raise
         except Exception as exc:
             last_error = exc
             logger.warning(
