@@ -28,7 +28,7 @@
 ## 🛠 2. 사용 기술 (Tech Stack)
 
 * **Backend:** Python 3.10+, FastAPI
-* **Frontend:** TypeScript, Vite, OpenLayers (지도 라이브러리)
+사용허가/대부 불가 토지 제외* **Frontend:** TypeScript, Vite, OpenLayers (지도 라이브러리)
 * **Database:** SQLite3 (파일 기반 경량 DB)
 * **API:** V-World 요청 API (주소 검색 및 Feature 서비스)
 
