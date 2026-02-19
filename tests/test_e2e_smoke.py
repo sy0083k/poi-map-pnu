@@ -44,9 +44,9 @@ def test_login_upload_and_lands_flow() -> None:
                 app_main = importlib.reload(app_main)
 
                 from app.services import upload_service
-                def _noop_update_geoms(*_args, **_kwargs):
+                def _noop_run_geom_update_job(*_args, **_kwargs):
                     return (0, 0)
-                upload_service.update_geoms = _noop_update_geoms
+                upload_service.run_geom_update_job = _noop_run_geom_update_job
 
                 transport = httpx.ASGITransport(app=app_main.app, client=("127.0.0.1", 50000))
                 async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:

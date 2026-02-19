@@ -1,3 +1,5 @@
+import { HttpError, fetchJson } from "./http";
+
 type LoginResponse = {
   success: boolean;
   message?: string;
@@ -12,10 +14,13 @@ function setMessage(text: string): void {
 
 async function submitLogin(form: HTMLFormElement): Promise<void> {
   const formData = new FormData(form);
-  const res = await fetch("/login", { method: "POST", body: formData });
-  const result = (await res.json()) as LoginResponse;
+  const result = await fetchJson<LoginResponse>("/login", {
+    method: "POST",
+    body: formData,
+    timeoutMs: 10000
+  });
 
-  if (res.ok && result.success) {
+  if (result.success) {
     window.location.href = "/admin";
     return;
   }
@@ -31,10 +36,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    setMessage("");
     try {
       await submitLogin(form);
     } catch (error) {
-      console.error(error);
+      if (error instanceof HttpError) {
+        setMessage(error.message);
+        return;
+      }
       setMessage("서버 통신 오류가 발생했습니다.");
     }
   });

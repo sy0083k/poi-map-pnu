@@ -48,7 +48,7 @@ function initMap(key, center, zoom) {
         if (feature) {
             const idx = feature.getId(); // 설정된 ID로 인덱스 찾기
             if (idx !== undefined) selectItem(idx, false);
-            showPopup(feature, evt.coordinate);
+            showPopup(feature, evt.coordinate, true);
         } else {
             overlay.setPosition(undefined);
         }
@@ -218,15 +218,28 @@ function selectItem(idx, shouldFit = true) {
         const center = ol.extent.getCenter(extent);
 
         if (shouldFit) {
-            map.getView().fit(extent, { 
-                padding: [100, 100, 100, 100], // 상, 우, 하, 좌 (좌측 대폭 확보)
-                duration: 800, 
-                maxZoom: 19
-            });
+            const view = map.getView();
+            const [minX, minY, maxX, maxY] = extent;
+            const isPointLike = (minX === maxX && minY === maxY);
+            if (isPointLike) {
+                view.animate({ center, duration: 300 });
+                if (view.getZoom() < 19) view.setZoom(19);
+            } else {
+                view.fit(extent, { 
+                    padding: [100, 100, 100, 100],
+                    duration: 800, 
+                    maxZoom: 19
+                });
+            }
         }
         
         // 네비게이션 이동 시 팝업 자동 실행
-        showPopup(feature, center);
+        showPopup(feature, center, false);
+        if (shouldFit) {
+            window.setTimeout(() => {
+                map.getView().animate({ center, duration: 120 });
+            }, 220);
+        }
     }
 
     updateNavigationUI();
@@ -237,7 +250,7 @@ function selectItem(idx, shouldFit = true) {
     }
 }
 
-function showPopup(feature, coordinate) {
+function showPopup(feature, coordinate, panIntoView = false) {
     const p = feature.getProperties();
     content.replaceChildren();
 
@@ -255,6 +268,9 @@ function showPopup(feature, coordinate) {
     });
 
     overlay.setPosition(coordinate);
+    if (panIntoView) {
+        overlay.panIntoView({ animation: { duration: 250 } });
+    }
 }
 
 function navigateItem(direction) {
@@ -283,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closer = document.getElementById('popup-closer');
     
     // 오버레이 생성
-    overlay = new ol.Overlay({ element: container, autoPan: true, autoPanAnimation: { duration: 250 } });
+    overlay = new ol.Overlay({ element: container, autoPan: false });
 
     // 팝업 닫기 이벤트
     if (closer) {
