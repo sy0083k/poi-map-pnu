@@ -262,7 +262,7 @@
 
                         <div class="upload-stack">
                             <input class="file-input" type="file" id="excelFile" accept=".xlsx">
-                            <button class="btn upload-btn" onclick="handleUpload()">DB 업데이트 시작</button>
+                            <button class="btn upload-btn" id="uploadBtn" type="button">DB 업데이트 시작</button>
                         </div>
 
                         <div id="status"></div>
@@ -283,7 +283,7 @@
                         <h3>환경 변수 설정<span class="badge">재시작 필요</span></h3>
                         <p>운영 설정을 수정합니다. 저장 후 서버를 재시작해야 적용됩니다.</p>
 
-                        <form method="post" action="/admin/settings" onsubmit="return validateSettingsForm();">
+                        <form method="post" action="/admin/settings" id="settingsForm">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                             <div class="field">
@@ -396,61 +396,10 @@
         </main>
     </div>
 
-	<script>
-        const csrfToken = document.getElementById('csrfToken').value;
-        const tabs = document.querySelectorAll('.nav button');
-        const panels = {
-            upload: document.getElementById('panel-upload'),
-            settings: document.getElementById('panel-settings'),
-            password: document.getElementById('panel-password'),
-        };
-
-        tabs.forEach((tab) => {
-            tab.addEventListener('click', () => {
-                tabs.forEach((t) => t.classList.remove('active'));
-                tab.classList.add('active');
-                const name = tab.dataset.tab;
-                Object.values(panels).forEach((panel) => panel.classList.remove('active'));
-                panels[name].classList.add('active');
-            });
-        });
-
-        async function handleUpload() {
-            const fileInput = document.getElementById('excelFile');
-            if (!fileInput.files[0]) return alert("파일을 선택해주세요.");
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('csrf_token', csrfToken);
-
-            const status = document.getElementById('status');
-            status.style.color = "black";
-
-            try {
-				status.innerText = "1단계: 엑셀 파일 입력 중...";
-				const res = await fetch('/admin/upload', { method: 'POST', body: formData });
-				const result = await res.json();
-
-				if (!res.ok || !result.success) throw new Error(result.message || "업로드 실패");
-
-				status.style.color = "green";
-				status.innerText = "✅ " + result.message;
-				alert("서버에서 데이터 처리를 시작했습니다.\n이제 이 창을 닫으셔도 작업은 중단되지 않습니다.");
-
-            } catch (e) {
-                status.style.color = "red";
-                status.innerText = "오류 발생: " + e;
-            }
-        }
-
-        function validateSettingsForm() {
-            const input = document.querySelector('input[name="settings_password"]');
-            if (!input || !input.value.trim()) {
-                alert("환경 변수 저장을 위해 관리자 비밀번호를 입력해주세요.");
-                return false;
-            }
-            return true;
-        }
-    </script>
+    {% set assets = vite_assets('src/admin.ts') %}
+    {% for css_file in assets.css %}
+    <link rel="stylesheet" href="{{ css_file }}">
+    {% endfor %}
+    <script type="module" src="{{ assets.js }}"></script>
 </body>
 </html>

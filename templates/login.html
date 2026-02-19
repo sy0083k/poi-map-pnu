@@ -21,35 +21,10 @@
         </form>
         <p id="msg" style="color:red; font-size:12px;"></p>
     </div>
-    <script>
-        document.getElementById('loginForm').onsubmit = async (e) => {
-            e.preventDefault(); // 폼의 기본 제출 동작 막기
-
-            const formData = new FormData(e.target);
-            const msg = document.getElementById('msg');
-
-            try {
-                // 1. 서버로 데이터 전송
-                const res = await fetch('/login', { // 주의: auth.py의 라우트와 일치해야 함 (/api/login 인지 /login 인지 확인)
-                    method: 'POST', 
-                    body: formData 
-                });
-                
-                // 2. 응답 JSON 해석
-                const result = await res.json();
-
-                // 3. 성공 시 페이지 이동 (여기서 이동합니다!)
-                if (res.ok && result.success) {
-                    window.location.href = '/admin'; 
-                } else {
-                    // 실패 시 에러 메시지 출력
-                    msg.innerText = result.message || "로그인 실패";
-                }
-            } catch (err) {
-                console.error(err);
-                msg.innerText = "서버 통신 오류가 발생했습니다.";
-            }
-        };
-    </script>
+    {% set assets = vite_assets('src/login.ts') %}
+    {% for css_file in assets.css %}
+    <link rel="stylesheet" href="{{ css_file }}">
+    {% endfor %}
+    <script type="module" src="{{ assets.js }}"></script>
 </body>
 </html>

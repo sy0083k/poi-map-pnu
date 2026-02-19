@@ -28,7 +28,7 @@
 ## 🛠 2. 사용 기술 (Tech Stack)
 
 * **Backend:** Python 3.10+, FastAPI
-* **Frontend:** Vanilla JS, OpenLayers (지도 라이브러리)
+* **Frontend:** TypeScript, Vite, OpenLayers (지도 라이브러리)
 * **Database:** SQLite3 (파일 기반 경량 DB)
 * **API:** V-World 요청 API (주소 검색 및 Feature 서비스)
 
@@ -70,6 +70,17 @@ pip install -r requirements.txt
 
 ### 4단계: 서버 실행
 
+프론트엔드 정적 자산은 Vite 빌드를 통해 생성하는 것을 권장합니다.
+
+```bash
+cd frontend
+npm ci
+npm run build
+cd ..
+```
+
+그 다음 서버를 실행합니다.
+
 ```bash
 uvicorn app.main:app --reload
 ```
@@ -94,6 +105,11 @@ project-root/
 │  .env               # API 키 및 로그인 정보
 │  requirements.txt   # Python 의존성 목록
 │
+├─frontend/           # Vite + TypeScript 프론트엔드 소스
+│  ├─src/             # 엔트리(map/admin/login) 및 모듈
+│  ├─vite.config.ts   # 빌드/manifest 설정
+│  └─package.json
+│
 ├─app/
 │  ├─main.py          # FastAPI 엔트리포인트
 │  ├─routers/         # 라우터 (얇은 컨트롤러)
@@ -110,7 +126,7 @@ project-root/
 │      login.html     # 로그인 화면
 │      admin.html     # 관리자 업로드 화면
 │
-└─static/             # CSS, 이미지 등
+└─static/             # CSS, 이미지 등 (빌드 결과는 static/dist)
 ```
 
 ---
