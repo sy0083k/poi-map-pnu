@@ -59,9 +59,12 @@ def insert_land(
     )
 
 
-def fetch_missing_geom(conn: sqlite3.Connection) -> Iterable[tuple[int, str]]:
+def fetch_missing_geom(conn: sqlite3.Connection, *, limit: int | None = None) -> Iterable[tuple[int, str]]:
     cursor = conn.cursor()
-    cursor.execute("SELECT id, address FROM idle_land WHERE geom IS NULL")
+    if limit is None:
+        cursor.execute("SELECT id, address FROM idle_land WHERE geom IS NULL ORDER BY id")
+    else:
+        cursor.execute("SELECT id, address FROM idle_land WHERE geom IS NULL ORDER BY id LIMIT ?", (limit,))
     return cursor.fetchall()
 
 

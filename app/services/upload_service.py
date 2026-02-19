@@ -23,11 +23,13 @@ def handle_excel_upload(
     file: UploadFile,
 ) -> JSONResponse | dict:
     config = request.app.state.config
+    request_id = getattr(request.state, "request_id", "-")
+    actor = request.session.get("user", "anonymous")
+    client_ip = request.client.host if request.client else "unknown"
 
     if not validate_csrf_token(request, csrf_token):
         raise HTTPException(status_code=403, detail="CSRF 토큰 검증에 실패했습니다.")
 
-    request_id = getattr(request.state, "request_id", "-")
     filename = (file.filename or "").lower()
     content_type = (file.content_type or "").lower()
     if not filename.endswith((".xlsx", ".xls")):
@@ -54,7 +56,22 @@ def handle_excel_upload(
         raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다.")
 
     try:
-        df = pd.read_excel(file.file, sheet_name="목록")
+        logger.info(
+            "upload started",
+            extra={
+                "request_id": request_id,
+                "event": "admin.upload.started",
+                "actor": actor,
+                "ip": client_ip,
+                "status": 202,
+            },
+        )
+        requested_sheet = config.UPLOAD_SHEET_NAME
+        excel_book = pd.ExcelFile(file.file)
+        if requested_sheet in excel_book.sheet_names:
+            df = pd.read_excel(excel_book, sheet_name=requested_sheet)
+        else:
+            df = pd.read_excel(excel_book, sheet_name=excel_book.sheet_names[0])
 
         missing = land_validators.validate_required_columns(df)
         if missing:
@@ -99,13 +116,32 @@ def handle_excel_upload(
 
         background_tasks.add_task(update_geoms, 5)
 
-        logger.info("upload accepted: %s rows", len(df), extra={"request_id": request_id})
+        logger.info(
+            "upload accepted: %s rows",
+            len(df),
+            extra={
+                "request_id": request_id,
+                "event": "admin.upload.succeeded",
+                "actor": actor,
+                "ip": client_ip,
+                "status": 200,
+            },
+        )
         return {"success": True, "total": len(df), "message": "엑셀 데이터 입력 완료"}
 
     except HTTPException:
         raise
     except Exception:
-        logger.exception("upload processing failed", extra={"request_id": request_id})
+        logger.exception(
+            "upload processing failed",
+            extra={
+                "request_id": request_id,
+                "event": "admin.upload.failed",
+                "actor": actor,
+                "ip": client_ip,
+                "status": 500,
+            },
+        )
         return JSONResponse(
             status_code=500,
             content={"success": False, "message": "업로드 처리 중 오류가 발생했습니다."},

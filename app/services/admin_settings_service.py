@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ipaddress import ip_network
 from pathlib import Path
 
 from app.core import get_settings
@@ -17,6 +18,9 @@ WHITELIST_KEYS = {
     "VWORLD_RETRIES",
     "VWORLD_BACKOFF_S",
     "SESSION_HTTPS_ONLY",
+    "TRUST_PROXY_HEADERS",
+    "TRUSTED_PROXY_IPS",
+    "UPLOAD_SHEET_NAME",
 }
 
 INT_KEYS = {
@@ -47,6 +51,9 @@ def get_current_settings() -> dict[str, str]:
         "VWORLD_RETRIES": str(settings.vworld_retries),
         "VWORLD_BACKOFF_S": str(settings.vworld_backoff_s),
         "SESSION_HTTPS_ONLY": "true" if settings.session_https_only else "false",
+        "TRUST_PROXY_HEADERS": "true" if settings.trust_proxy_headers else "false",
+        "TRUSTED_PROXY_IPS": ",".join(str(n) for n in settings.trusted_proxy_networks),
+        "UPLOAD_SHEET_NAME": settings.upload_sheet_name,
     }
 
 
@@ -64,7 +71,13 @@ def validate_updates(updates: dict[str, str]) -> dict[str, str]:
                 float(raw)
             except ValueError as exc:
                 raise ValueError(f"{key} must be a float.") from exc
-        if key in BOOL_KEYS:
+        if key == "TRUSTED_PROXY_IPS":
+            for candidate in [item.strip() for item in raw.split(",") if item.strip()]:
+                try:
+                    ip_network(candidate, strict=False)
+                except ValueError as exc:
+                    raise ValueError(f"Invalid TRUSTED_PROXY_IPS entry: {candidate}") from exc
+        if key in BOOL_KEYS or key == "TRUST_PROXY_HEADERS":
             if raw.lower() not in {"true", "false"}:
                 raise ValueError(f"{key} must be true or false.")
             raw = raw.lower()

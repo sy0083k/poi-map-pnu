@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -15,7 +16,9 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth_security import LoginAttemptLimiter
+from app.clients.http_client import get_json_with_retry
 from app.core import get_settings
+from app.db.connection import db_connection
 from app.exceptions import http_exception_handler, unhandled_exception_handler
 from app.logging_utils import RequestIdFilter, configure_logging
 from app.routers import admin, auth, map_router, map_v1_router
@@ -47,10 +50,24 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 async def add_request_context(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
+    started = time.perf_counter()
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     request.state.request_id = request_id
     response = await call_next(request)
+    latency_ms = round((time.perf_counter() - started) * 1000, 2)
+    client_ip = request.client.host if request.client else "unknown"
     response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "request completed",
+        extra={
+            "request_id": request_id,
+            "event": "http.request.completed",
+            "actor": "anonymous",
+            "ip": client_ip,
+            "status": response.status_code,
+            "latency_ms": latency_ms,
+        },
+    )
     return response
 
 
@@ -63,7 +80,7 @@ async def add_security_headers(
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://api.vworld.kr; "
+        "script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "img-src 'self' data: https://api.vworld.kr https://xdworld.vworld.kr;"
     )
@@ -103,6 +120,9 @@ class Config:
     VWORLD_RETRIES = settings.vworld_retries
     VWORLD_BACKOFF_S = settings.vworld_backoff_s
     SESSION_HTTPS_ONLY = settings.session_https_only
+    TRUST_PROXY_HEADERS = settings.trust_proxy_headers
+    TRUSTED_PROXY_NETWORKS = settings.trusted_proxy_networks
+    UPLOAD_SHEET_NAME = settings.upload_sheet_name
 
 
 app.state.config = Config()
@@ -124,5 +144,33 @@ async def read_root(request: Request) -> HTMLResponse:
 
 
 @app.get("/health")
-async def healthcheck() -> dict[str, str]:
-    return {"status": "ok"}
+async def healthcheck(request: Request, deep: int = 0) -> dict[str, object]:
+    request_id = getattr(request.state, "request_id", "-")
+    checks: dict[str, str] = {}
+
+    with db_connection() as conn:
+        conn.execute("SELECT 1")
+    checks["db"] = "ok"
+
+    if deep == 1:
+        settings_local = get_settings()
+        sample_geo_url = (
+            "https://api.vworld.kr/req/address"
+            "?service=address&request=getcoord&type=parcel"
+            "&address=%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C+%EC%A4%91%EA%B5%AC+%EC%84%B8%EC%A2%85%EB%8C%80%EB%A1%9C+110"
+            f"&key={settings_local.vworld_geocoder_key}"
+        )
+        try:
+            payload = get_json_with_retry(
+                sample_geo_url,
+                timeout_s=settings_local.vworld_timeout_s,
+                retries=1,
+                backoff_s=settings_local.vworld_backoff_s,
+                request_id=request_id,
+            )
+            status = payload.get("response", {}).get("status")
+            checks["vworld"] = "ok" if status in {"OK", "NOT_FOUND"} else "degraded"
+        except Exception:
+            checks["vworld"] = "degraded"
+
+    return {"status": "ok", "request_id": request_id, "checks": checks}

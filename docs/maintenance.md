@@ -24,6 +24,9 @@
 - `VWORLD_RETRIES`
 - `VWORLD_BACKOFF_S`
 - `SESSION_HTTPS_ONLY`
+- `TRUST_PROXY_HEADERS`
+- `TRUSTED_PROXY_IPS`
+- `UPLOAD_SHEET_NAME`
 
 ## 주기적 점검
 - VWorld API 키 유효성 확인
@@ -57,11 +60,12 @@
 ### 로그인 실패/차단 급증
 - `LOGIN_MAX_ATTEMPTS`, `LOGIN_COOLDOWN_SECONDS` 점검
 - 내부 IP 허용 목록(`ALLOWED_IPS`) 확인
-- 프록시 환경일 경우 클라이언트 IP 인식 방식 검토
+- 프록시 환경일 경우 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS` 설정 확인
 
 ### 업로드 실패
 - 파일 타입 및 크기 제한 확인
 - 업로드 컬럼명 스펙 확인
+- 업로드 시트명(`UPLOAD_SHEET_NAME`) 확인
 - `MAX_UPLOAD_ROWS` 제한 확인
 - VWorld API 호출 상태 확인
 
@@ -75,8 +79,8 @@
 - 복구 시 파일 권한 및 경로 확인
 
 ## 로그
-- 요청 ID가 포함된 로그를 사용하여 장애 추적
-- 관리자 업로드/로그인 로그가 정상적으로 기록되는지 확인
+- 요청 ID 및 구조화 필드(event/actor/ip/status)를 사용하여 장애 추적
+- 관리자 업로드/로그인/설정변경 로그가 정상적으로 기록되는지 확인
 
 ## 보안 운영
 - 세션 시크릿(SECRET_KEY) 정기 교체
