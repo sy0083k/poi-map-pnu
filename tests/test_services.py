@@ -3,7 +3,7 @@ from app.repositories import idle_land_repository
 from app.services import land_service
 
 
-def test_land_service_returns_geojson(db_path):
+def test_land_service_returns_geojson(db_path: object) -> None:
     with db_connection() as conn:
         idle_land_repository.init_db(conn)
         idle_land_repository.delete_all(conn)

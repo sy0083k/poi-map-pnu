@@ -1,9 +1,10 @@
 import os
 from contextlib import contextmanager
+from collections.abc import Iterator
 
 
 @contextmanager
-def temp_env(values: dict[str, str]):
+def temp_env(values: dict[str, str]) -> Iterator[None]:
     original = {k: os.environ.get(k) for k in values}
     os.environ.update(values)
     try:

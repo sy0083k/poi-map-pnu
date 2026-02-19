@@ -1,19 +1,20 @@
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 
 from app.clients import http_client, vworld_client
 
 
-def test_http_client_retries_and_raises(monkeypatch):
+def test_http_client_retries_and_raises(monkeypatch: MonkeyPatch) -> None:
     calls = {"count": 0}
 
     class DummyResponse:
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             raise RuntimeError("boom")
 
-        def json(self):
+        def json(self) -> dict[str, object]:
             return {}
 
-    def _get(*_args, **_kwargs):
+    def _get(*_args: object, **_kwargs: object) -> DummyResponse:
         calls["count"] += 1
         return DummyResponse()
 
@@ -24,13 +25,13 @@ def test_http_client_retries_and_raises(monkeypatch):
     assert calls["count"] == 2
 
 
-def test_vworld_client_returns_geometry(monkeypatch):
+def test_vworld_client_returns_geometry(monkeypatch: MonkeyPatch) -> None:
     responses = [
         {"response": {"status": "OK", "result": {"point": {"x": "1", "y": "2"}}}},
         {"features": [{"geometry": {"type": "Point", "coordinates": [1, 2]}}]},
     ]
 
-    def _get_json_with_retry(*_args, **_kwargs):
+    def _get_json_with_retry(*_args: object, **_kwargs: object) -> dict[str, object]:
         return responses.pop(0)
 
     monkeypatch.setattr(vworld_client, "get_json_with_retry", _get_json_with_retry)
@@ -39,13 +40,13 @@ def test_vworld_client_returns_geometry(monkeypatch):
     assert '"type": "Point"' in geom
 
 
-def test_vworld_client_falls_back_to_point(monkeypatch):
+def test_vworld_client_falls_back_to_point(monkeypatch: MonkeyPatch) -> None:
     responses = [
         {"response": {"status": "OK", "result": {"point": {"x": "1", "y": "2"}}}},
         {"features": []},
     ]
 
-    def _get_json_with_retry(*_args, **_kwargs):
+    def _get_json_with_retry(*_args: object, **_kwargs: object) -> dict[str, object]:
         return responses.pop(0)
 
     monkeypatch.setattr(vworld_client, "get_json_with_retry", _get_json_with_retry)

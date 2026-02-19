@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 logger.addFilter(RequestIdFilter())
 
 
-async def http_exception_handler(request: Request, exc):
+async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     request_id = getattr(request.state, "request_id", "-")
     logger.warning(
         "http error: status=%s detail=%s path=%s",
@@ -23,7 +23,7 @@ async def http_exception_handler(request: Request, exc):
     )
 
 
-async def unhandled_exception_handler(request: Request, exc: Exception):
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     request_id = getattr(request.state, "request_id", "-")
     logger.exception(
         "unhandled error on path=%s",

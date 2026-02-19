@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Request
+from typing import Any
 
 from app.services import land_service
+from app.types import GeoJSONFeatureCollection
 
 router = APIRouter()
 
 
 @router.get("/config")
-async def get_config(request: Request):
+async def get_config(request: Request) -> dict[str, Any]:
     config = request.app.state.config
     return {
         "vworldKey": config.VWORLD_WMTS_KEY,
@@ -16,5 +18,5 @@ async def get_config(request: Request):
 
 
 @router.get("/lands")
-async def get_lands(request: Request):
+async def get_lands(request: Request) -> GeoJSONFeatureCollection:
     return land_service.get_public_land_features()

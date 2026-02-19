@@ -3,8 +3,10 @@ import os
 import re
 import sys
 from contextlib import contextmanager
+from collections.abc import Iterator
 from pathlib import Path
 import unittest
+from fastapi import FastAPI
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -14,7 +16,7 @@ ADMIN_PASSWORD_HASH = "$2b$12$MGjgBz6IZSV2boORoUbbQeLqG11Nry5H75zvbYOpJWfMaucKkV
 
 
 @contextmanager
-def temp_env(values: dict[str, str]):
+def temp_env(values: dict[str, str]) -> Iterator[None]:
     original = {k: os.environ.get(k) for k in values}
     os.environ.update(values)
     try:
@@ -27,7 +29,7 @@ def temp_env(values: dict[str, str]):
                 os.environ[key] = value
 
 
-def build_test_app():
+def build_test_app() -> FastAPI:
     from app.core import config
 
     config.get_settings.cache_clear()
@@ -37,7 +39,7 @@ def build_test_app():
 
 
 class AuthFlowTests(unittest.TestCase):
-    def test_login_success_and_rate_limit(self):
+    def test_login_success_and_rate_limit(self) -> None:
         env = {
             "VWORLD_WMTS_KEY": "test-key",
             "VWORLD_GEOCODER_KEY": "test-key",
@@ -54,7 +56,7 @@ class AuthFlowTests(unittest.TestCase):
             import anyio
             import httpx
 
-            async def run_flow():
+            async def run_flow() -> None:
                 app = build_test_app()
                 transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 50000))
                 async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -93,7 +95,7 @@ class AuthFlowTests(unittest.TestCase):
 
             anyio.run(run_flow)
 
-    def test_login_rejects_bad_csrf(self):
+    def test_login_rejects_bad_csrf(self) -> None:
         env = {
             "VWORLD_WMTS_KEY": "test-key",
             "VWORLD_GEOCODER_KEY": "test-key",
@@ -107,7 +109,7 @@ class AuthFlowTests(unittest.TestCase):
             import anyio
             import httpx
 
-            async def run_flow():
+            async def run_flow() -> None:
                 app = build_test_app()
                 transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 50000))
                 async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:

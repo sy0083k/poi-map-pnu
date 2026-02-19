@@ -3,14 +3,14 @@ import pandas as pd
 from app.validators import land_validators
 
 
-def test_validate_required_columns_missing():
+def test_validate_required_columns_missing() -> None:
     df = pd.DataFrame({"소재지(지번)": ["x"]})
     missing = land_validators.validate_required_columns(df)
     assert "(공부상)지목" in missing
     assert "(공부상)면적(㎡)" in missing
 
 
-def test_normalize_upload_rows_reports_errors():
+def test_normalize_upload_rows_reports_errors() -> None:
     df = pd.DataFrame(
         {
             "소재지(지번)": ["", "addr"],

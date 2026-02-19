@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import cast
 
 import pandas as pd
 
@@ -29,7 +30,7 @@ def normalize_upload_rows(
     total_errors = 0
 
     for idx, row in df.iterrows():
-        row_num = int(idx) + 1
+        row_num = int(cast(Any, idx)) + 1
         address = _to_str(row.get("소재지(지번)"))
         land_type = _to_str(row.get("(공부상)지목"))
         area_raw = row.get("(공부상)면적(㎡)")

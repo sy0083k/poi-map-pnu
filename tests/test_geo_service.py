@@ -1,9 +1,10 @@
 from app.db.connection import db_connection
 from app.repositories import idle_land_repository
 from app.services import geo_service
+from _pytest.monkeypatch import MonkeyPatch
 
 
-def test_geo_service_updates_geom(db_path, monkeypatch):
+def test_geo_service_updates_geom(db_path: object, monkeypatch: MonkeyPatch) -> None:
     with db_connection() as conn:
         idle_land_repository.init_db(conn)
         idle_land_repository.delete_all(conn)
@@ -19,10 +20,10 @@ def test_geo_service_updates_geom(db_path, monkeypatch):
         conn.commit()
 
     class DummyClient:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: object, **kwargs: object) -> None:
             pass
 
-        def get_parcel_geometry(self, address, request_id="-"):
+        def get_parcel_geometry(self, address: str, request_id: str = "-") -> str | None:
             return '{"type":"Point","coordinates":[0,0]}'
 
     monkeypatch.setattr(geo_service, "VWorldClient", DummyClient)
@@ -31,7 +32,7 @@ def test_geo_service_updates_geom(db_path, monkeypatch):
     assert failed == 0
 
 
-def test_geo_service_handles_missing_geom(db_path, monkeypatch):
+def test_geo_service_handles_missing_geom(db_path: object, monkeypatch: MonkeyPatch) -> None:
     with db_connection() as conn:
         idle_land_repository.init_db(conn)
         idle_land_repository.delete_all(conn)
@@ -47,10 +48,10 @@ def test_geo_service_handles_missing_geom(db_path, monkeypatch):
         conn.commit()
 
     class DummyClient:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: object, **kwargs: object) -> None:
             pass
 
-        def get_parcel_geometry(self, address, request_id="-"):
+        def get_parcel_geometry(self, address: str, request_id: str = "-") -> str | None:
             return None
 
     monkeypatch.setattr(geo_service, "VWorldClient", DummyClient)

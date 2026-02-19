@@ -7,7 +7,7 @@ from tests.helpers import temp_env
 
 
 @pytest.mark.anyio
-async def test_login_rejects_missing_csrf(async_client):
+async def test_login_rejects_missing_csrf(async_client: httpx.AsyncClient) -> None:
     res = await async_client.post(
         "/login",
         data={"username": "admin", "password": "admin-password", "csrf_token": ""},
@@ -16,7 +16,7 @@ async def test_login_rejects_missing_csrf(async_client):
 
 
 @pytest.mark.anyio
-async def test_internal_network_rejected(app_env):
+async def test_internal_network_rejected(app_env: dict[str, str]) -> None:
     env = dict(app_env)
     env["ALLOWED_IPS"] = "192.168.0.0/24"
 
@@ -34,7 +34,7 @@ async def test_internal_network_rejected(app_env):
 
 
 @pytest.mark.anyio
-async def test_upload_requires_authentication(async_client):
+async def test_upload_requires_authentication(async_client: httpx.AsyncClient) -> None:
     file_bytes = io.BytesIO(b"not-an-excel")
     files = {"file": ("test.xlsx", file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
     res = await async_client.post("/admin/upload", data={"csrf_token": "x"}, files=files)
