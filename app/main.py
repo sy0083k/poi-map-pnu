@@ -20,6 +20,7 @@ from app.exceptions import http_exception_handler, unhandled_exception_handler
 from app.logging_utils import RequestIdFilter, configure_logging
 from app.routers import admin, auth, map_router, map_v1_router
 from app.services.geo_service import init_db
+from app.utils import vite_assets
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -80,6 +81,7 @@ app.add_middleware(
 BASE_DIR = settings.base_dir
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+templates.env.globals["vite_assets"] = lambda entry: vite_assets(entry, settings.base_dir)
 
 
 class Config:

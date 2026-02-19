@@ -17,7 +17,7 @@
         </div>
         <div id="filter-section">
 			<div class="checkbox-group">
-                <input type="checkbox" id="rent-only-filter" onchange="applyFilters()" checked>
+                <input type="checkbox" id="rent-only-filter" checked>
                 <label for="rent-only-filter">사용허가/대부 불가 토지 제외</label>
             </div>
             <div class="filter-group">
@@ -33,23 +33,23 @@
                     <input type="number" id="max-area" placeholder="최대" min="0">
                 </div>
             </div>
-            <button id="btn-search" onclick="applyFilters()">조건에 맞는 토지 찾기</button>
+            <button id="btn-search">조건에 맞는 토지 찾기</button>
         </div>
         <div id="list-container">
             <p style="padding: 20px; color: #999;">데이터 로딩 중...</p>
         </div>
         <div id="nav-footer">
-            <button class="nav-btn" id="prev-btn" onclick="navigateItem(-1)" disabled>◀ 이전</button>
+            <button class="nav-btn" id="prev-btn" disabled>◀ 이전</button>
             <span id="nav-info">0 / 0</span>
-            <button class="nav-btn" id="next-btn" onclick="navigateItem(1)" disabled>다음 ▶</button>
+            <button class="nav-btn" id="next-btn" disabled>다음 ▶</button>
         </div>
     </div>
 
     <div id="map">
         <div class="map-controls">
-            <button id="btn-Base" class="active" onclick="changeLayer('Base')">일반 지도</button>
-            <button id="btn-Satellite" onclick="changeLayer('Satellite')">위성 지도</button>
-            <button id="btn-Hybrid" onclick="changeLayer('Hybrid')">하이브리드</button>
+            <button id="btn-Base" class="active">일반 지도</button>
+            <button id="btn-Satellite">위성 지도</button>
+            <button id="btn-Hybrid">하이브리드</button>
         </div>
     </div>
 
@@ -58,7 +58,11 @@
         <div id="popup-content"></div>
     </div>
 
+    {% set assets = vite_assets('src/map.ts') %}
+    {% for css_file in assets.css %}
+    <link rel="stylesheet" href="{{ css_file }}">
+    {% endfor %}
     <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
-    <script src="{{ url_for('static', path='js/map.js') }}"></script>
+    <script type="module" src="{{ assets.js }}"></script>
 </body>
 </html>
