@@ -34,13 +34,15 @@
 
 ## 배포 전 체크리스트
 1. `python -m compileall -q app tests`
-2. `pytest -q`
-3. 환경 변수 설정 확인
-4. `data/database.db` 파일 권한 확인
-5. `/api/config` 및 `/api/lands` 응답 정상 확인
+2. `mypy app tests create_hash.py`
+3. `pytest -q`
+4. 환경 변수 설정 확인
+5. `data/database.db` 파일 권한 확인
+6. `/api/config` 및 `/api/lands` 응답 정상 확인
 
 ## CI/테스트 명령
 - `python -m compileall -q app tests`
+- `mypy app tests create_hash.py`
 - `pytest -q`
 - `coverage run -m pytest`
 - `coverage report -m`

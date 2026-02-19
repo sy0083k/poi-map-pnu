@@ -1,13 +1,17 @@
 import importlib
+from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 
 import httpx
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from fastapi import FastAPI
 
 from tests.helpers import temp_env
 
 
 @pytest.fixture
-def app_env():
+def app_env() -> dict[str, str]:
     return {
         "APP_NAME": "IdlePublicProperty",
         "MAP_CENTER_LON": "126.45",
@@ -25,8 +29,8 @@ def app_env():
 
 
 @pytest.fixture
-def build_app(app_env):
-    def _build():
+def build_app(app_env: dict[str, str]) -> Callable[[], FastAPI]:
+    def _build() -> FastAPI:
         with temp_env(app_env):
             from app.core import config
 
@@ -39,7 +43,7 @@ def build_app(app_env):
 
 
 @pytest.fixture
-async def async_client(build_app):
+async def async_client(build_app: Callable[[], FastAPI]) -> AsyncIterator[httpx.AsyncClient]:
     app = build_app()
     transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 50000))
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -47,12 +51,12 @@ async def async_client(build_app):
 
 
 @pytest.fixture
-def db_path(tmp_path, monkeypatch):
+def db_path(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
     from app.db import connection
 
     path = tmp_path / "test.db"
 
-    def _path():
+    def _path() -> Path:
         return path
 
     monkeypatch.setattr(connection, "_database_path", _path)

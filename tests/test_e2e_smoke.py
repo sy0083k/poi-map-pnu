@@ -8,7 +8,7 @@ import os
 import pytest
 
 
-def test_login_upload_and_lands_flow():
+def test_login_upload_and_lands_flow() -> None:
     if os.getenv("RUN_HTTP_E2E") != "1":
         pytest.skip("Set RUN_HTTP_E2E=1 to run HTTP E2E smoke test.")
     script = textwrap.dedent(

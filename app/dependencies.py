@@ -3,10 +3,10 @@ from ipaddress import ip_address
 from fastapi import Request, HTTPException, status
 
 
-def is_authenticated(request: Request):
+def is_authenticated(request: Request) -> bool:
     """세션 인증 확인"""
     config = request.app.state.config
-    return request.session.get("user") == config.ADMIN_ID
+    return bool(request.session.get("user") == config.ADMIN_ID)
 
 
 async def require_authenticated(request: Request) -> None:
@@ -15,7 +15,7 @@ async def require_authenticated(request: Request) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증이 필요합니다.")
 
 
-async def check_internal_network(request: Request):
+async def check_internal_network(request: Request) -> bool:
     config = request.app.state.config
     if not request.client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Client Unknown")

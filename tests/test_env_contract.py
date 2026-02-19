@@ -15,7 +15,7 @@ def parse_env_keys(path: Path) -> set[str]:
     return keys
 
 
-def test_env_example_matches_runtime_contract():
+def test_env_example_matches_runtime_contract() -> None:
     keys = parse_env_keys(ROOT / ".env.example")
     required = {
         "VWORLD_WMTS_KEY",

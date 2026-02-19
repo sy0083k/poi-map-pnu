@@ -1,15 +1,18 @@
 import io
+from typing import Any
 
 import pandas as pd
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from fastapi import BackgroundTasks, HTTPException
+from fastapi import FastAPI
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 
 from app.services import upload_service
 
 
-def _make_request(app, *, csrf_token: str):
+def _make_request(app: FastAPI, *, csrf_token: str) -> Request:
     scope = {
         "type": "http",
         "method": "POST",
@@ -24,7 +27,7 @@ def _make_request(app, *, csrf_token: str):
         "session": {"user": "admin", "csrf_token": csrf_token},
     }
 
-    async def receive():
+    async def receive() -> dict[str, Any]:
         return {"type": "http.request", "body": b"", "more_body": False}
 
     return Request(scope, receive)
@@ -38,7 +41,9 @@ def _make_upload_file(name: str, content: bytes, content_type: str) -> UploadFil
     )
 
 
-def test_upload_service_success(build_app, monkeypatch, db_path):
+def test_upload_service_success(
+    build_app: Any, monkeypatch: MonkeyPatch, db_path: Any
+) -> None:
     app = build_app()
     from app.db.connection import db_connection
     from app.repositories import idle_land_repository
@@ -71,7 +76,7 @@ def test_upload_service_success(build_app, monkeypatch, db_path):
     assert result["success"] is True
 
 
-def test_upload_service_rejects_bad_extension(build_app, db_path):
+def test_upload_service_rejects_bad_extension(build_app: Any, db_path: Any) -> None:
     app = build_app()
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file("upload.txt", b"dummy", "text/plain")
@@ -85,7 +90,9 @@ def test_upload_service_rejects_bad_extension(build_app, db_path):
     assert exc.value.status_code == 400
 
 
-def test_upload_service_rejects_bad_content_type(build_app, monkeypatch, db_path):
+def test_upload_service_rejects_bad_content_type(
+    build_app: Any, monkeypatch: MonkeyPatch, db_path: Any
+) -> None:
     app = build_app()
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file("upload.xlsx", b"dummy", "text/plain")
@@ -112,7 +119,9 @@ def test_upload_service_rejects_bad_content_type(build_app, monkeypatch, db_path
     assert exc.value.status_code == 400
 
 
-def test_upload_service_missing_columns(build_app, monkeypatch, db_path):
+def test_upload_service_missing_columns(
+    build_app: Any, monkeypatch: MonkeyPatch, db_path: Any
+) -> None:
     app = build_app()
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(

@@ -1,6 +1,7 @@
 # app/routers/auth.py
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from typing import cast
 
 from app.dependencies import check_internal_network, get_or_create_csrf_token
 from app.services import auth_service
@@ -9,10 +10,10 @@ router = APIRouter()
 
 
 @router.get("/admin/login", response_class=HTMLResponse, dependencies=[Depends(check_internal_network)])
-async def login_page(request: Request):
+async def login_page(request: Request) -> HTMLResponse:
     templates = request.app.state.templates
     csrf_token = get_or_create_csrf_token(request)
-    return templates.TemplateResponse(request, "login.html", {"csrf_token": csrf_token})
+    return cast(HTMLResponse, templates.TemplateResponse(request, "login.html", {"csrf_token": csrf_token}))
 
 
 @router.post("/login", dependencies=[Depends(check_internal_network)])
@@ -36,5 +37,5 @@ async def login_admin_alias(
 
 
 @router.get("/logout")
-async def logout(request: Request):
+async def logout(request: Request) -> RedirectResponse:
     return auth_service.logout(request)

@@ -20,7 +20,7 @@ def _find_route_decorator_call(func_def: ast.AsyncFunctionDef, route_path: str) 
     return None
 
 
-def _dependencies_kwarg(call: ast.Call):
+def _dependencies_kwarg(call: ast.Call) -> ast.List | None:
     for kw in call.keywords:
         if kw.arg == "dependencies" and isinstance(kw.value, ast.List):
             return kw.value
@@ -36,7 +36,7 @@ def _dependency_names(dep_list: ast.List) -> set[str]:
     return names
 
 
-def test_login_post_internal_network_guard():
+def test_login_post_internal_network_guard() -> None:
     module = _read_module_ast("app/routers/auth.py")
     funcs = [node for node in module.body if isinstance(node, ast.AsyncFunctionDef)]
     login_func = next(func for func in funcs if func.name == "login")
@@ -48,7 +48,7 @@ def test_login_post_internal_network_guard():
     assert "check_internal_network" in _dependency_names(deps)
 
 
-def test_admin_upload_requires_internal_and_authentication():
+def test_admin_upload_requires_internal_and_authentication() -> None:
     module = _read_module_ast("app/routers/admin.py")
     funcs = [node for node in module.body if isinstance(node, ast.AsyncFunctionDef)]
     upload_func = next(func for func in funcs if func.name == "upload_excel")

@@ -2,7 +2,7 @@ from app.db.connection import db_connection
 from app.repositories import idle_land_repository
 
 
-def test_idle_land_repository_crud(db_path):
+def test_idle_land_repository_crud(db_path: object) -> None:
     with db_connection() as conn:
         idle_land_repository.init_db(conn)
         idle_land_repository.delete_all(conn)

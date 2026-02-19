@@ -3,6 +3,7 @@ import os
 import sys
 import unittest
 from contextlib import contextmanager
+from collections.abc import Iterator
 from pathlib import Path
 
 
@@ -12,7 +13,7 @@ if str(ROOT_DIR) not in sys.path:
 
 
 @contextmanager
-def temp_env(values: dict[str, str]):
+def temp_env(values: dict[str, str]) -> Iterator[None]:
     original = {k: os.environ.get(k) for k in values}
     os.environ.update(values)
     try:
@@ -26,7 +27,7 @@ def temp_env(values: dict[str, str]):
 
 
 class ConfigTests(unittest.TestCase):
-    def test_required_env_validation(self):
+    def test_required_env_validation(self) -> None:
         from app.core import config
 
         config.get_settings.cache_clear()
@@ -42,7 +43,7 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(config.SettingsError):
                 config.get_settings()
 
-    def test_invalid_admin_hash_rejected(self):
+    def test_invalid_admin_hash_rejected(self) -> None:
         from app.core import config
 
         config.get_settings.cache_clear()
@@ -60,7 +61,7 @@ class ConfigTests(unittest.TestCase):
 
 
 class AppSmokeTests(unittest.TestCase):
-    def test_root_and_config_routes(self):
+    def test_root_and_config_routes(self) -> None:
         env = {
             "APP_NAME": "IdlePublicProperty",
             "MAP_CENTER_LON": "126.45",
@@ -84,7 +85,7 @@ class AppSmokeTests(unittest.TestCase):
             import anyio
             import httpx
 
-            async def run_flow():
+            async def run_flow() -> None:
                 transport = httpx.ASGITransport(app=app_main.app, client=("127.0.0.1", 50000))
                 async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
                     root = await client.get("/")

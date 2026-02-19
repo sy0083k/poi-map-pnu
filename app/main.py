@@ -2,10 +2,13 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import cast
 
 import logging
 import uuid
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -29,7 +32,7 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     init_db()
     yield
 
@@ -40,7 +43,9 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 
 
 @app.middleware("http")
-async def add_request_context(request: Request, call_next):
+async def add_request_context(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     request.state.request_id = request_id
     response = await call_next(request)
@@ -49,7 +54,9 @@ async def add_request_context(request: Request, call_next):
 
 
 @app.middleware("http")
-async def add_security_headers(request: Request, call_next):
+async def add_security_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     response = await call_next(request)
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -110,10 +117,10 @@ app.include_router(map_v1_router.router, prefix="/api/v1", tags=["MapV1"])
 
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    return templates.TemplateResponse(request, "index.html", {})
+async def read_root(request: Request) -> HTMLResponse:
+    return cast(HTMLResponse, templates.TemplateResponse(request, "index.html", {}))
 
 
 @app.get("/health")
-async def healthcheck():
+async def healthcheck() -> dict[str, str]:
     return {"status": "ok"}

@@ -1,7 +1,8 @@
 # app/routers/admin.py
 import bcrypt
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from typing import cast
 
 from app.dependencies import (
     check_internal_network,
@@ -16,7 +17,7 @@ router = APIRouter()
 
 
 @router.get("/", response_class=HTMLResponse, dependencies=[Depends(check_internal_network)])
-async def admin_root(request: Request):
+async def admin_root(request: Request) -> Response:
     if not is_authenticated(request):
         return RedirectResponse(url="/admin/login", status_code=303)
 
@@ -24,8 +25,11 @@ async def admin_root(request: Request):
     csrf_token = get_or_create_csrf_token(request)
     settings = admin_settings_service.get_current_settings()
     updated = request.query_params.get("updated") == "1"
-    return templates.TemplateResponse(
-        request, "admin.html", {"csrf_token": csrf_token, "settings": settings, "updated": updated}
+    return cast(
+        Response,
+        templates.TemplateResponse(
+            request, "admin.html", {"csrf_token": csrf_token, "settings": settings, "updated": updated}
+        ),
     )
 
 

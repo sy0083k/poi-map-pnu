@@ -2,14 +2,14 @@ from app.schemas.request import LoginRequest, UploadRequestMeta
 from app.schemas.response import ApiErrorResponse, LoginResponse, UploadResponse, MapConfigResponse
 
 
-def test_request_schemas_defaults():
+def test_request_schemas_defaults() -> None:
     login = LoginRequest(username="user", password="pw")
     assert login.csrf_token == ""
     upload = UploadRequestMeta()
     assert upload.csrf_token == ""
 
 
-def test_response_schemas():
+def test_response_schemas() -> None:
     resp = LoginResponse(success=True)
     assert resp.success is True
     upload = UploadResponse(success=True, total=1, message="ok")
