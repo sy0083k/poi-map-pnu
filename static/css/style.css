@@ -19,7 +19,43 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 .checkbox-group label { display: inline; font-size: 0.9em; color: #2980b9; cursor: pointer; font-weight: bold; margin-bottom: 0; }
 .area-input-container { display: flex; align-items: center; gap: 5px; }
 .area-input-container input { width: 45%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em; }
-#btn-search { width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+#btn-search {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(180deg, #3fa2e6 0%, #2f90d0 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 5px;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+#btn-search:hover {
+    filter: brightness(1.03);
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+}
+#btn-search:active { transform: translateY(1px); }
+.action-cluster { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.btn-secondary {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.22);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.btn-secondary:hover {
+    filter: brightness(1.04);
+    box-shadow: 0 4px 10px rgba(44, 62, 80, 0.28);
+}
+.btn-secondary:active { transform: translateY(1px); }
+#btn-reset-filters { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
+#btn-download-all { background: linear-gradient(180deg, #4da6d9 0%, #3b8fc0 100%); }
 
 /* 리스트 영역 */
 #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -97,6 +133,7 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 
     /* 터치 타겟/가독성 */
     #btn-search { padding: 12px; font-size: 1rem; }
+    .btn-secondary { padding: 12px; font-size: 0.95rem; }
     .nav-btn { padding: 12px; font-size: 0.95em; }
     .list-item { padding: 16px; }
     .map-controls { right: 10px; top: 10px; }
