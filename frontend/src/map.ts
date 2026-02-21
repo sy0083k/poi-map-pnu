@@ -426,6 +426,81 @@ function applyFilters(trackEvent = false): void {
   updateMapAndList({ type: "FeatureCollection", features: filteredFeatures });
 }
 
+function resetFilters(): void {
+  if (!regionSearchInput) {
+    return;
+  }
+
+  const rentOnlyFilter = document.getElementById("rent-only-filter") as HTMLInputElement | null;
+  const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
+  const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;
+
+  regionSearchInput.value = "";
+  if (minAreaInput) {
+    minAreaInput.value = "";
+  }
+  if (maxAreaInput) {
+    maxAreaInput.value = "";
+  }
+  if (rentOnlyFilter) {
+    rentOnlyFilter.checked = true;
+  }
+
+  overlay?.setPosition(undefined);
+  applyFilters(false);
+}
+
+function csvEscape(value: string): string {
+  if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
+    return `"${value.split("\"").join("\"\"")}"`;
+  }
+  return value;
+}
+
+function buildAllFeaturesCsv(rows: LandFeature[]): string {
+  const headers = ["id", "address", "land_type", "area", "adm_property", "gen_property", "contact"];
+  const lines = [headers.join(",")];
+  for (const row of rows) {
+    const p = row.properties;
+    const values = [
+      p.id !== undefined ? String(p.id) : "",
+      p.address || "",
+      p.land_type || "",
+      p.area !== undefined ? String(p.area) : "",
+      p.adm_property || "",
+      p.gen_property || "",
+      p.contact || ""
+    ];
+    lines.push(values.map(csvEscape).join(","));
+  }
+  return `\uFEFF${lines.join("\n")}`;
+}
+
+function downloadAllAsCsv(): void {
+  if (!originalData || originalData.features.length === 0) {
+    alert("다운로드할 데이터가 없습니다.");
+    return;
+  }
+
+  const now = new Date();
+  const yyyy = String(now.getFullYear());
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const filename = `idle-public-property-all-${yyyy}${mm}${dd}.csv`;
+
+  const csv = buildAllFeaturesCsv(originalData.features);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 function updateMapAndList(data: LandFeatureCollection): void {
   if (!map) {
     return;
@@ -663,6 +738,8 @@ async function bootstrap(): Promise<void> {
   }
 
   document.getElementById("btn-search")?.addEventListener("click", () => applyFilters(true));
+  document.getElementById("btn-reset-filters")?.addEventListener("click", () => resetFilters());
+  document.getElementById("btn-download-all")?.addEventListener("click", () => downloadAllAsCsv());
   const rentOnlyFilter = document.getElementById("rent-only-filter");
   rentOnlyFilter?.addEventListener("change", () => applyFilters(false));
   document.getElementById("btn-Base")?.addEventListener("click", () => changeLayer("Base"));
