@@ -723,8 +723,22 @@ function initBottomSheet(): void {
   });
 }
 
+function attachEnterToSearch(input: HTMLInputElement | null): void {
+  if (!input) {
+    return;
+  }
+  input.addEventListener("keydown", (event: KeyboardEvent) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      applyFilters(true);
+    }
+  });
+}
+
 async function bootstrap(): Promise<void> {
   regionSearchInput = document.getElementById("region-search") as HTMLInputElement | null;
+  const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
+  const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;
   const popupElement = document.getElementById("popup");
   content = document.getElementById("popup-content");
   const closer = document.getElementById("popup-closer");
@@ -755,14 +769,9 @@ async function bootstrap(): Promise<void> {
   document.getElementById("prev-btn")?.addEventListener("click", () => navigateItem(-1));
   document.getElementById("next-btn")?.addEventListener("click", () => navigateItem(1));
 
-  if (regionSearchInput) {
-    regionSearchInput.addEventListener("keydown", (event: KeyboardEvent) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        applyFilters(true);
-      }
-    });
-  }
+  attachEnterToSearch(regionSearchInput);
+  attachEnterToSearch(minAreaInput);
+  attachEnterToSearch(maxAreaInput);
 
   initBottomSheet();
   sendWebEvent("visit_start");
