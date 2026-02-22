@@ -1,10 +1,14 @@
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
 from typing import Any
 
 from app.services import land_service, public_download_service, stats_service
 
 DEFAULT_LANDS_PAGE_LIMIT = 500
 MAX_LANDS_PAGE_LIMIT = 2000
+EVENT_LIMIT_PER_MINUTE = 60
+WEB_EVENT_LIMIT_PER_MINUTE = 120
+RATE_LIMIT_WINDOW_SECONDS = 60
 
 
 def _parse_cursor(raw_cursor: str | None) -> int | None:
@@ -14,6 +18,22 @@ def _parse_cursor(raw_cursor: str | None) -> int | None:
     if cursor < 0:
         raise ValueError("cursor must be >= 0")
     return cursor
+
+
+def _rate_limit_key(request: Request, payload: dict[str, Any]) -> str:
+    client_ip = request.client.host if request.client else "unknown"
+    anon_id = str(payload.get("anonId", "")).strip()
+    if anon_id:
+        return f"{client_ip}:{anon_id}"
+    return client_ip
+
+
+def _rate_limited_response(retry_after: int) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={"success": False, "message": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."},
+        headers={"Retry-After": str(retry_after)},
+    )
 
 
 def create_router() -> APIRouter:
@@ -41,12 +61,28 @@ def create_router() -> APIRouter:
         return land_service.get_public_land_features_page(cursor=parsed_cursor, limit=clamped_limit)
 
     @router.post("/events")
-    async def post_map_event(payload: dict[str, Any]) -> dict[str, bool]:
+    async def post_map_event(request: Request, payload: dict[str, Any]):
+        key = _rate_limit_key(request, payload)
+        allowed, retry_after = request.app.state.event_rate_limiter.allow(
+            key=f"events:{key}",
+            limit=EVENT_LIMIT_PER_MINUTE,
+            window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+        )
+        if not allowed:
+            return _rate_limited_response(retry_after)
         stats_service.record_map_event(payload)
         return {"success": True}
 
     @router.post("/web-events")
-    async def post_web_event(request: Request, payload: dict[str, Any]) -> dict[str, bool]:
+    async def post_web_event(request: Request, payload: dict[str, Any]):
+        key = _rate_limit_key(request, payload)
+        allowed, retry_after = request.app.state.event_rate_limiter.allow(
+            key=f"web-events:{key}",
+            limit=WEB_EVENT_LIMIT_PER_MINUTE,
+            window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+        )
+        if not allowed:
+            return _rate_limited_response(retry_after)
         stats_service.record_web_visit_event(payload, request)
         return {"success": True}
 

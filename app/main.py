@@ -21,6 +21,7 @@ from app.core import get_settings
 from app.db.connection import db_connection
 from app.exceptions import http_exception_handler, unhandled_exception_handler
 from app.logging_utils import RequestIdFilter, configure_logging
+from app.rate_limit import SlidingWindowRateLimiter
 from app.routers import admin, auth, map_router, map_v1_router
 from app.services.geo_service import init_db
 from app.utils import vite_assets
@@ -134,6 +135,7 @@ app.state.login_limiter = LoginAttemptLimiter(
     max_attempts=settings.login_max_attempts,
     cooldown_seconds=settings.login_cooldown_seconds,
 )
+app.state.event_rate_limiter = SlidingWindowRateLimiter()
 
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
