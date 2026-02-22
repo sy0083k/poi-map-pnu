@@ -92,6 +92,7 @@ uvicorn app.main:app --reload
 ### 관리자/인증
 - `GET /admin/login`
 - `POST /login` (`POST /admin/login` alias 지원)
+- `GET /logout`
 - `GET /admin`
 - `POST /admin/upload`
 - `POST /admin/public-download/upload`
@@ -113,6 +114,10 @@ uvicorn app.main:app --reload
   - `POST /api/events`: 60 req/min
   - `POST /api/web-events`: 120 req/min
   - 초과 시 `429 Too Many Requests`, `Retry-After` 헤더 반환
+
+## ⚠️ 운영 주의사항
+- 관리자 화면에서 `.env`를 갱신해도 실행 중 프로세스의 설정 객체는 즉시 교체되지 않습니다. 운영 환경에서는 설정/비밀번호 변경 후 앱 재시작 절차를 함께 운영하세요.
+- 로그인 실패 제한과 이벤트 레이트리밋은 현재 인메모리 구현입니다. 다중 인스턴스 운영 시 인스턴스 간 상태가 공유되지 않으므로 별도 공유 스토어 기반 정책을 고려하세요.
 
 ## ✅ 테스트 및 품질 체크
 ```bash

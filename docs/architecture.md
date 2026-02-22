@@ -26,17 +26,26 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
   - `app/services/land_service.py`
   - `app/services/geo_service.py`
   - `app/services/stats_service.py`
+  - `app/services/map_event_service.py`
+  - `app/services/web_stats_service.py`
+  - `app/services/raw_query_export_service.py`
+  - `app/services/admin_settings_service.py`
   - `app/services/public_download_service.py`
 - **리포지토리**: SQL 및 영속성 처리
-  - `app/repositories/idle_land_repository.py`
+  - `app/repositories/idle_land_repository.py` (Facade)
+  - `app/repositories/land_repository.py`
+  - `app/repositories/job_repository.py`
+  - `app/repositories/event_repository.py`
+  - `app/repositories/web_visit_repository.py`
 - **클라이언트**: 외부 연동
   - `app/clients/vworld_client.py`
+  - `app/clients/http_client.py`
 - **검증기**: 업로드 정규화 및 검증
   - `app/validators/land_validators.py`
 
 ## 주요 구성 요소
 - **세션 + CSRF**: SessionMiddleware가 서명된 세션 쿠키를 관리한다. CSRF 토큰은 세션에 저장되며 관리자 POST 요청에서 검증한다.
-- **레이트 리미팅**: 로그인 실패에 대해 인메모리 제한을 적용한다.
+- **레이트 리미팅**: 로그인 실패 제한 + 이벤트 수집 API(`POST /api/events`, `POST /api/web-events`)에 인메모리 슬라이딩 윈도우 제한을 적용한다.
 - **데이터베이스**: `data/database.db`의 SQLite.
 - **외부 API**: 지오코딩 및 WFS 조회를 위한 VWorld.
 - **공개 다운로드 파일 관리**: 관리자 업로드 파일을 `data/public_download/current.*`와 메타(`current.json`)로 제공한다.
@@ -54,16 +63,24 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 - `geom` (TEXT, GeoJSON)
 
 ### `geom_update_jobs`
-- 업로드 이후 지오메트리 보강 작업의 상태/시도 횟수/실패 건수/오류 메시지 관리
+- `status` (TEXT: pending/running/done/failed)
+- `attempts` (INTEGER)
+- `updated_count` (INTEGER)
+- `failed_count` (INTEGER)
+- `error_message` (TEXT)
+- `created_at`, `updated_at` (TEXT, timestamp)
 
 ### `map_event_log`
 - 지도 검색/클릭 이벤트(집계용) 저장
+- `event_type`, `anon_id`, `land_address`, `region_name`, `min_area_value`, `min_area_bucket`, `region_source`, `created_at`
 
 ### `raw_query_log`
 - 검색/클릭의 원시 입력(payload 포함) 저장 및 내보내기 대상
+- `event_type`, `anon_id`, 검색/필터 입력 원문 필드, `raw_payload_json`, `created_at`
 
 ### `web_visit_event`
-- 웹 방문 이벤트(visit_start/heartbeat/visit_end), 세션/봇 여부/체류시간 계산용 데이터 저장
+- 웹 방문 이벤트(`visit_start`, `heartbeat`, `visit_end`) 저장
+- `anon_id`, `session_id`, `event_type`, `page_path`, `occurred_at`, `client_tz`, `user_agent`, `is_bot`
 
 ## 공개 엔드포인트
 - `GET /`
@@ -121,7 +138,7 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 
 ### 이벤트 수집/통계
 1. 클라이언트가 `/api/events`, `/api/web-events`로 검색/클릭/방문 이벤트를 전송한다.
-2. 서버는 `map_event_log`, `raw_query_log`, `web_visit_event`에 저장한다.
+2. 서버는 레이트리밋을 적용한 뒤 `map_event_log`, `raw_query_log`, `web_visit_event`에 저장한다.
 3. 관리자는 `/admin/stats`, `/admin/stats/web`에서 집계 지표를 조회하고, `/admin/raw-queries/export`로 원시 로그를 CSV로 다운로드한다.
 
 ## 설정
@@ -156,6 +173,7 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 - 프록시 환경에서는 신뢰 프록시(`TRUSTED_PROXY_IPS`) 경유 요청에 한해 `X-Forwarded-For`를 사용한다.
 - VWorld WMTS 키는 지도 사용을 위해 `/api/config`에서 제공된다. Geocoder 키는 서버 전용이다.
 - 지오메트리 업데이트는 백그라운드 작업이며 VWorld 가용성에 의존한다.
+- 관리자 화면에서 설정/비밀번호를 변경하면 `.env`는 갱신되지만, 실행 중 프로세스의 설정 객체는 자동 재로딩되지 않는다(운영 시 재시작 절차 필요).
 - 이벤트 로그/원시 로그는 운영 중 누적되므로 보존 및 정리 정책을 별도로 관리해야 한다.
 
 ## 구현 규칙 참조

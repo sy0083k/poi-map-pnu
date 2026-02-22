@@ -70,4 +70,6 @@
 - 코딩 원칙/스타일 기준 변경 시 이 문서를 우선 수정한다.
 - 다른 문서에는 상세 규칙을 복제하지 않고 링크만 유지한다.
 - 기능 변경 시 관련 문서(`architecture.md`, `maintenance.md`, `stride-lite.md`)를 함께 갱신한다.
+- API/환경변수/운영 절차 변경 시 `README.MD`와 `docs/index.md`의 링크/요약도 함께 갱신한다.
+- `docs/refactoring-strategy.md`는 아카이브 문서이며 현행 실행 기준으로 사용하지 않는다.
 - 분기별(또는 주요 릴리스 전) 기준 문서 최신성 점검을 권장한다.
