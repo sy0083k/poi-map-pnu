@@ -339,3 +339,26 @@ Definition of Done:
 - [x] `python -m pytest -q tests`
 - [x] 라우터에 신규 raw SQL 추가 금지
 - [x] 브이월드 직접 호출 위치 표준 준수(클라이언트 계층)
+
+## 13) Phase 4 회고 (2026-02-22)
+
+### 요약
+- CI 품질 게이트에 정적 지표 경고를 추가했다.
+  - `ruff check app tests`
+  - `scripts/check_quality_warnings.sh` (파일 길이 + Xenon 복잡도 경고)
+- 테스트 분류 체계를 `unit` / `integration` / `e2e` 마커로 표준화했다.
+- `pytest -m unit -q`, `pytest -m integration -q`, `pytest -m e2e -q` 실행 경로를 운영 절차에 반영했다.
+
+### Impact x Effort 우선순위 확정
+| 항목 | Impact | Effort | 우선순위 |
+|---|---|---|---|
+| `app/repositories/event_repository.py` 분해 및 쿼리 책임 분리 | High | Medium | P1 |
+| 테스트 마커 누락 방지(신규 테스트 템플릿/리뷰 체크) | High | Low | P1 |
+| `/api` vs `/api/v1` 동등성 회귀 테스트 보강 | Medium | Medium | P1 |
+| `frontend/src/map/map-view.ts` 추가 모듈 분해 | Medium | Medium | P2 |
+| 인메모리 레이트리밋의 공유 스토어 설계 초안 | High | High | P2 |
+| 로그 보존/정리 배치 자동화 설계 | Medium | Medium | P2 |
+
+### 후속 실행 원칙
+- P1은 다음 스프린트 시작 시 착수하고 CI를 실패시키지 않는 범위에서 점진 적용한다.
+- P2는 설계 문서와 운영 영향 분석을 먼저 완료한 뒤 구현 단계로 이동한다.

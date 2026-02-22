@@ -45,4 +45,10 @@ jobs:
         run: |
           python -m compileall -q app tests
           mypy app tests create_hash.py
+          pip install ruff xenon
+          ruff check app tests
+          scripts/check_quality_warnings.sh
+          pytest -q -m unit
+          pytest -q -m integration
+          pytest -q -m e2e
           pytest -q
