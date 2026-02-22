@@ -33,3 +33,6 @@ static/dist/
 
 # Windows Zone Identifier (NTFS ADS)
 *Zone.Identifier
+
+# --- Local agent memory ---
+.agent-memory/
