@@ -31,8 +31,8 @@
 ## Backend Style Rules
 - `MUST`: 공개 API 응답에는 필요한 필드만 노출한다.
 - `MUST`: 요청 입력값은 경계(라우터/서비스)에서 검증한다.
-- `SHOULD`: 웹앱 기능 확장으로 요청/응답 스키마 검증과 타입 관리 복잡도가 증가하면 Pydantic 도입을 검토한다.
 - `MUST`: 에러 메시지는 사용자 메시지와 내부 로그 메시지를 구분한다.
+- `SHOULD`: 웹앱 기능 확장으로 요청/응답 스키마 검증과 타입 관리 복잡도가 증가하면 Pydantic 도입을 검토한다.
 - `SHOULD`: 타입 힌트를 유지하고 함수 경계를 명확히 한다.
 - `SHOULD`: 매직 넘버는 상수화하고 의미 있는 이름을 사용한다.
 - `AVOID`: 라우터에 도메인 로직/DB 로직을 직접 작성하는 패턴.
@@ -63,6 +63,8 @@
   - `cd frontend && npm run typecheck && npm run build`
   - `pytest -m unit -q`
   - `pytest -m integration -q`
+  - `pytest -m e2e -q`
+  - `pytest -q`
 - `SHOULD`: 회귀 위험이 큰 보안/인증/업로드 흐름은 통합 테스트로 검증한다.
 - `SHOULD`: 변경 설명에 테스트 결과와 잔여 리스크를 함께 기록한다.
 
