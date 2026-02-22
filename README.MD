@@ -1,157 +1,166 @@
-# 🏠 서산시 유휴공유재산 관리 시스템 (Idle Land Map)
+# IdlePublicProperty (서산시 유휴공유재산 지도)
 
-브이월드(V-World) API를 활용하여 서산시의 유휴 공유재산 데이터를 지도 위에 시각화하고, 관리자가 엑셀 업로드를 통해 데이터를 손쉽게 업데이트할 수 있는 웹 애플리케이션입니다.
+브이월드(VWorld) API와 FastAPI 기반으로 유휴 공유재산을 지도에 시각화하고,  
+관리자가 엑셀 업로드로 데이터를 갱신할 수 있는 웹 애플리케이션입니다.
 
----
+## 핵심 기술 스택
+- Backend: Python 3.10+, FastAPI, SQLite
+- Frontend: TypeScript, Vite, OpenLayers
+- Data: pandas, openpyxl/xlrd
+- External API: VWorld (WMTS/Geocoder/WFS)
 
-## 📌 1. 프로젝트 개요
+세부 구현 원칙은 `docs/engineering-guidelines.md`를 기준으로 합니다.
 
-### 🎯 용도 및 목적
+## 빠른 시작
 
-* **공공데이터 시각화:** 복잡한 주소로 된 공유재산 목록을 지도 상의 필지 경계선(Polygon)으로 시각화하여 한눈에 파악할 수 있게 합니다.
-* **간편한 데이터 관리:** 개발 지식이 없는 담당자도 엑셀 파일 업로드만으로 DB를 최신화할 수 있도록 설계되었습니다.
-* **정보 접근성 향상:** 면적, 지목, 연락처 등의 정보를 클릭 한 번으로 확인할 수 있습니다.
+### 1) 사전 준비
+- Python 3.10+
+- Node.js + npm (frontend 빌드용)
+- VWorld API 키 (WMTS, Geocoder)
 
-### 💪 프로젝트의 강점 (Strengths)
+### 2) 환경 변수 설정
+`.env.example`을 복사해 `.env`를 생성합니다.
 
-* **정확한 필지 시각화:** 단순 마커 표시가 아니라, 브이월드 API를 통해 실제 토지의 경계선을 정확히 그려줍니다.
-* **보안성:** 관리자 전용 세션 기반 로그인 시스템을 통해 보안을 강화했습니다.
-* **사용자 친화적:** 엑셀 파일을 업로드하면 백그라운드에서 필지별 경계선 정보를 취득합니다.
-
-### ⚠️ 프로젝트의 약점 (Weaknesses)
-
-* **API 의존성:** 브이월드 API 상태에 따라 필지 경계선 로딩 속도가 달라질 수 있습니다.
-* **데이터 정제 필요:** 엑셀 내 주소 형식이 올바르지 않으면(예: 오타) 지적 정보를 불러오지 못할 수 있습니다.
-
----
-
-## 🛠 2. 사용 기술 (Tech Stack)
-
-* **Backend:** Python 3.10+, FastAPI
-* **Frontend:** TypeScript, Vite, OpenLayers (지도 라이브러리)
-* **Database:** SQLite3 (파일 기반 경량 DB)
-* **API:** V-World 요청 API (주소 검색 및 Feature 서비스)
-
-상세 기준(정식 Canonical Stack/코딩 철학/스타일)은 `docs/engineering-guidelines.md`를 따릅니다.
-
----
-
-## 🚀 3. 시작하기 (사용 방법)
-
-초보자도 따라 할 수 있도록 순서대로 설명합니다.
-
-### 1단계: 필수 소프트웨어 설치
-
-1. **Python 설치:** `https://www.python.org/`에서 최신 버전을 설치합니다. (설치 시 'Add Python to PATH' 체크 필수)
-2. **V-World API 키 발급:** `https://www.vworld.kr/`에서 WMTS/Geocoder 키를 발급받습니다.
-
-### 2단계: 프로젝트 설정
-
-프로젝트 폴더 안에 `.env` 파일을 만들고 아래 내용을 입력합니다.
-
-```env
-VWORLD_WMTS_KEY=여기에_발급받은_WMTS_키_입력
-VWORLD_GEOCODER_KEY=여기에_발급받은_GEOCODER_키_입력
-ADMIN_ID=admin
-ADMIN_PW_HASH=여기에_bcrypt_해시값_입력
-SECRET_KEY=충분히_긴_랜덤_문자열
-ALLOWED_IPS=127.0.0.1/32,::1/128
-SESSION_HTTPS_ONLY=false
-TRUST_PROXY_HEADERS=false
-TRUSTED_PROXY_IPS=
-UPLOAD_SHEET_NAME=목록
+```bash
+cp .env.example .env
 ```
 
-`ADMIN_PW_HASH`는 평문 비밀번호가 아니라 bcrypt 해시값이어야 합니다.  
-해시는 `python create_hash.py`로 생성할 수 있습니다.
+필수 환경 변수:
+- `VWORLD_WMTS_KEY`
+- `VWORLD_GEOCODER_KEY`
+- `ADMIN_ID`
+- `ADMIN_PW_HASH`
+- `SECRET_KEY`
 
-### 3단계: 라이브러리 설치
+`ADMIN_PW_HASH`는 bcrypt 해시여야 하며, 아래 명령으로 생성할 수 있습니다.
 
-터미널(또는 CMD)을 열고 아래 명령어를 입력하여 필요한 도구들을 설치합니다.
+```bash
+python create_hash.py
+```
 
+선택 환경 변수(요약):
+- `ALLOWED_IPS`, `SESSION_HTTPS_ONLY`
+- `MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`
+- `LOGIN_MAX_ATTEMPTS`, `LOGIN_COOLDOWN_SECONDS`
+- `VWORLD_TIMEOUT_S`, `VWORLD_RETRIES`, `VWORLD_BACKOFF_S`
+- `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`
+- `UPLOAD_SHEET_NAME`
+- `PUBLIC_DOWNLOAD_MAX_SIZE_MB`, `PUBLIC_DOWNLOAD_ALLOWED_EXTS`, `PUBLIC_DOWNLOAD_DIR`
+
+### 3) 의존성 설치
 ```bash
 pip install -r requirements.txt
-```
-
-### 4단계: 서버 실행
-
-프론트엔드 정적 자산은 Vite 빌드를 통해 생성하는 것을 권장합니다.
-
-```bash
 cd frontend
 npm ci
+cd ..
+```
+
+### 4) 프런트 빌드
+```bash
+cd frontend
 npm run build
 cd ..
 ```
 
-그 다음 서버를 실행합니다.
-
+### 5) 서버 실행
 ```bash
 uvicorn app.main:app --reload
 ```
 
-서버가 실행되면 웹 브라우저 주소창에 `http://127.0.0.1:8000`을 입력합니다.
+기본 접속 URL:
+- 메인: `http://127.0.0.1:8000/`
+- 관리자 로그인: `http://127.0.0.1:8000/admin/login`
 
-API 버전 스캐폴딩은 `/api`와 동일 응답을 제공하는 `/api/v1` 경로를 추가로 제공합니다.
+## 관리자 사용 흐름
+1. `/admin/login`에서 로그인
+2. `/admin`에서 엑셀 업로드 (`/admin/upload`)
+3. 업로드 후 지오메트리 보강 작업이 백그라운드로 실행됨
+4. 공개 다운로드 파일은 `/admin/public-download/upload`로 갱신 가능
 
-### 5단계: 관리자 기능 사용
+## API 개요
 
-1. `http://127.0.0.1:8000/admin/login`으로 접속합니다.
-2. 설정한 아이디/비밀번호로 로그인합니다.
-3. 관리자 페이지에서 **'주소, 면적, 지목, 문의'** 컬럼이 포함된 엑셀 파일을 업로드합니다.
-4. 업로드가 완료되면 메인 지도 화면에서 데이터가 시각화되는 것을 확인합니다.
+### 공개 API (`/api`)
+- `GET /api/config`
+- `GET /api/lands`
+- `POST /api/events`
+- `POST /api/web-events`
+- `GET /api/public-download`
 
----
+### 버전 경로 (`/api/v1`)
+- `/api/v1/*`는 `/api/*`와 동일 동작을 제공하는 alias 경로입니다.
 
-## 📂 4. 폴더 구조
+### 관리자/인증
+- `GET /admin/login`
+- `POST /login` (`POST /admin/login` alias 지원)
+- `GET /admin`
+- `POST /admin/upload`
+- `POST /admin/public-download/upload`
+- `GET /admin/public-download/meta`
+- `POST /admin/settings`
+- `POST /admin/password`
+- `GET /admin/stats`
+- `GET /admin/stats/web`
+- `GET /admin/raw-queries/export`
 
-```text
-project-root/
-│  .env               # API 키 및 로그인 정보
-│  requirements.txt   # Python 의존성 목록
-│
-├─frontend/           # Vite + TypeScript 프론트엔드 소스
-│  ├─src/             # 엔트리(map/admin/login) 및 모듈
-│  ├─vite.config.ts   # 빌드/manifest 설정
-│  └─package.json
-│
-├─app/
-│  ├─main.py          # FastAPI 엔트리포인트
-│  ├─routers/         # 라우터 (얇은 컨트롤러)
-│  ├─services/        # 서비스 계층
-│  ├─repositories/    # DB 접근 계층
-│  ├─clients/         # 외부 API 클라이언트
-│  └─validators/      # 업로드 검증/정규화
-│
-├─data/
-│  └─database.db      # 데이터 저장소 (자동 생성)
-│
-├─templates/          # HTML 파일 보관함
-│      index.html     # 메인 지도 화면
-│      login.html     # 로그인 화면
-│      admin.html     # 관리자 업로드 화면
-│
-└─static/             # CSS, 이미지 등 (빌드 결과는 static/dist)
+### 상태 점검
+- `GET /health`
+- `GET /health?deep=1` (DB + 외부 API 확인)
+
+## 보안/운영 포인트 (핵심)
+- 관리자 경로는 내부망 허용 IP(`ALLOWED_IPS`) + 세션 인증 + CSRF로 보호됩니다.
+- 프록시 환경에서는 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`를 정확히 설정해야 합니다.
+- 이벤트 수집 API는 레이트리밋이 적용됩니다.
+  - `POST /api/events`: 60 req/min
+  - `POST /api/web-events`: 120 req/min
+  - 초과 시 `429 Too Many Requests`, `Retry-After` 헤더 반환
+
+## 테스트 및 품질 체크
+```bash
+python -m compileall -q app tests
+mypy app tests create_hash.py
+cd frontend && npm run typecheck && npm run build && cd ..
+pytest -q
 ```
 
----
+선택 실행:
+```bash
+RUN_HTTP_E2E=1 pytest -q tests/test_e2e_smoke.py
+```
 
-## 📚 6. 문서
+## CI/CD 워크플로
+- CI: `.github/workflows/ci.yml`
+  - frontend typecheck/build
+  - Vite manifest 검증
+  - `compileall`, `mypy`, `pytest`
+- Deploy: `.github/workflows/deploy.yml`
+  - 현재 배포 명령은 TODO 상태이며 프로젝트 환경에 맞게 채워야 합니다.
 
-- 문서 포털(한 페이지 허브): `docs/index.md`
-- 아카이브/참고 문서: `docs/refactoring-strategy.md`
-- 목표(Goals): `docs/goals.md`
-- 아키텍처/흐름: `docs/architecture.md`
-- 엔지니어링 가이드(Tech Stack/코딩 철학/코딩 스타일): `docs/engineering-guidelines.md`
-- 보안(STRIDE-lite): `docs/stride-lite.md`
+## 디렉터리 구조
+```text
+project-root/
+├─app/                    # FastAPI 애플리케이션
+│  ├─routers/             # API 라우터
+│  ├─services/            # 비즈니스 로직
+│  ├─repositories/        # SQLite 접근
+│  ├─clients/             # 외부 API 클라이언트
+│  ├─validators/          # 업로드 검증/정규화
+│  └─core/                # 설정 로딩
+├─frontend/               # Vite + TypeScript 소스
+├─templates/              # 서버 렌더링 템플릿
+├─static/                 # 정적 파일 및 빌드 산출물(static/dist)
+├─data/                   # SQLite DB 및 공개 다운로드 파일
+│  └─public_download/
+├─tests/                  # 테스트 코드
+├─docs/                   # 운영/아키텍처/보안 문서
+└─.github/workflows/      # CI/CD 워크플로
+```
+
+## 문서
+- 문서 포털: `docs/index.md`
+- 아키텍처: `docs/architecture.md`
 - 유지보수: `docs/maintenance.md`
+- 보안 위협 모델: `docs/stride-lite.md`
+- 엔지니어링 기준: `docs/engineering-guidelines.md`
 
----
-
-## 📄 5. 라이선스
-
-이 프로젝트는 MIT 라이선스를 따릅니다. 누구나 자유롭게 수정하고 배포할 수 있습니다.
-
----
-
-**도움이 필요하신가요?** 이 프로젝트의 개선 사항이나 버그 발견 시 Issues 탭에 남겨주세요!
+## 라이선스
+MIT License
