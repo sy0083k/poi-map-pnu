@@ -53,10 +53,15 @@
 
 ## Testing & Definition of Done
 - `MUST`: 변경 범위에 맞는 테스트를 추가/수정하고 `pytest -q`를 통과한다.
+- `MUST`: 테스트는 `unit`/`integration`/`e2e` 분류 마커 체계를 따른다.
 - `MUST`: 배포 전 기본 체크를 수행한다.
   - `python -m compileall -q app tests`
   - `mypy app tests create_hash.py`
+  - `ruff check app tests`
+  - `scripts/check_quality_warnings.sh`
   - `cd frontend && npm run typecheck && npm run build`
+  - `pytest -m unit -q`
+  - `pytest -m integration -q`
 - `SHOULD`: 회귀 위험이 큰 보안/인증/업로드 흐름은 통합 테스트로 검증한다.
 - `SHOULD`: 변경 설명에 테스트 결과와 잔여 리스크를 함께 기록한다.
 

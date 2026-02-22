@@ -64,9 +64,14 @@
 ## CI/테스트 명령
 - `python -m compileall -q app tests`
 - `mypy app tests create_hash.py`
+- `ruff check app tests`
+- `scripts/check_quality_warnings.sh` (파일 길이/복잡도 경고 리포트)
 - `cd frontend && npm run typecheck`
 - `cd frontend && npm run build`
 - `pytest -q`
+- `pytest -m unit -q`
+- `pytest -m integration -q`
+- `pytest -m e2e -q` (`RUN_HTTP_E2E=1` 미설정 시 skip)
 - `coverage run -m pytest`
 - `coverage report -m`
 

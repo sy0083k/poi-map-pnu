@@ -9,6 +9,36 @@ from fastapi import FastAPI
 
 from tests.helpers import temp_env
 
+TEST_MARKER_BY_FILE: dict[str, str] = {
+    "test_access_policy.py": "unit",
+    "test_admin_settings_route.py": "integration",
+    "test_assets.py": "unit",
+    "test_auth_flow.py": "integration",
+    "test_clients.py": "unit",
+    "test_e2e_smoke.py": "e2e",
+    "test_env_contract.py": "unit",
+    "test_event_repository_split.py": "unit",
+    "test_geo_service.py": "unit",
+    "test_health.py": "integration",
+    "test_job_repository_split.py": "unit",
+    "test_land_repository_split.py": "unit",
+    "test_map_event_service.py": "unit",
+    "test_map_pagination.py": "integration",
+    "test_phase1.py": "integration",
+    "test_public_download_api.py": "integration",
+    "test_raw_query_export_service.py": "unit",
+    "test_repositories.py": "unit",
+    "test_schemas.py": "unit",
+    "test_security_regression.py": "integration",
+    "test_services.py": "unit",
+    "test_stats_api.py": "integration",
+    "test_stats_service.py": "unit",
+    "test_upload_service.py": "unit",
+    "test_validators.py": "unit",
+    "test_web_stats_service.py": "unit",
+    "test_web_visit_repository_split.py": "unit",
+}
+
 
 @pytest.fixture
 def app_env() -> dict[str, str]:
@@ -61,3 +91,12 @@ def db_path(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
 
     monkeypatch.setattr(connection, "_database_path", _path)
     return path
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    for item in items:
+        filename = item.path.name
+        marker_name = TEST_MARKER_BY_FILE.get(filename)
+        if not marker_name:
+            continue
+        item.add_marker(getattr(pytest.mark, marker_name))
