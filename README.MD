@@ -1,9 +1,9 @@
-# IdlePublicProperty (서산시 유휴공유재산 지도)
+# 🏠 IdlePublicProperty (서산시 유휴공유재산 지도)
 
 브이월드(VWorld) API와 FastAPI 기반으로 유휴 공유재산을 지도에 시각화하고,  
 관리자가 엑셀 업로드로 데이터를 갱신할 수 있는 웹 애플리케이션입니다.
 
-## 핵심 기술 스택
+## 🛠 핵심 기술 스택
 - Backend: Python 3.10+, FastAPI, SQLite
 - Frontend: TypeScript, Vite, OpenLayers
 - Data: pandas, openpyxl/xlrd
@@ -11,7 +11,7 @@
 
 세부 구현 원칙은 `docs/engineering-guidelines.md`를 기준으로 합니다.
 
-## 빠른 시작
+## 🚀 빠른 시작
 
 ### 1) 사전 준비
 - Python 3.10+
@@ -71,13 +71,13 @@ uvicorn app.main:app --reload
 - 메인: `http://127.0.0.1:8000/`
 - 관리자 로그인: `http://127.0.0.1:8000/admin/login`
 
-## 관리자 사용 흐름
+## 🔐 관리자 사용 흐름
 1. `/admin/login`에서 로그인
 2. `/admin`에서 엑셀 업로드 (`/admin/upload`)
 3. 업로드 후 지오메트리 보강 작업이 백그라운드로 실행됨
 4. 공개 다운로드 파일은 `/admin/public-download/upload`로 갱신 가능
 
-## API 개요
+## 🧭 API 개요
 
 ### 공개 API (`/api`)
 - `GET /api/config`
@@ -106,7 +106,7 @@ uvicorn app.main:app --reload
 - `GET /health`
 - `GET /health?deep=1` (DB + 외부 API 확인)
 
-## 보안/운영 포인트 (핵심)
+## 🛡 보안/운영 포인트 (핵심)
 - 관리자 경로는 내부망 허용 IP(`ALLOWED_IPS`) + 세션 인증 + CSRF로 보호됩니다.
 - 프록시 환경에서는 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`를 정확히 설정해야 합니다.
 - 이벤트 수집 API는 레이트리밋이 적용됩니다.
@@ -114,7 +114,7 @@ uvicorn app.main:app --reload
   - `POST /api/web-events`: 120 req/min
   - 초과 시 `429 Too Many Requests`, `Retry-After` 헤더 반환
 
-## 테스트 및 품질 체크
+## ✅ 테스트 및 품질 체크
 ```bash
 python -m compileall -q app tests
 mypy app tests create_hash.py
@@ -127,7 +127,7 @@ pytest -q
 RUN_HTTP_E2E=1 pytest -q tests/test_e2e_smoke.py
 ```
 
-## CI/CD 워크플로
+## ⚙️ CI/CD 워크플로
 - CI: `.github/workflows/ci.yml`
   - frontend typecheck/build
   - Vite manifest 검증
@@ -135,7 +135,7 @@ RUN_HTTP_E2E=1 pytest -q tests/test_e2e_smoke.py
 - Deploy: `.github/workflows/deploy.yml`
   - 현재 배포 명령은 TODO 상태이며 프로젝트 환경에 맞게 채워야 합니다.
 
-## 디렉터리 구조
+## 📂 디렉터리 구조
 ```text
 project-root/
 ├─app/                    # FastAPI 애플리케이션
@@ -155,12 +155,12 @@ project-root/
 └─.github/workflows/      # CI/CD 워크플로
 ```
 
-## 문서
+## 📚 문서
 - 문서 포털: `docs/index.md`
 - 아키텍처: `docs/architecture.md`
 - 유지보수: `docs/maintenance.md`
 - 보안 위협 모델: `docs/stride-lite.md`
 - 엔지니어링 기준: `docs/engineering-guidelines.md`
 
-## 라이선스
+## 📄 라이선스
 MIT License
