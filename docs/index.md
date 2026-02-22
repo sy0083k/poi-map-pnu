@@ -27,6 +27,15 @@
 - `refactoring-strategy.md`
   - 리팩토링 단계 전략 및 추진 이력 참고용 문서(현행 운영 기준 아님)
 
+## 기능 변경 시 동시 갱신 대상
+| 변경 유형 | 필수 갱신 문서 | 비고 |
+|---|---|---|
+| API 경로/요청/응답 변경 | `README.MD`, `docs/architecture.md` | 공개/관리자 엔드포인트 표 동기화 |
+| 인증/권한/보안 헤더/레이트리밋 변경 | `docs/stride-lite.md`, `docs/maintenance.md`, `README.MD` | 운영 통제와 잔여 위험을 분리 기재 |
+| 환경변수/운영 파라미터 변경 | `README.MD`, `docs/architecture.md`, `docs/maintenance.md` | 필수/선택 변수 목록 일치 |
+| 품질 게이트/개발 규칙 변경 | `docs/engineering-guidelines.md`, `docs/maintenance.md` | 실행 명령과 DoD 동기화 |
+| 제품 목적/범위 변경 | `docs/goals.md`, `docs/index.md` | 비목표 및 로드맵 후보 포함 |
+
 ## 문서 운영 원칙
 - 코딩 원칙/스타일 변경은 `engineering-guidelines.md`를 먼저 갱신한다.
 - 목표/구조/운영/보안 문서는 본인 역할 범위만 유지하고 중복 규칙을 복제하지 않는다.

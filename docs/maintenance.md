@@ -44,6 +44,7 @@
 - 관리자 계정 비밀번호 해시 갱신
 - 업로드 템플릿 변경 여부 확인(컬럼 스펙)
 - DB 파일 권한 및 백업 상태 점검
+- SQLite 잠금 징후(`database is locked`) 및 장기 쿼리 발생 여부 점검
 - 로그/통계 테이블(`map_event_log`, `raw_query_log`, `web_visit_event`) 증가 추이 점검
 - 공개 다운로드 파일(`data/public_download/current.*`) 및 메타(`current.json`) 무결성 점검
 
@@ -76,6 +77,7 @@
 - `LOGIN_MAX_ATTEMPTS`, `LOGIN_COOLDOWN_SECONDS` 점검
 - 내부 IP 허용 목록(`ALLOWED_IPS`) 확인
 - 프록시 환경일 경우 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS` 설정 확인
+- 현재 로그인 제한은 인메모리 상태이므로 멀티 인스턴스 환경에서는 공유 스토어 기반 대안 검토
 
 ### 업로드 실패
 - 파일 타입/용량 제한 확인 (`MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`)
@@ -93,6 +95,11 @@
 - `map_event_log`, `raw_query_log`, `web_visit_event` 테이블 상태 확인
 - 로그 누락 시 클라이언트 이벤트(`/api/events`, `/api/web-events`) 수집 상태 확인
 
+### 설정/비밀번호 변경 후 반영 이슈
+- 관리자 화면 변경은 `.env` 파일을 갱신한다.
+- 실행 중 프로세스의 설정 객체는 자동 재로딩되지 않으므로 운영 절차에 재시작 단계를 포함한다.
+- 변경 직후 로그인/관리자 기능 점검(재로그인 포함)을 수행한다.
+
 ### 지도 데이터 미표시
 - `/api/lands` 응답 확인
 - DB `idle_land.geom` 컬럼 상태 확인
@@ -102,6 +109,7 @@
 - `data/database.db` 파일을 주기적으로 백업
 - `data/public_download/` 디렉터리(`current.*`, `current.json`)를 함께 백업
 - 복구 시 파일 권한 및 경로 확인
+- 이벤트 로그 테이블 보존 기간(예: N일)과 정리 배치 주기를 운영 정책으로 확정
 
 ## 로그
 - 요청 ID 및 구조화 필드(event/actor/ip/status)를 사용하여 장애 추적

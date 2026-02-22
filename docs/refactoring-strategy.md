@@ -1,5 +1,9 @@
 # IdlePublicProperty 리팩토링 전략
 
+> [!WARNING]
+> 이 문서는 리팩토링 추진 이력과 과거 계획을 보존하기 위한 **아카이브 문서**입니다.  
+> 현재 운영/구현 기준은 `docs/index.md`를 통해 `docs/architecture.md`, `docs/engineering-guidelines.md`, `docs/maintenance.md`, `docs/stride-lite.md`를 우선 참조하세요.
+
 ## 1) 목표와 범위
 본 문서는 현재 `IdlePublicProperty` 코드베이스를 기준으로 **보안(Security)**, **재사용성(Reusability)**, **유지보수성(Maintainability)** 관점의 리팩토링 전략을 정의한다. 최종 목표는 다음과 같다.
 
