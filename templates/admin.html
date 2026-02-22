@@ -340,10 +340,14 @@
                         <div class="hint">업로드 후 지오메트리 보강 작업이 백그라운드에서 실행됩니다.</div>
                     </div>
                     <div class="card">
-                        <h3>작업 상태</h3>
-                        <p>업로드 결과 및 상태를 확인하세요.</p>
-                        <div class="status-pill">READY</div>
-                        <div class="hint">주소 포맷 오류나 VWorld API 실패 시 일부 지오메트리가 누락될 수 있습니다.</div>
+                        <h3>전체 목록 다운로드 파일<span class="badge">지도 버튼 연동</span></h3>
+                        <p>메인 지도의 '전체 목록 다운로드' 버튼에서 제공할 파일을 업로드하세요.</p>
+                        <div class="upload-stack">
+                            <input class="file-input" type="file" id="publicDownloadFile" accept=".pdf,.csv,.xlsx">
+                            <button class="btn upload-btn" id="publicDownloadUploadBtn" type="button">다운로드 파일 업로드</button>
+                        </div>
+                        <div id="publicDownloadStatus"></div>
+                        <div class="hint">허용 형식: PDF, CSV, XLSX</div>
                     </div>
                 </div>
             </section>

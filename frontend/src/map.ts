@@ -450,55 +450,60 @@ function resetFilters(): void {
   applyFilters(false);
 }
 
-function csvEscape(value: string): string {
-  if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
-    return `"${value.split("\"").join("\"\"")}"`;
+function parseFilenameFromDisposition(contentDisposition: string | null): string | null {
+  if (!contentDisposition) {
+    return null;
   }
-  return value;
+
+  const utf8Match = contentDisposition.match(/filename\\*=UTF-8''([^;]+)/i);
+  if (utf8Match && utf8Match[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim());
+    } catch {
+      return utf8Match[1].trim();
+    }
+  }
+
+  const plainMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
+  if (plainMatch && plainMatch[1]) {
+    return plainMatch[1].trim();
+  }
+  return null;
 }
 
-function buildAllFeaturesCsv(rows: LandFeature[]): string {
-  const headers = ["id", "address", "land_type", "area", "adm_property", "gen_property", "contact"];
-  const lines = [headers.join(",")];
-  for (const row of rows) {
-    const p = row.properties;
-    const values = [
-      p.id !== undefined ? String(p.id) : "",
-      p.address || "",
-      p.land_type || "",
-      p.area !== undefined ? String(p.area) : "",
-      p.adm_property || "",
-      p.gen_property || "",
-      p.contact || ""
-    ];
-    lines.push(values.map(csvEscape).join(","));
+async function downloadPreparedFile(): Promise<void> {
+  try {
+    const response = await fetch("/api/public-download", { method: "GET" });
+    if (!response.ok) {
+      let detail = "다운로드 파일이 아직 준비되지 않았습니다.";
+      try {
+        const payload = (await response.json()) as { detail?: string };
+        if (payload.detail) {
+          detail = payload.detail;
+        }
+      } catch {
+        // Keep default message.
+      }
+      throw new HttpError(detail, response.status);
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get("content-disposition");
+    const fallbackName = "idle-public-property-download";
+    const filename = parseFilenameFromDisposition(disposition) || fallbackName;
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(objectUrl);
+  } catch (error) {
+    const message = error instanceof HttpError ? error.message : "파일 다운로드 중 오류가 발생했습니다.";
+    alert(message);
   }
-  return `\uFEFF${lines.join("\n")}`;
-}
-
-function downloadAllAsCsv(): void {
-  if (!originalData || originalData.features.length === 0) {
-    alert("다운로드할 데이터가 없습니다.");
-    return;
-  }
-
-  const now = new Date();
-  const yyyy = String(now.getFullYear());
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const filename = `idle-public-property-all-${yyyy}${mm}${dd}.csv`;
-
-  const csv = buildAllFeaturesCsv(originalData.features);
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.style.display = "none";
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
 }
 
 function updateMapAndList(data: LandFeatureCollection): void {
@@ -739,7 +744,9 @@ async function bootstrap(): Promise<void> {
 
   document.getElementById("btn-search")?.addEventListener("click", () => applyFilters(true));
   document.getElementById("btn-reset-filters")?.addEventListener("click", () => resetFilters());
-  document.getElementById("btn-download-all")?.addEventListener("click", () => downloadAllAsCsv());
+  document.getElementById("btn-download-all")?.addEventListener("click", () => {
+    void downloadPreparedFile();
+  });
   const rentOnlyFilter = document.getElementById("rent-only-filter");
   rentOnlyFilter?.addEventListener("change", () => applyFilters(false));
   document.getElementById("btn-Base")?.addEventListener("click", () => changeLayer("Base"));

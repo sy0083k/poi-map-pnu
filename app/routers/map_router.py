@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from typing import Any
 
-from app.services import land_service, stats_service
+from app.services import land_service, public_download_service, stats_service
 
 DEFAULT_LANDS_PAGE_LIMIT = 500
 MAX_LANDS_PAGE_LIMIT = 2000
@@ -49,6 +49,10 @@ def create_router() -> APIRouter:
     async def post_web_event(request: Request, payload: dict[str, Any]) -> dict[str, bool]:
         stats_service.record_web_visit_event(payload, request)
         return {"success": True}
+
+    @router.get("/public-download")
+    async def get_public_download(request: Request):
+        return public_download_service.get_public_download_file_response(request)
 
     return router
 
