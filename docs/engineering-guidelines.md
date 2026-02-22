@@ -39,6 +39,7 @@
 ## Frontend Style Rules
 - `MUST`: 네트워크 실패 시 사용자에게 이해 가능한 오류 메시지를 제공한다.
 - `MUST`: API 호출 유틸(`frontend/src/http.ts`)을 통해 타임아웃/오류 정규화를 재사용한다.
+- `MUST`: 지도 페이지는 `frontend/src/map.ts` 오케스트레이션 + `frontend/src/map/*` 기능 모듈 구조를 유지한다.
 - `SHOULD`: UI 상태 처리와 비즈니스 로직을 함수 단위로 분리한다.
 - `SHOULD`: 서버 계약(API 필드명/타입)에 맞춘 타입 정의를 유지한다.
 - `AVOID`: 페이지 스크립트에서 중복된 fetch/에러 처리 로직을 복붙하는 패턴.
