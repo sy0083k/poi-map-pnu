@@ -59,6 +59,7 @@
 8. `/health` 응답 정상 확인
 9. `/api/config`, `/api/lands`, `/api/public-download` 응답 정상 확인
 10. `/admin/stats`, `/admin/stats/web`, `/admin/raw-queries/export` 권한/응답 정상 확인
+11. 지도 화면 핵심 사용자 흐름 수동 회귀(검색/엔터/지도 클릭/다운로드/이전·다음/레이어 전환) 확인
 
 ## CI/테스트 명령
 - `python -m compileall -q app tests`

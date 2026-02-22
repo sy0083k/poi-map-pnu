@@ -151,6 +151,7 @@ project-root/
 │  ├─validators/          # 업로드 검증/정규화
 │  └─core/                # 설정 로딩
 ├─frontend/               # Vite + TypeScript 소스
+│  └─src/map/             # 지도 화면 기능 모듈(map-view, filters, list-panel, telemetry, download-client, session-tracker 등)
 ├─templates/              # 서버 렌더링 템플릿
 ├─static/                 # 정적 파일 및 빌드 산출물(static/dist)
 ├─data/                   # SQLite DB 및 공개 다운로드 파일

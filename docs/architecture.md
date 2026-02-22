@@ -43,6 +43,22 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 - **검증기**: 업로드 정규화 및 검증
   - `app/validators/land_validators.py`
 
+## 프런트엔드 구성
+- **엔트리 포인트**
+  - `frontend/src/map.ts`: 지도 페이지 오케스트레이션(모듈 조립/이벤트 바인딩)
+  - `frontend/src/admin.ts`: 관리자 페이지 인터랙션
+  - `frontend/src/login.ts`: 로그인 페이지 인터랙션
+- **지도 기능 모듈(`frontend/src/map/`)**
+  - `map-view.ts`: OpenLayers 초기화, 레이어 전환, 피처 렌더링/선택/팝업
+  - `filters.ts`: 검색 입력값 수집, 필터 계산, 엔터 처리
+  - `list-panel.ts`: 목록 렌더링, 선택/네비게이션, 모바일 바텀시트
+  - `telemetry.ts`: 검색/클릭 이벤트 전송
+  - `download-client.ts`: 공개 다운로드 API 호출 및 파일 저장
+  - `session-tracker.ts`: 방문 세션 쿠키, heartbeat/pagehide 이벤트 전송
+  - `lands-client.ts`: `/api/lands` 페이지네이션 로더
+  - `state.ts`: 지도 화면 상태 저장소
+  - `types.ts`: 지도 화면 공통 타입
+
 ## 주요 구성 요소
 - **세션 + CSRF**: SessionMiddleware가 서명된 세션 쿠키를 관리한다. CSRF 토큰은 세션에 저장되며 관리자 POST 요청에서 검증한다.
 - **레이트 리미팅**: 로그인 실패 제한 + 이벤트 수집 API(`POST /api/events`, `POST /api/web-events`)에 인메모리 슬라이딩 윈도우 제한을 적용한다.
@@ -115,7 +131,8 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 ### 공개 지도 조회
 1. 클라이언트가 `/api/config`로 지도 설정을 조회한다.
 2. 클라이언트가 `/api/lands`로 GeoJSON 페이지 데이터를 조회한다.
-3. `land_service.get_public_land_features_page()`가 리포지토리에서 `geom` 있는 데이터만 읽어 GeoJSON으로 반환한다.
+3. 서버의 `land_service.get_public_land_features_page()`가 리포지토리에서 `geom` 있는 데이터만 읽어 GeoJSON으로 반환한다.
+4. 프런트는 `frontend/src/map/lands-client.ts`가 모든 페이지를 수집하고, `filters.ts`/`map-view.ts`/`list-panel.ts`가 결과를 화면에 반영한다.
 
 ### 관리자 로그인
 1. `GET /admin/login`이 세션에 CSRF 토큰을 발급하고 로그인 페이지를 렌더링한다.
