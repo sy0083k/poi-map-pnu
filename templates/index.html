@@ -7,6 +7,42 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 </head>
 <body>
+    <button id="mobile-search-fab" type="button" aria-label="검색 열기">🔍</button>
+
+    <div id="mobile-search-overlay" aria-hidden="true">
+        <div class="mobile-search-sheet">
+            <div class="mobile-search-header">
+                <h3>조건 검색</h3>
+                <button id="mobile-search-close" type="button" aria-label="검색 닫기">✕</button>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="mobile-rent-only-filter" checked>
+                <label for="mobile-rent-only-filter">사용허가/대부 불가 토지 제외</label>
+            </div>
+            <div class="filter-group">
+                <label>지역명 검색 (예: 대산읍, 동문동)</label>
+                <input
+                    type="text"
+                    id="mobile-region-search"
+                    placeholder="읍/면/동 이름을 입력하세요..."
+                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
+                >
+            </div>
+            <div class="filter-group">
+                <label>면적 직접 입력 (㎡)</label>
+                <div class="area-input-container">
+                    <input type="number" id="mobile-min-area" placeholder="최소" min="0">
+                    <span>~</span>
+                    <input type="number" id="mobile-max-area" placeholder="최대" min="0">
+                </div>
+            </div>
+            <div class="action-cluster mobile-search-actions" role="group" aria-label="모바일 검색 작업">
+                <button id="mobile-btn-search" type="button">검색 실행</button>
+                <button id="mobile-btn-reset-filters" class="btn-secondary" type="button">조건 초기화</button>
+            </div>
+        </div>
+    </div>
+
     <div id="sidebar">
         <div class="mobile-handle"></div>
         
@@ -50,9 +86,15 @@
 
     <div id="map">
         <div class="map-controls">
-            <button id="btn-Base" class="active">일반 지도</button>
-            <button id="btn-Satellite">위성 지도</button>
-            <button id="btn-Hybrid">하이브리드</button>
+            <button id="btn-layer-toggle" class="layer-mobile-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="layer-popover">레이어</button>
+            <div id="layer-popover" class="layer-popover" role="menu" aria-hidden="true">
+                <button id="m-btn-Base" type="button" role="menuitem">일반 지도</button>
+                <button id="m-btn-Satellite" type="button" role="menuitem">위성 지도</button>
+                <button id="m-btn-Hybrid" type="button" role="menuitem">하이브리드</button>
+            </div>
+            <button id="btn-Base" class="layer-desktop active">일반 지도</button>
+            <button id="btn-Satellite" class="layer-desktop">위성 지도</button>
+            <button id="btn-Hybrid" class="layer-desktop">하이브리드</button>
         </div>
     </div>
 

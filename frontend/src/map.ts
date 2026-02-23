@@ -10,7 +10,7 @@ import { createSessionTracker } from "./map/session-tracker";
 import { createMapState } from "./map/state";
 import { createTelemetry } from "./map/telemetry";
 
-import type { LandClickSource, LandFeatureCollection, MapConfig } from "./map/types";
+import type { BaseType, LandClickSource, LandFeatureCollection, MapConfig } from "./map/types";
 
 type SelectOptions = {
   shouldFit: boolean;
@@ -19,11 +19,41 @@ type SelectOptions = {
   panIntoView?: boolean;
 };
 
+type MobileViewState = "home" | "search" | "results";
+const MOBILE_MEDIA_QUERY = "(max-width: 768px)";
+const MOBILE_HISTORY_KEY = "mobileMapViewState";
+
+function isMobileViewport(): boolean {
+  return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+}
+
+function readMobileViewState(value: unknown): MobileViewState | null {
+  if (value === "home" || value === "search" || value === "results") {
+    return value;
+  }
+  return null;
+}
+
 async function bootstrap(): Promise<void> {
   const regionSearchInput = document.getElementById("region-search") as HTMLInputElement | null;
   const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
   const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;
   const rentOnlyFilter = document.getElementById("rent-only-filter") as HTMLInputElement | null;
+
+  const mobileRegionSearchInput = document.getElementById("mobile-region-search") as HTMLInputElement | null;
+  const mobileMinAreaInput = document.getElementById("mobile-min-area") as HTMLInputElement | null;
+  const mobileMaxAreaInput = document.getElementById("mobile-max-area") as HTMLInputElement | null;
+  const mobileRentOnlyFilter = document.getElementById("mobile-rent-only-filter") as HTMLInputElement | null;
+  const mobileSearchFab = document.getElementById("mobile-search-fab");
+  const mobileSearchCloseBtn = document.getElementById("mobile-search-close");
+  const mobileSearchBtn = document.getElementById("mobile-btn-search");
+  const mobileResetBtn = document.getElementById("mobile-btn-reset-filters");
+
+  const layerToggleBtn = document.getElementById("btn-layer-toggle");
+  const layerPopover = document.getElementById("layer-popover");
+  const mobileBaseBtn = document.getElementById("m-btn-Base");
+  const mobileSatelliteBtn = document.getElementById("m-btn-Satellite");
+  const mobileHybridBtn = document.getElementById("m-btn-Hybrid");
 
   const popupElement = document.getElementById("popup");
   const popupContent = document.getElementById("popup-content");
@@ -59,6 +89,72 @@ async function bootstrap(): Promise<void> {
     rentOnlyFilter
   });
   const downloadClient = createDownloadClient();
+
+  let mobileState: MobileViewState = "home";
+  const syncDesktopToMobileInputs = (): void => {
+    if (
+      !regionSearchInput ||
+      !minAreaInput ||
+      !maxAreaInput ||
+      !rentOnlyFilter ||
+      !mobileRegionSearchInput ||
+      !mobileMinAreaInput ||
+      !mobileMaxAreaInput ||
+      !mobileRentOnlyFilter
+    ) {
+      return;
+    }
+    mobileRegionSearchInput.value = regionSearchInput.value;
+    mobileMinAreaInput.value = minAreaInput.value;
+    mobileMaxAreaInput.value = maxAreaInput.value;
+    mobileRentOnlyFilter.checked = rentOnlyFilter.checked;
+  };
+
+  const syncMobileToDesktopInputs = (): void => {
+    if (
+      !regionSearchInput ||
+      !minAreaInput ||
+      !maxAreaInput ||
+      !rentOnlyFilter ||
+      !mobileRegionSearchInput ||
+      !mobileMinAreaInput ||
+      !mobileMaxAreaInput ||
+      !mobileRentOnlyFilter
+    ) {
+      return;
+    }
+    regionSearchInput.value = mobileRegionSearchInput.value;
+    minAreaInput.value = mobileMinAreaInput.value;
+    maxAreaInput.value = mobileMaxAreaInput.value;
+    rentOnlyFilter.checked = mobileRentOnlyFilter.checked;
+  };
+
+  const applyMobileClass = (): void => {
+    document.body.classList.remove("mobile-home", "mobile-search", "mobile-results");
+    if (!isMobileViewport()) {
+      return;
+    }
+    document.body.classList.add(`mobile-${mobileState}`);
+  };
+
+  const setMobileState = (nextState: MobileViewState, pushHistory = true): void => {
+    mobileState = nextState;
+    applyMobileClass();
+    if (!isMobileViewport() || !pushHistory) {
+      return;
+    }
+    const current = history.state && typeof history.state === "object" ? history.state : {};
+    history.pushState({ ...current, [MOBILE_HISTORY_KEY]: nextState }, "");
+  };
+
+  const maybeInitMobileHistory = (): void => {
+    if (!isMobileViewport()) {
+      return;
+    }
+    const current = history.state && typeof history.state === "object" ? history.state : {};
+    history.replaceState({ ...current, [MOBILE_HISTORY_KEY]: mobileState }, "");
+    applyMobileClass();
+  };
 
   const updateNavigation = (): void => {
     listPanel.updateNavigation(state.getCurrentIndex(), state.getCurrentFeatures().length);
@@ -130,6 +226,7 @@ async function bootstrap(): Promise<void> {
 
   const resetFilters = (): void => {
     filters.reset();
+    syncDesktopToMobileInputs();
     mapView.clearPopup();
     applyFilters(false);
   };
@@ -144,6 +241,20 @@ async function bootstrap(): Promise<void> {
       shouldFit: true,
       clickSource: direction < 0 ? "nav_prev" : "nav_next"
     });
+  };
+
+  const closeLayerPopover = (): void => {
+    if (!(layerPopover instanceof HTMLElement) || !(layerToggleBtn instanceof HTMLButtonElement)) {
+      return;
+    }
+    layerPopover.classList.remove("open");
+    layerPopover.setAttribute("aria-hidden", "true");
+    layerToggleBtn.setAttribute("aria-expanded", "false");
+  };
+
+  const changeLayerFromMobile = (type: BaseType): void => {
+    mapView.changeLayer(type);
+    closeLayerPopover();
   };
 
   mapView.setFeatureClickHandler(({ index, coordinate }) => {
@@ -166,6 +277,37 @@ async function bootstrap(): Promise<void> {
   document.getElementById("btn-Satellite")?.addEventListener("click", () => mapView.changeLayer("Satellite"));
   document.getElementById("btn-Hybrid")?.addEventListener("click", () => mapView.changeLayer("Hybrid"));
 
+  layerToggleBtn?.addEventListener("click", (event) => {
+    if (!(layerPopover instanceof HTMLElement) || !(layerToggleBtn instanceof HTMLButtonElement)) {
+      return;
+    }
+    event.stopPropagation();
+    const willOpen = !layerPopover.classList.contains("open");
+    layerPopover.classList.toggle("open", willOpen);
+    layerPopover.setAttribute("aria-hidden", willOpen ? "false" : "true");
+    layerToggleBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  });
+  mobileBaseBtn?.addEventListener("click", () => changeLayerFromMobile("Base"));
+  mobileSatelliteBtn?.addEventListener("click", () => changeLayerFromMobile("Satellite"));
+  mobileHybridBtn?.addEventListener("click", () => changeLayerFromMobile("Hybrid"));
+  document.addEventListener("click", (event) => {
+    if (
+      !(layerPopover instanceof HTMLElement) ||
+      !(layerToggleBtn instanceof HTMLElement) ||
+      !(event.target instanceof Node)
+    ) {
+      return;
+    }
+    if (!layerPopover.contains(event.target) && !layerToggleBtn.contains(event.target)) {
+      closeLayerPopover();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeLayerPopover();
+    }
+  });
+
   listPanel.bindNavigation(
     () => navigateItem(-1),
     () => navigateItem(1)
@@ -175,6 +317,52 @@ async function bootstrap(): Promise<void> {
   listPanel.initBottomSheet();
   sessionTracker.mount();
 
+  mobileSearchFab?.addEventListener("click", () => {
+    if (!isMobileViewport()) {
+      return;
+    }
+    syncDesktopToMobileInputs();
+    setMobileState("search", true);
+  });
+  mobileSearchCloseBtn?.addEventListener("click", () => {
+    if (!isMobileViewport()) {
+      return;
+    }
+    history.back();
+  });
+  mobileSearchBtn?.addEventListener("click", () => {
+    if (!isMobileViewport()) {
+      return;
+    }
+    syncMobileToDesktopInputs();
+    applyFilters(true);
+    setMobileState("results", true);
+  });
+  mobileResetBtn?.addEventListener("click", () => {
+    syncMobileToDesktopInputs();
+    resetFilters();
+    syncDesktopToMobileInputs();
+  });
+
+  window.addEventListener("popstate", (event) => {
+    if (!isMobileViewport()) {
+      return;
+    }
+    const nextState = readMobileViewState(
+      event.state && typeof event.state === "object"
+        ? (event.state as Record<string, unknown>)[MOBILE_HISTORY_KEY]
+        : null
+    );
+    if (!nextState) {
+      return;
+    }
+    setMobileState(nextState, false);
+  });
+
+  window.matchMedia(MOBILE_MEDIA_QUERY).addEventListener("change", () => {
+    applyMobileClass();
+  });
+
   try {
     listPanel.setStatus("데이터를 불러오는 중입니다...");
     const config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
@@ -182,6 +370,12 @@ async function bootstrap(): Promise<void> {
     const features = await loadAllLandFeatures();
     state.setOriginalData({ type: "FeatureCollection", features });
     applyFilters(false);
+
+    syncDesktopToMobileInputs();
+    maybeInitMobileHistory();
+    if (isMobileViewport()) {
+      setMobileState("home", false);
+    }
   } catch (error) {
     const message = error instanceof HttpError ? error.message : "지도를 초기화하지 못했습니다.";
     listPanel.setStatus(message, "red");

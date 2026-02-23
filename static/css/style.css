@@ -82,8 +82,83 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 .map-controls { position: absolute; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 5px; background: rgba(255, 255, 255, 0.9); padding: 6px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
 .map-controls button { border: 1px solid #ddd; background: #fff; padding: 8px 15px; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 4px; }
 .map-controls button.active { background: #2c3e50; color: white; border-color: #2c3e50; }
+.layer-mobile-toggle { display: none; }
+.layer-popover {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+.layer-popover.open { display: flex; }
 
-.ol-popup { position: absolute; background-color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; border: 1px solid #cccccc; bottom: 12px; left: -50px; min-width: 350px; }
+#mobile-search-fab {
+    display: none;
+    position: fixed;
+    right: 14px;
+    bottom: 16px;
+    z-index: 10010;
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 999px;
+    background: #2c3e50;
+    color: #fff;
+    font-size: 22px;
+    box-shadow: 0 8px 18px rgba(44, 62, 80, 0.3);
+    cursor: pointer;
+}
+
+#mobile-search-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10020;
+    background: rgba(255, 255, 255, 0.98);
+    padding: 14px;
+}
+
+.mobile-search-sheet {
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+.mobile-search-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.mobile-search-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.mobile-search-header button {
+    border: none;
+    background: #e5e7eb;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.mobile-search-actions { margin-top: 10px; }
+.mobile-search-actions #mobile-btn-search {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(180deg, #3fa2e6 0%, #2f90d0 100%);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.ol-popup { position: absolute; background-color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; border: 1px solid #cccccc; bottom: 12px; left: -50px; min-width: 350px; line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; }
 .ol-popup:after { top: 100%; border: solid transparent; content: " "; height: 0; width: 0; position: absolute; border-top-color: white; border-width: 10px; left: 48px; margin-left: -10px; }
 .ol-popup-closer { text-decoration: none; position: absolute; top: 2px; right: 8px; color: #666; font-weight: bold; }
 
@@ -97,12 +172,88 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 @media (max-width: 768px) {
     body {
         flex-direction: column !important;
+        overflow: hidden;
     }
 
-    /* 바텀 시트 스타일 */
+    #mobile-search-fab { display: block; }
+
+    body.mobile-results #mobile-search-fab {
+        bottom: calc(50vh + 12px);
+    }
+
+    #mobile-search-overlay { display: none; }
+    body.mobile-search #mobile-search-overlay { display: block; }
+
+    /* 상태별 레이아웃 */
+    body.mobile-home #sidebar,
+    body.mobile-search #sidebar {
+        display: none !important;
+    }
+
+    body.mobile-home #map,
+    body.mobile-search #map {
+        width: 100% !important;
+        height: 100vh !important;
+    }
+
+    body.mobile-results #map {
+        width: 100% !important;
+        height: 100vh !important;
+        padding-bottom: 50vh;
+    }
+
+    body.mobile-results #sidebar {
+        display: flex !important;
+        width: 100% !important;
+        height: 50vh !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.15);
+        z-index: 9999;
+    }
+
+    body.mobile-results #header,
+    body.mobile-results #filter-section {
+        display: none;
+    }
+
+    body.mobile-results #list-container { flex: 1; }
+
+    /* 모바일에서는 핸들 미사용 */
+    .mobile-handle { display: none !important; }
+
+    /* 레이어 선택: 단일 버튼 + 팝오버 */
+    .map-controls {
+        right: 10px;
+        top: 10px;
+        padding: 4px;
+    }
+    .layer-desktop { display: none; }
+    .layer-mobile-toggle {
+        display: inline-block;
+        min-width: 72px;
+        padding: 8px 10px !important;
+    }
+    .layer-popover {
+        position: absolute;
+        top: 42px;
+        right: 0;
+        min-width: 124px;
+    }
+    .layer-popover button {
+        text-align: left;
+        padding: 8px 10px;
+        width: 100%;
+    }
+
+    /* 바텀 시트 스타일(기본 정의 유지; 상태 클래스에서 override) */
     #sidebar {
         width: 100% !important;
-        height: 40vh !important;    /* 기본 중간 상태 */
+        height: 50vh !important;
         position: fixed;
         bottom: 0;
         left: 0;
@@ -116,31 +267,22 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     }
 
     /* 모바일 핸들 바 디자인 */
-    .mobile-handle {
-        display: block;
-        width: 40px;
-        height: 5px;
-        background-color: #ccc;
-        border-radius: 10px;
-        margin: 10px auto; /* 중앙 정렬 */
-        touch-action: none;
-    }
-
-    #map {
-        width: 100% !important;
-        height: 55vh !important; /* 지도가 상단 절반 이상 차지 */
-    }
+    #map { width: 100% !important; }
 
     /* 터치 타겟/가독성 */
     #btn-search { padding: 12px; font-size: 1rem; }
     .btn-secondary { padding: 12px; font-size: 0.95rem; }
     .nav-btn { padding: 12px; font-size: 0.95em; }
     .list-item { padding: 16px; }
-    .map-controls { right: 10px; top: 10px; }
-    .map-controls button { padding: 10px 14px; font-size: 12px; }
+    .map-controls button { font-size: 12px; }
 
     /* 팝업 모바일 대응 */
-    .ol-popup { min-width: auto; max-width: 90vw; left: -20px; }
+    .ol-popup {
+        min-width: 0;
+        width: clamp(320px, 88vw, 520px);
+        max-width: calc(100vw - 24px);
+        left: -24px;
+    }
 
     /* 모바일에서는 헤더 패딩 축소 */
     #header {
@@ -155,6 +297,12 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 @media (min-width: 769px) {
     .mobile-handle {
         display: none;
+    }
+    #mobile-search-fab,
+    #mobile-search-overlay,
+    .layer-mobile-toggle,
+    .layer-popover {
+        display: none !important;
     }
 }
 
