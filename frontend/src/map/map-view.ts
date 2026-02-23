@@ -138,8 +138,11 @@ export function createMapView(elements: MapViewElements) {
     satLayer.setVisible(type === "Satellite" || type === "Hybrid");
     hybLayer.setVisible(type === "Hybrid");
 
-    document.querySelectorAll(".map-controls button").forEach((btn) => btn.classList.remove("active"));
+    document
+      .querySelectorAll(".map-controls .layer-desktop, .map-controls .layer-popover button")
+      .forEach((btn) => btn.classList.remove("active"));
     document.getElementById(`btn-${type}`)?.classList.add("active");
+    document.getElementById(`m-btn-${type}`)?.classList.add("active");
   };
 
   const renderFeatures = (data: LandFeatureCollection): void => {
