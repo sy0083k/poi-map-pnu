@@ -76,6 +76,7 @@ uvicorn app.main:app --reload
 2. `/admin`에서 엑셀 업로드 (`/admin/upload`)
 3. 업로드 후 지오메트리 보강 작업이 백그라운드로 실행됨
 4. 공개 다운로드 파일은 `/admin/public-download/upload`로 갱신 가능
+5. 통계 탭에서 `전체 필지 수/경계선 없음 필지 수` 확인 및 경계선 재수집 실행 가능
 
 ## 📱 모바일 화면 흐름
 - 초기 화면: 지도 중심 화면 + 우하단 검색(돋보기) 버튼
@@ -111,6 +112,8 @@ uvicorn app.main:app --reload
 - `GET /admin/stats`
 - `GET /admin/stats/web`
 - `GET /admin/raw-queries/export`
+- `POST /admin/lands/geom-refresh`
+- `GET /admin/lands/geom-refresh/{job_id}`
 
 ### 상태 점검
 - `GET /health`

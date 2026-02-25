@@ -62,6 +62,10 @@ def count_missing_geom(conn: sqlite3.Connection) -> int:
     return land_repository.count_missing_geom(conn)
 
 
+def count_all_lands(conn: sqlite3.Connection) -> int:
+    return land_repository.count_all_lands(conn)
+
+
 def create_geom_update_job(conn: sqlite3.Connection) -> int:
     return job_repository.create_geom_update_job(conn)
 
@@ -89,6 +93,14 @@ def mark_geom_job_failed(
         failed_count=failed_count,
         error_message=error_message,
     )
+
+
+def fetch_geom_job(conn: sqlite3.Connection, job_id: int) -> sqlite3.Row | None:
+    return job_repository.fetch_geom_job(conn, job_id)
+
+
+def fetch_latest_active_geom_job(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    return job_repository.fetch_latest_active_geom_job(conn)
 
 
 def insert_map_event(

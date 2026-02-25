@@ -2,7 +2,7 @@
 
 프로젝트: IdlePublicProperty  
 작성일: 2026-02-11  
-최종 수정일: 2026-02-22
+최종 수정일: 2026-02-25
 
 ## 문서 진입점
 - 문서 포털(한 페이지 허브): [`index.md`](index.md)
@@ -126,6 +126,8 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 - `GET /admin/stats`
 - `GET /admin/stats/web`
 - `GET /admin/raw-queries/export`
+- `POST /admin/lands/geom-refresh`
+- `GET /admin/lands/geom-refresh/{job_id}`
 
 ## API 버전 정책
 - 현재 정책: `/api/v1/*`는 **유지되는 호환성(alias) 경로**이며 `/api/*`와 동등 계약을 제공한다.
@@ -155,6 +157,12 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 2. 각 행에 대해 `VWorldClient.get_parcel_geometry()`를 호출한다.
 3. `geom` 컬럼 업데이트 후 커밋하고 작업 결과를 `geom_update_jobs`에 기록한다.
 
+### 관리자 수동 경계선 재수집
+1. 관리자가 통계 탭에서 경계선 재수집 버튼을 클릭하면 `POST /admin/lands/geom-refresh`가 잡을 생성한다.
+2. 실행 중 잡이 이미 있으면 기존 `job_id`를 반환하고, 없으면 신규 잡을 백그라운드로 시작한다.
+3. 프런트는 `GET /admin/lands/geom-refresh/{job_id}`를 폴링해 완료 상태를 확인한다.
+4. 완료(`done`/`failed`) 시 통계(`전체 필지 수`, `경계선 없음 필지 수`)를 다시 조회한다.
+
 ### 공개 다운로드 파일 제공
 1. 관리자가 `/admin/public-download/upload`로 파일을 업로드한다.
 2. 서비스는 허용 확장자/용량 검증 후 `current.<ext>`를 원자적 교체하고 메타를 갱신한다.
@@ -164,6 +172,7 @@ IdlePublicProperty는 공공 지도 데이터를 제공하고, 관리자 전용 
 1. 클라이언트가 `/api/events`, `/api/web-events`로 검색/클릭/방문 이벤트를 전송한다.
 2. 서버는 레이트리밋을 적용한 뒤 `map_event_log`, `raw_query_log`, `web_visit_event`에 저장한다.
 3. 관리자는 `/admin/stats`, `/admin/stats/web`에서 집계 지표를 조회하고, `/admin/raw-queries/export`로 원시 로그를 CSV로 다운로드한다.
+4. `/admin/stats`에는 이벤트 통계와 함께 `idle_land` 기반 경계선 현황(전체/미수집 건수)이 포함된다.
 
 ## 설정
 `app/core/config.py`가 환경변수에서 로드한다.

@@ -76,3 +76,30 @@ def mark_geom_job_failed(
         """,
         (updated_count, failed_count, error_message, job_id),
     )
+
+
+def fetch_geom_job(conn: sqlite3.Connection, job_id: int) -> sqlite3.Row | None:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, status, attempts, updated_count, failed_count, error_message, created_at, updated_at
+          FROM geom_update_jobs
+         WHERE id = ?
+        """,
+        (job_id,),
+    )
+    return cursor.fetchone()
+
+
+def fetch_latest_active_geom_job(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, status, attempts, updated_count, failed_count, error_message, created_at, updated_at
+          FROM geom_update_jobs
+         WHERE status IN ('pending', 'running')
+         ORDER BY id DESC
+         LIMIT 1
+        """
+    )
+    return cursor.fetchone()

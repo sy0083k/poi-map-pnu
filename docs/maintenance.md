@@ -2,7 +2,7 @@
 
 프로젝트: IdlePublicProperty  
 작성일: 2026-02-11  
-최종 수정일: 2026-02-22
+최종 수정일: 2026-02-25
 
 ## 목적
 운영 중인 서비스의 안정성과 보안을 유지하기 위해 필요한 점검, 변경, 장애 대응 절차를 정의한다.
@@ -58,7 +58,7 @@
 7. `data/database.db` 파일 권한 확인
 8. `/health` 응답 정상 확인
 9. `/api/config`, `/api/lands`, `/api/public-download` 응답 정상 확인
-10. `/admin/stats`, `/admin/stats/web`, `/admin/raw-queries/export` 권한/응답 정상 확인
+10. `/admin/stats`, `/admin/stats/web`, `/admin/raw-queries/export`, `/admin/lands/geom-refresh*` 권한/응답 정상 확인
 11. 지도 화면 핵심 사용자 흐름 수동 회귀(검색/엔터/지도 클릭/다운로드/이전·다음/레이어 전환) 확인
 
 ## CI/테스트 명령
@@ -101,6 +101,7 @@
 - 로그인/CSRF/내부망 제한 유지
 - 엑셀 업로드 + 지오메트리 보강 잡 생성
 - 통계 조회/CSV export
+- 통계 탭 경계선 재수집 버튼 실행 + 완료 후 수치 갱신 확인
 - 권장 실행: `pytest -q tests/test_security_regression.py tests/test_upload_service.py tests/test_geo_service.py tests/test_stats_api.py`
 
 ### 3. 프런트 핵심 UX
@@ -140,6 +141,7 @@
 
 ### 통계/원시 로그 내보내기 실패
 - `/admin/stats`, `/admin/stats/web`, `/admin/raw-queries/export` 응답 및 권한 확인
+- 경계선 재수집 상태 확인 시 `/admin/lands/geom-refresh/{job_id}` 응답 및 권한 확인
 - `map_event_log`, `raw_query_log`, `web_visit_event` 테이블 상태 확인
 - 로그 누락 시 클라이언트 이벤트(`/api/events`, `/api/web-events`) 수집 상태 확인
 

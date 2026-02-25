@@ -13,6 +13,7 @@ from app.dependencies import (
 )
 from app.logging_utils import RequestIdFilter
 from app.services import admin_settings_service, public_download_service, stats_service, upload_service
+from app.services import geo_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -160,7 +161,30 @@ async def update_password(
 
 @router.get("/stats", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
 async def get_stats(limit: int = 10) -> dict:
-    return stats_service.get_admin_stats(limit=limit)
+    payload = stats_service.get_admin_stats(limit=limit)
+    payload["landSummary"] = stats_service.get_land_stats()
+    return payload
+
+
+@router.post("/lands/geom-refresh", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
+async def start_land_geom_refresh(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    csrf_token: str = Form(default=""),
+) -> dict:
+    return geo_service.start_geom_refresh_job(
+        request=request,
+        background_tasks=background_tasks,
+        csrf_token=csrf_token,
+    )
+
+
+@router.get(
+    "/lands/geom-refresh/{job_id}",
+    dependencies=[Depends(check_internal_network), Depends(require_authenticated)],
+)
+async def get_land_geom_refresh_status(job_id: int) -> dict:
+    return {"success": True, "job": geo_service.get_geom_refresh_job_status(job_id)}
 
 
 @router.get("/stats/web", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
