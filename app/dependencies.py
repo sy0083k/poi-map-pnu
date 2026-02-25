@@ -33,6 +33,8 @@ async def check_internal_network(request: Request) -> bool:
 
 def _resolve_client_ip(request: Request) -> IPv4Address | IPv6Address:
     config = request.app.state.config
+    if not request.client:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Client Unknown")
 
     try:
         peer_ip = ip_address(request.client.host)

@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Literal
 
 import pandas as pd
 from fastapi import BackgroundTasks, HTTPException, Request, UploadFile
@@ -67,7 +68,7 @@ def handle_excel_upload(
             },
         )
         requested_sheet = config.UPLOAD_SHEET_NAME
-        excel_engine = "xlrd" if filename.endswith(".xls") else "openpyxl"
+        excel_engine: Literal["xlrd", "openpyxl"] = "xlrd" if filename.endswith(".xls") else "openpyxl"
         excel_book = pd.ExcelFile(file.file, engine=excel_engine)
         if requested_sheet in excel_book.sheet_names:
             df = pd.read_excel(excel_book, sheet_name=requested_sheet)
