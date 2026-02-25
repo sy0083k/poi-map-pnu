@@ -2,7 +2,7 @@
 
 프로젝트: IdlePublicProperty  
 작성일: 2026-02-11  
-최종 수정일: 2026-02-22  
+최종 수정일: 2026-02-25  
 담당: Engineering
 
 ## 문서 진입점
@@ -15,7 +15,7 @@
 ## 범위
 - FastAPI 웹 애플리케이션
   - 공개 API: `/api/config`, `/api/lands`, `/api/events`, `/api/web-events`, `/api/public-download`, `/api/v1/*`
-  - 관리자/인증 API: `/admin/login`, `/login`, `/admin/upload`, `/admin/public-download/*`, `/admin/stats*`, `/admin/raw-queries/export`
+  - 관리자/인증 API: `/admin/login`, `/login`, `/admin/upload`, `/admin/public-download/*`, `/admin/stats*`, `/admin/raw-queries/export`, `/admin/lands/geom-refresh*`
   - 헬스체크: `/health`
 - SQLite 저장소 (`data/database.db`)
 - 공개 다운로드 파일 저장소 (`data/public_download/current.*`, `current.json`)
@@ -47,7 +47,8 @@
 6. 관리자 사용자 -> `/admin/upload` -> 엑셀 파싱 + 검증 -> SQLite 저장 -> 백그라운드 지오메트리 업데이트
 7. 관리자 사용자 -> `/admin/public-download/upload` -> 파일 검증/원자적 교체 -> 메타 갱신
 8. 관리자 사용자 -> `/admin/stats`, `/admin/stats/web` -> 집계 조회
-9. 관리자 사용자 -> `/admin/raw-queries/export` -> 원시 로그 CSV 내보내기
+9. 관리자 사용자 -> `/admin/lands/geom-refresh*` -> 경계선 재수집 잡 시작/상태 조회
+10. 관리자 사용자 -> `/admin/raw-queries/export` -> 원시 로그 CSV 내보내기
 
 ## 가정
 - 관리자 엔드포인트는 허용된 내부 IP 범위에서만 접근한다.
@@ -118,7 +119,7 @@
   - 완화: 작업 시간 상한/지연 경보 도입.
 
 ### E: 권한 상승(Elevation of Privilege)
-- 위험: `/admin/upload`, `/admin/public-download/upload`, `/admin/raw-queries/export` 우회 접근.
+- 위험: `/admin/upload`, `/admin/public-download/upload`, `/admin/lands/geom-refresh*`, `/admin/raw-queries/export` 우회 접근.
   - 현재: 내부 IP + 세션 인증 조합, 상태 변경 관리자 요청에 CSRF 적용.
   - 공백: 세션 탈취 시 관리자 기능 전면 노출.
   - 완화: 세션 만료/재인증 정책 강화, 관리자 액션 모니터링.

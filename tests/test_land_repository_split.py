@@ -34,4 +34,5 @@ def test_land_repository_insert_and_page_fetch(db_path: object) -> None:
         rows = land_repository.fetch_lands_with_geom_page(conn, after_id=None, limit=10)
         assert len(rows) == 1
         assert rows[0]["address"] == "addr-1"
+        assert land_repository.count_all_lands(conn) == 2
         assert land_repository.count_missing_geom(conn) == 1

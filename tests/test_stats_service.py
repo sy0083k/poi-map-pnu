@@ -63,3 +63,36 @@ def test_stats_service_get_web_stats(db_path: object) -> None:
     assert "summary" in result
     assert result["summary"]["totalVisitors"] >= 2
     assert result["summary"]["sessionCount"] >= 2
+
+
+def test_stats_service_get_land_stats(db_path: object) -> None:
+    with db_connection() as conn:
+        idle_land_repository.init_db(conn)
+        idle_land_repository.delete_all(conn)
+        idle_land_repository.insert_land(
+            conn,
+            address="addr-1",
+            land_type="답",
+            area=11.0,
+            adm_property="Y",
+            gen_property="N",
+            contact="010",
+        )
+        idle_land_repository.insert_land(
+            conn,
+            address="addr-2",
+            land_type="전",
+            area=15.0,
+            adm_property="Y",
+            gen_property="N",
+            contact="010",
+        )
+        missing = list(idle_land_repository.fetch_missing_geom(conn))
+        assert len(missing) == 2
+        first_id, _ = missing[0]
+        idle_land_repository.update_geom(conn, first_id, '{"type":"Point","coordinates":[127,36]}')
+        conn.commit()
+
+    payload = stats_service.get_land_stats()
+    assert payload["totalLands"] == 2
+    assert payload["missingGeomLands"] == 1

@@ -94,3 +94,10 @@ def count_missing_geom(conn: sqlite3.Connection) -> int:
     cursor.execute("SELECT COUNT(*) FROM idle_land WHERE geom IS NULL")
     row = cursor.fetchone()
     return int(row[0]) if row else 0
+
+
+def count_all_lands(conn: sqlite3.Connection) -> int:
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM idle_land")
+    row = cursor.fetchone()
+    return int(row[0]) if row else 0

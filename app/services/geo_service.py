@@ -1,9 +1,12 @@
 import logging
 import time
 
+from fastapi import BackgroundTasks, HTTPException, Request
+
 from app.clients.vworld_client import VWorldClient
 from app.core import get_settings
 from app.db.connection import db_connection
+from app.dependencies import validate_csrf_token
 from app.logging_utils import RequestIdFilter
 from app.repositories import idle_land_repository
 
@@ -49,6 +52,56 @@ def run_geom_update_job(job_id: int, max_retries: int = 5) -> tuple[int, int]:
             conn.commit()
         raise
     return updated_count, failed_count
+
+
+def start_geom_refresh_job(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    *,
+    csrf_token: str,
+) -> dict[str, object]:
+    if not validate_csrf_token(request, csrf_token):
+        raise HTTPException(status_code=403, detail="CSRF 토큰 검증에 실패했습니다.")
+
+    with db_connection(row_factory=True) as conn:
+        active_job = idle_land_repository.fetch_latest_active_geom_job(conn)
+
+    if active_job is not None:
+        job_id = int(active_job["id"])
+        return {
+            "success": True,
+            "jobId": job_id,
+            "started": False,
+            "message": "이미 실행 중인 경계선 수집 작업이 있습니다.",
+        }
+
+    job_id = enqueue_geom_update_job()
+    background_tasks.add_task(run_geom_update_job, job_id, 5)
+    return {
+        "success": True,
+        "jobId": job_id,
+        "started": True,
+        "message": "경계선 정보 수집 작업을 시작했습니다.",
+    }
+
+
+def get_geom_refresh_job_status(job_id: int) -> dict[str, object]:
+    with db_connection(row_factory=True) as conn:
+        row = idle_land_repository.fetch_geom_job(conn, job_id)
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
+
+    return {
+        "id": int(row["id"]),
+        "status": str(row["status"]),
+        "attempts": int(row["attempts"] or 0),
+        "updatedCount": int(row["updated_count"] or 0),
+        "failedCount": int(row["failed_count"] or 0),
+        "errorMessage": str(row["error_message"] or ""),
+        "createdAt": str(row["created_at"]),
+        "updatedAt": str(row["updated_at"]),
+    }
 
 
 def update_geoms(max_retries: int = 5) -> tuple[int, int]:
