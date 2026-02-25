@@ -22,7 +22,10 @@ def init_job_schema(conn: sqlite3.Connection) -> None:
 def create_geom_update_job(conn: sqlite3.Connection) -> int:
     cursor = conn.cursor()
     cursor.execute("INSERT INTO geom_update_jobs (status) VALUES ('pending')")
-    return int(cursor.lastrowid)
+    lastrowid = cursor.lastrowid
+    if lastrowid is None:
+        raise RuntimeError("Failed to create geom_update_jobs row.")
+    return int(lastrowid)
 
 
 def mark_geom_job_running(conn: sqlite3.Connection, job_id: int) -> None:
