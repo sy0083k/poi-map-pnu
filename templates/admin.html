@@ -507,7 +507,19 @@
                             <label>고유 세션 수</label>
                             <input type="text" id="stats-unique-session-count" value="0" readonly>
                         </div>
-                        <h3 style="margin-top: 20px;">유휴토지 경계선 현황<span class="badge">idle_land</span></h3>
+                        <button class="btn" type="button" id="refreshStatsBtn">통계 새로고침</button>
+                        <div id="statsStatus" class="hint">통계를 불러오려면 탭을 선택하세요.</div>
+                    </div>
+                    <div class="card">
+                        <h3>일별 추세</h3>
+                        <p>일자별 검색/클릭 발생 건수입니다.</p>
+                        <div class="chart-wrap">
+                            <canvas id="statsTrendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>유휴토지 경계선 현황<span class="badge">idle_land</span></h3>
+                        <p>`idle_land.geom` 기준 경계선 수집 현황입니다.</p>
                         <div class="row">
                             <div class="field">
                                 <label>전체 필지 수</label>
@@ -520,15 +532,6 @@
                         </div>
                         <button class="btn" type="button" id="refreshGeomBtn">경계선 정보 취득 실행</button>
                         <div id="geomRefreshStatus" class="hint">필요 시 경계선 정보 재수집을 실행하세요.</div>
-                        <button class="btn" type="button" id="refreshStatsBtn">통계 새로고침</button>
-                        <div id="statsStatus" class="hint">통계를 불러오려면 탭을 선택하세요.</div>
-                    </div>
-                    <div class="card">
-                        <h3>일별 추세</h3>
-                        <p>일자별 검색/클릭 발생 건수입니다.</p>
-                        <div class="chart-wrap">
-                            <canvas id="statsTrendChart"></canvas>
-                        </div>
                     </div>
                 </div>
 
