@@ -157,7 +157,7 @@
 
 ### 지도 데이터 미표시
 - `/api/lands` 응답 확인
-- DB `idle_land.geom` 컬럼 상태 확인
+- DB `poi.geom` 컬럼 상태 확인
 - VWorld API 호출 로그 및 `geom_update_jobs` 실패 건 확인
 
 ## 백업/복구

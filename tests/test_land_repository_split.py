@@ -36,3 +36,13 @@ def test_land_repository_insert_and_page_fetch(db_path: object) -> None:
         assert rows[0]["address"] == "addr-1"
         assert land_repository.count_all_lands(conn) == 2
         assert land_repository.count_missing_geom(conn) == 1
+
+
+def test_init_land_schema_creates_poi_table(db_path: object) -> None:
+    with db_connection(row_factory=True) as conn:
+        cursor = conn.cursor()
+        land_repository.init_land_schema(conn)
+        conn.commit()
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='poi'")
+        assert cursor.fetchone() is not None

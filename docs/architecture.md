@@ -68,7 +68,7 @@
 - **관측 데이터 수집**: 검색/클릭/웹 방문 이벤트를 저장하고 관리자 통계를 제공한다.
 
 ## 데이터 모델 (SQLite)
-### `idle_land`
+### `poi`
 - `id` (INTEGER, PK)
 - `address` (TEXT)
 - `land_type` (TEXT)
@@ -149,7 +149,7 @@
 
 ### 관리자 업로드
 1. `POST /admin/upload`에서 CSRF, 파일 타입, 파일 크기, 행 수를 검증한다.
-2. 엑셀 행을 정규화/검증한 뒤 기존 `idle_land`를 교체 저장한다.
+2. 엑셀 행을 정규화/검증한 뒤 기존 `poi`를 교체 저장한다.
 3. 백그라운드 작업으로 지오메트리 보강 잡을 실행한다.
 
 ### 지오메트리 보강
@@ -172,7 +172,7 @@
 1. 클라이언트가 `/api/events`, `/api/web-events`로 검색/클릭/방문 이벤트를 전송한다.
 2. 서버는 레이트리밋을 적용한 뒤 `map_event_log`, `raw_query_log`, `web_visit_event`에 저장한다.
 3. 관리자는 `/admin/stats`, `/admin/stats/web`에서 집계 지표를 조회하고, `/admin/raw-queries/export`로 원시 로그를 CSV로 다운로드한다.
-4. `/admin/stats`에는 이벤트 통계와 함께 `idle_land` 기반 경계선 현황(전체/미수집 건수)이 포함된다.
+4. `/admin/stats`에는 이벤트 통계와 함께 `poi` 기반 경계선 현황(전체/미수집 건수)이 포함된다.
 
 ## 설정
 `app/core/config.py`가 환경변수에서 로드한다.
