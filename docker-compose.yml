@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: idle-public-property:latest
-    container_name: idle-public-property-app
+    image: poi-map-geo:latest
+    container_name: poi-map-geo-app
     ports:
       - "8000:8000"
     env_file:
