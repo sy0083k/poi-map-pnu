@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ class SettingsError(RuntimeError):
 
 IPAddressNetwork = IPv4Network | IPv6Network
 BCRYPT_HASH_RE = re.compile(r"^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$")
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Settings:
@@ -19,18 +21,20 @@ class Settings:
     map_center_lat: float
     map_default_zoom: int
     vworld_wmts_key: str
-    vworld_geocoder_key: str
+    cadastral_fgb_path: str
+    cadastral_fgb_pnu_field: str
+    cadastral_fgb_crs: str
+    cadastral_min_render_zoom: int
     admin_id: str
     admin_pw_hash: str
     secret_key: str
+    session_cookie_name: str
+    session_namespace: str
     allowed_ip_networks: tuple[IPAddressNetwork, ...]
     max_upload_size_mb: int
     max_upload_rows: int
     login_max_attempts: int
     login_cooldown_seconds: int
-    vworld_timeout_s: float
-    vworld_retries: int
-    vworld_backoff_s: float
     session_https_only: bool
     trust_proxy_headers: bool
     trusted_proxy_networks: tuple[IPAddressNetwork, ...]
@@ -143,25 +147,45 @@ def _validate_admin_hash(hash_value: str) -> str:
 def get_settings() -> Settings:
     base_dir = Path(__file__).resolve().parents[2]
     _load_dotenv_if_present(base_dir)
+    map_default_zoom = int(os.getenv("MAP_DEFAULT_ZOOM", "14"))
+    cadastral_min_render_zoom = int(os.getenv("CADASTRAL_MIN_RENDER_ZOOM", "15"))
+
+    if map_default_zoom < cadastral_min_render_zoom:
+        logger.warning(
+            "MAP_DEFAULT_ZOOM(%s) is lower than CADASTRAL_MIN_RENDER_ZOOM(%s); cadastral layer won't load on first render",
+            map_default_zoom,
+            cadastral_min_render_zoom,
+        )
+
+    cadastral_fgb_crs = os.getenv("CADASTRAL_FGB_CRS", "EPSG:3857").strip().upper() or "EPSG:3857"
+    if cadastral_fgb_crs not in {"EPSG:3857", "EPSG:4326"}:
+        raise SettingsError("CADASTRAL_FGB_CRS must be either EPSG:3857 or EPSG:4326.")
 
     return Settings(
         app_name=os.getenv("APP_NAME", "관심 필지 지도 (POI Map Geo)"),
         map_center_lon=float(os.getenv("MAP_CENTER_LON", "126.4500")),
         map_center_lat=float(os.getenv("MAP_CENTER_LAT", "36.7848")),
-        map_default_zoom=int(os.getenv("MAP_DEFAULT_ZOOM", "14")),
+        map_default_zoom=map_default_zoom,
         vworld_wmts_key=_get_required_env("VWORLD_WMTS_KEY"),
-        vworld_geocoder_key=_get_required_env("VWORLD_GEOCODER_KEY"),
+        cadastral_fgb_path=os.getenv(
+            "CADASTRAL_FGB_PATH",
+            "data/LSMD_CONT_LDREG_44210_202512.fgb",
+        ).strip()
+        or "data/LSMD_CONT_LDREG_44210_202512.fgb",
+        cadastral_fgb_pnu_field=os.getenv("CADASTRAL_FGB_PNU_FIELD", "PNU").strip() or "PNU",
+        cadastral_fgb_crs=cadastral_fgb_crs,
+        cadastral_min_render_zoom=cadastral_min_render_zoom,
         admin_id=_get_required_env("ADMIN_ID"),
         admin_pw_hash=_validate_admin_hash(_get_required_env("ADMIN_PW_HASH")),
         secret_key=_get_required_env("SECRET_KEY"),
+        session_cookie_name=os.getenv("SESSION_COOKIE_NAME", "poi_map_pnu_session").strip()
+        or "poi_map_pnu_session",
+        session_namespace=os.getenv("SESSION_NAMESPACE", "poi_map_pnu").strip() or "poi_map_pnu",
         allowed_ip_networks=_parse_allowed_ips(os.getenv("ALLOWED_IPS", "127.0.0.1/32,::1/128")),
         max_upload_size_mb=int(os.getenv("MAX_UPLOAD_SIZE_MB", "10")),
         max_upload_rows=int(os.getenv("MAX_UPLOAD_ROWS", "5000")),
         login_max_attempts=int(os.getenv("LOGIN_MAX_ATTEMPTS", "5")),
         login_cooldown_seconds=int(os.getenv("LOGIN_COOLDOWN_SECONDS", "300")),
-        vworld_timeout_s=float(os.getenv("VWORLD_TIMEOUT_S", "5.0")),
-        vworld_retries=int(os.getenv("VWORLD_RETRIES", "3")),
-        vworld_backoff_s=float(os.getenv("VWORLD_BACKOFF_S", "0.5")),
         session_https_only=_parse_bool_env("SESSION_HTTPS_ONLY", True),
         trust_proxy_headers=_parse_bool_env("TRUST_PROXY_HEADERS", False),
         trusted_proxy_networks=_parse_network_list(os.getenv("TRUSTED_PROXY_IPS", "")),

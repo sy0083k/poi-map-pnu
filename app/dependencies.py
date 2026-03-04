@@ -7,7 +7,10 @@ from fastapi import HTTPException, Request, status
 def is_authenticated(request: Request) -> bool:
     """세션 인증 확인"""
     config = request.app.state.config
-    return bool(request.session.get("user") == config.ADMIN_ID)
+    return bool(
+        request.session.get("user") == config.ADMIN_ID
+        and request.session.get("session_namespace") == config.SESSION_NAMESPACE
+    )
 
 
 async def require_authenticated(request: Request) -> None:

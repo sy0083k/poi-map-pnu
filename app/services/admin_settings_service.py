@@ -12,15 +12,15 @@ from app.dependencies import validate_csrf_token
 WHITELIST_KEYS = {
     "APP_NAME",
     "VWORLD_WMTS_KEY",
-    "VWORLD_GEOCODER_KEY",
+    "CADASTRAL_FGB_PATH",
+    "CADASTRAL_FGB_PNU_FIELD",
+    "CADASTRAL_FGB_CRS",
+    "CADASTRAL_MIN_RENDER_ZOOM",
     "ALLOWED_IPS",
     "MAX_UPLOAD_SIZE_MB",
     "MAX_UPLOAD_ROWS",
     "LOGIN_MAX_ATTEMPTS",
     "LOGIN_COOLDOWN_SECONDS",
-    "VWORLD_TIMEOUT_S",
-    "VWORLD_RETRIES",
-    "VWORLD_BACKOFF_S",
     "SESSION_HTTPS_ONLY",
     "TRUST_PROXY_HEADERS",
     "TRUSTED_PROXY_IPS",
@@ -32,10 +32,8 @@ INT_KEYS = {
     "MAX_UPLOAD_ROWS",
     "LOGIN_MAX_ATTEMPTS",
     "LOGIN_COOLDOWN_SECONDS",
-    "VWORLD_RETRIES",
+    "CADASTRAL_MIN_RENDER_ZOOM",
 }
-
-FLOAT_KEYS = {"VWORLD_TIMEOUT_S", "VWORLD_BACKOFF_S"}
 
 BOOL_KEYS = {"SESSION_HTTPS_ONLY"}
 
@@ -45,15 +43,15 @@ def get_current_settings() -> dict[str, str]:
     return {
         "APP_NAME": settings.app_name,
         "VWORLD_WMTS_KEY": settings.vworld_wmts_key,
-        "VWORLD_GEOCODER_KEY": settings.vworld_geocoder_key,
+        "CADASTRAL_FGB_PATH": settings.cadastral_fgb_path,
+        "CADASTRAL_FGB_PNU_FIELD": settings.cadastral_fgb_pnu_field,
+        "CADASTRAL_FGB_CRS": settings.cadastral_fgb_crs,
+        "CADASTRAL_MIN_RENDER_ZOOM": str(settings.cadastral_min_render_zoom),
         "ALLOWED_IPS": ",".join(str(n) for n in settings.allowed_ip_networks),
         "MAX_UPLOAD_SIZE_MB": str(settings.max_upload_size_mb),
         "MAX_UPLOAD_ROWS": str(settings.max_upload_rows),
         "LOGIN_MAX_ATTEMPTS": str(settings.login_max_attempts),
         "LOGIN_COOLDOWN_SECONDS": str(settings.login_cooldown_seconds),
-        "VWORLD_TIMEOUT_S": str(settings.vworld_timeout_s),
-        "VWORLD_RETRIES": str(settings.vworld_retries),
-        "VWORLD_BACKOFF_S": str(settings.vworld_backoff_s),
         "SESSION_HTTPS_ONLY": "true" if settings.session_https_only else "false",
         "TRUST_PROXY_HEADERS": "true" if settings.trust_proxy_headers else "false",
         "TRUSTED_PROXY_IPS": ",".join(str(n) for n in settings.trusted_proxy_networks),
@@ -67,14 +65,16 @@ def validate_updates(updates: dict[str, str]) -> dict[str, str]:
         if key not in WHITELIST_KEYS:
             continue
         raw = value.strip()
+        if raw == "":
+            continue
         if key in INT_KEYS:
             if not raw.isdigit():
                 raise ValueError(f"{key} must be an integer.")
-        if key in FLOAT_KEYS:
-            try:
-                float(raw)
-            except ValueError as exc:
-                raise ValueError(f"{key} must be a float.") from exc
+        if key == "CADASTRAL_FGB_CRS":
+            normalized = raw.upper()
+            if normalized not in {"EPSG:3857", "EPSG:4326"}:
+                raise ValueError("CADASTRAL_FGB_CRS must be EPSG:3857 or EPSG:4326.")
+            raw = normalized
         if key == "TRUSTED_PROXY_IPS":
             for candidate in [item.strip() for item in raw.split(",") if item.strip()]:
                 try:
@@ -96,14 +96,23 @@ def update_env_file(base_dir: str, updates: dict[str, str]) -> None:
     else:
         lines = []
 
+    parsed_keys: list[str | None] = [_parse_env_key(line) for line in lines]
+    last_index_by_key: dict[str, int] = {}
+    for idx, key in enumerate(parsed_keys):
+        if key:
+            last_index_by_key[key] = idx
+
     remaining = dict(updates)
     new_lines: list[str] = []
-    for line in lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
+    for idx, line in enumerate(lines):
+        key = parsed_keys[idx]
+        if not key:
             new_lines.append(line)
             continue
-        key, _value = stripped.split("=", 1)
+
+        if last_index_by_key.get(key) != idx:
+            continue
+
         if key in remaining:
             new_lines.append(f"{key}={_format_env_value(remaining.pop(key))}")
         else:
@@ -123,6 +132,20 @@ def _format_env_value(value: str) -> str:
     if " " in value or "#" in value:
         return f"\"{value}\""
     return value
+
+
+def _parse_env_key(line: str) -> str | None:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in line:
+        return None
+
+    key, _value = line.split("=", 1)
+    normalized = key.strip()
+    if normalized.startswith("export "):
+        normalized = normalized[len("export ") :].strip()
+    if not normalized:
+        return None
+    return normalized
 
 
 def apply_settings_update(

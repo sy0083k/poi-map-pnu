@@ -5,7 +5,10 @@ type UploadResponse = {
   success: boolean;
   total?: number;
   message: string;
-  geomJobId?: number;
+  pnuSummary?: {
+    totalRows: number;
+    uniquePnu: number;
+  };
 };
 
 type PublicDownloadUploadResponse = {
@@ -23,7 +26,6 @@ type StatsResponse = {
   };
   landSummary: {
     totalLands: number;
-    missingGeomLands: number;
   };
   topRegions: Array<{ region: string; count: number }>;
   topMinAreaBuckets: Array<{ bucket: string; count: number }>;
@@ -43,26 +45,6 @@ type WebStatsResponse = {
     sessions: number;
     avgDwellMinutes: number;
   }>;
-};
-type GeomRefreshStartResponse = {
-  success: boolean;
-  jobId: number;
-  started: boolean;
-  message: string;
-};
-
-type GeomRefreshStatusResponse = {
-  success: boolean;
-  job: {
-    id: number;
-    status: string;
-    attempts: number;
-    updatedCount: number;
-    failedCount: number;
-    errorMessage: string;
-    createdAt: string;
-    updatedAt: string;
-  };
 };
 
 function requireElement<T extends Element>(id: string, type: { new (): T }): T | null {
@@ -124,10 +106,13 @@ async function handleUpload(csrfToken: string): Promise<void> {
     });
 
     status.style.color = "green";
-    status.innerText = result.geomJobId
-      ? `업로드 완료 (작업 ID: ${result.geomJobId}). 경계선 보강이 백그라운드에서 진행됩니다.`
-      : `업로드 완료: ${result.message}`;
-    alert("서버에서 데이터 처리를 시작했습니다. 창을 닫아도 작업은 계속됩니다.");
+    if (result.pnuSummary) {
+      status.innerText =
+        `업로드 완료: ${result.message}\n` +
+        `업로드 결과: ${result.pnuSummary.totalRows}건 / 고유 PNU ${result.pnuSummary.uniquePnu}건`;
+    } else {
+      status.innerText = `업로드 완료: ${result.message}`;
+    }
   } catch (error) {
     status.style.color = "red";
     const message = error instanceof HttpError ? error.message : String(error);
@@ -205,12 +190,6 @@ let minAreaChart: any = null;
 let trendChart: any = null;
 let webTrendChart: any = null;
 let hasLoadedStats = false;
-let isGeomRefreshPolling = false;
-let currentGeomRefreshJobId: number | null = null;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
 
 function renderStatsCharts(payload: StatsResponse): void {
   const regionCanvas = requireElement("statsRegionChart", HTMLCanvasElement);
@@ -337,7 +316,6 @@ async function loadStats(force = false): Promise<void> {
   const clickCount = requireElement("stats-click-count", HTMLInputElement);
   const uniqueSessionCount = requireElement("stats-unique-session-count", HTMLInputElement);
   const totalLands = requireElement("stats-total-lands", HTMLInputElement);
-  const missingGeomLands = requireElement("stats-missing-geom-lands", HTMLInputElement);
   const webDailyVisitors = requireElement("web-daily-visitors", HTMLInputElement);
   const webTotalVisitors = requireElement("web-total-visitors", HTMLInputElement);
   const webAvgDwell = requireElement("web-avg-dwell", HTMLInputElement);
@@ -350,7 +328,6 @@ async function loadStats(force = false): Promise<void> {
     !clickCount ||
     !uniqueSessionCount ||
     !totalLands ||
-    !missingGeomLands ||
     !webDailyVisitors ||
     !webTotalVisitors ||
     !webAvgDwell ||
@@ -375,7 +352,6 @@ async function loadStats(force = false): Promise<void> {
     clickCount.value = String(payload.summary.clickCount);
     uniqueSessionCount.value = String(payload.summary.uniqueSessionCount);
     totalLands.value = String(payload.landSummary.totalLands);
-    missingGeomLands.value = String(payload.landSummary.missingGeomLands);
     webDailyVisitors.value = String(webPayload.summary.dailyVisitors);
     webTotalVisitors.value = String(webPayload.summary.totalVisitors);
     webAvgDwell.value = String(webPayload.summary.avgDwellMinutes);
@@ -414,101 +390,6 @@ async function loadStats(force = false): Promise<void> {
     status.innerText = message;
     webStatus.style.color = "#dc2626";
     webStatus.innerText = message;
-  }
-}
-
-async function pollGeomRefreshJob(jobId: number): Promise<void> {
-  if (isGeomRefreshPolling && currentGeomRefreshJobId === jobId) {
-    return;
-  }
-
-  const status = requireElement("geomRefreshStatus", HTMLDivElement);
-  const triggerBtn = requireElement("refreshGeomBtn", HTMLButtonElement);
-  if (!status || !triggerBtn) {
-    return;
-  }
-
-  isGeomRefreshPolling = true;
-  currentGeomRefreshJobId = jobId;
-  triggerBtn.disabled = true;
-
-  const maxPollCount = 300;
-  const pollIntervalMs = 2000;
-
-  try {
-    for (let idx = 0; idx < maxPollCount; idx += 1) {
-      const payload = await fetchJson<GeomRefreshStatusResponse>(`/admin/lands/geom-refresh/${jobId}`, {
-        timeoutMs: 10000
-      });
-      const job = payload.job;
-
-      if (job.status === "pending" || job.status === "running") {
-        status.style.color = "#6b7280";
-        status.innerText = `경계선 수집 작업 진행 중... (작업 ID: ${job.id}, 시도: ${job.attempts})`;
-        await sleep(pollIntervalMs);
-        continue;
-      }
-
-      if (job.status === "done") {
-        status.style.color = "#16a34a";
-        status.innerText = `작업 완료 (갱신 ${job.updatedCount}건, 미갱신 ${job.failedCount}건)`;
-        await loadStats(true);
-        return;
-      }
-
-      if (job.status === "failed") {
-        const suffix = job.errorMessage ? `: ${job.errorMessage}` : "";
-        status.style.color = "#dc2626";
-        status.innerText = `작업 실패${suffix}`;
-        await loadStats(true);
-        return;
-      }
-
-      status.style.color = "#dc2626";
-      status.innerText = `알 수 없는 작업 상태: ${job.status}`;
-      return;
-    }
-
-    status.style.color = "#dc2626";
-    status.innerText = "작업 상태 확인 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.";
-  } catch (error) {
-    const message = error instanceof HttpError ? error.message : "작업 상태를 불러오지 못했습니다.";
-    status.style.color = "#dc2626";
-    status.innerText = message;
-  } finally {
-    isGeomRefreshPolling = false;
-    currentGeomRefreshJobId = null;
-    triggerBtn.disabled = false;
-  }
-}
-
-async function startGeomRefresh(csrfToken: string): Promise<void> {
-  const status = requireElement("geomRefreshStatus", HTMLDivElement);
-  const triggerBtn = requireElement("refreshGeomBtn", HTMLButtonElement);
-  if (!status || !triggerBtn) {
-    return;
-  }
-
-  triggerBtn.disabled = true;
-  status.style.color = "#6b7280";
-  status.innerText = "경계선 수집 작업을 시작하는 중...";
-
-  try {
-    const formData = new FormData();
-    formData.append("csrf_token", csrfToken);
-    const payload = await fetchJson<GeomRefreshStartResponse>("/admin/lands/geom-refresh", {
-      method: "POST",
-      body: formData,
-      timeoutMs: 10000
-    });
-    status.style.color = "#6b7280";
-    status.innerText = `${payload.message} (작업 ID: ${payload.jobId})`;
-    await pollGeomRefreshJob(payload.jobId);
-  } catch (error) {
-    const message = error instanceof HttpError ? error.message : "작업 시작에 실패했습니다.";
-    status.style.color = "#dc2626";
-    status.innerText = message;
-    triggerBtn.disabled = false;
   }
 }
 
@@ -566,7 +447,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const publicDownloadUploadButton = document.getElementById("publicDownloadUploadBtn");
   const settingsForm = document.getElementById("settingsForm");
   const refreshStatsButton = document.getElementById("refreshStatsBtn");
-  const refreshGeomButton = document.getElementById("refreshGeomBtn");
 
   if (uploadButton && csrfInput) {
     uploadButton.addEventListener("click", () => {
@@ -594,9 +474,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  if (refreshGeomButton instanceof HTMLButtonElement && csrfInput) {
-    refreshGeomButton.addEventListener("click", () => {
-      void startGeomRefresh(csrfInput.value);
-    });
-  }
 });

@@ -1,7 +1,6 @@
 import Feature from "ol/Feature";
 import GeoJSON from "ol/format/GeoJSON";
 import type Geometry from "ol/geom/Geometry";
-import Overlay from "ol/Overlay";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import Map from "ol/Map";
@@ -14,12 +13,19 @@ import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import Style from "ol/style/Style";
 
-import type { BaseType, LandFeatureCollection, LandFeatureProperties, MapConfig } from "./types";
+import type {
+  BaseType,
+  CadastralCrs,
+  LandFeatureCollection,
+  LandFeatureProperties,
+  LandSourceField,
+  MapConfig
+} from "./types";
 
 type MapViewElements = {
-  popupElement: HTMLElement;
-  popupContent: HTMLElement;
-  popupCloser: HTMLElement | null;
+  infoPanelElement: HTMLElement;
+  infoPanelContent: HTMLElement;
+  infoPanelCloseButton: HTMLButtonElement | null;
 };
 
 type FeatureClickPayload = {
@@ -29,12 +35,33 @@ type FeatureClickPayload = {
 
 type SelectOptions = {
   shouldFit: boolean;
-  coordinateOverride?: number[];
-  panIntoView?: boolean;
+};
+
+type RenderOptions = {
+  dataProjection?: CadastralCrs;
 };
 
 function asVectorFeature(feature: unknown): Feature<Geometry> | null {
   return feature instanceof Feature ? feature : null;
+}
+
+function stringifyValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value).trim();
+}
+
+function normalizeInline(value: string): string {
+  return value.replace(/[\r\n\t]+/g, " ").trim();
+}
+
+function isLandSourceField(value: unknown): value is LandSourceField {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as { key?: unknown; label?: unknown; value?: unknown };
+  return typeof candidate.key === "string" && typeof candidate.label === "string" && typeof candidate.value === "string";
 }
 
 export function createMapView(elements: MapViewElements) {
@@ -43,36 +70,78 @@ export function createMapView(elements: MapViewElements) {
   let satLayer: TileLayer<XYZ> | null = null;
   let hybLayer: TileLayer<XYZ> | null = null;
   let vectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
+  let selectedFeatureId: number | null = null;
   let onFeatureClick: ((payload: FeatureClickPayload) => void) | null = null;
-
-  const overlay = new Overlay({ element: elements.popupElement, autoPan: false });
-
-  elements.popupCloser?.addEventListener("click", (event: Event) => {
-    event.preventDefault();
-    overlay.setPosition(undefined);
+  let onMoveEnd: (() => void) | null = null;
+  let isInfoPanelDismissedByUser = false;
+  const defaultFeatureStyle = new Style({
+    stroke: new Stroke({ color: "#ff3333", width: 3 }),
+    fill: new Fill({ color: "rgba(255, 51, 51, 0.2)" })
+  });
+  const selectedFeatureStyle = new Style({
+    stroke: new Stroke({ color: "#ffd400", width: 4 }),
+    fill: new Fill({ color: "rgba(255, 212, 0, 0.18)" })
   });
 
-  const showPopup = (feature: Feature<Geometry>, coordinate: number[], panIntoView = false): void => {
-    const props = feature.getProperties() as LandFeatureProperties;
-    elements.popupContent.replaceChildren();
+  const renderInfoRows = (rows: LandSourceField[]): void => {
+    elements.infoPanelContent.replaceChildren();
 
-    const rows = [
-      ["📍 주소", props.address],
-      ["📏 면적", `${props.area}㎡`],
-      ["📂 지목", props.land_type],
-      ["📞 문의", props.contact]
-    ];
-
-    rows.forEach(([label, value]) => {
-      const line = document.createElement("div");
-      line.textContent = `${label}: ${value || ""}`;
-      elements.popupContent.appendChild(line);
-    });
-
-    overlay.setPosition(coordinate);
-    if (panIntoView) {
-      overlay.panIntoView({ animation: { duration: 250 } });
+    if (rows.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "land-info-empty";
+      empty.textContent = "표시할 상세 정보가 없습니다.";
+      elements.infoPanelContent.appendChild(empty);
+      return;
     }
+
+    rows.forEach((row) => {
+      const keyCell = document.createElement("div");
+      keyCell.className = "land-info-key";
+      keyCell.textContent = normalizeInline(row.label);
+
+      const valueCell = document.createElement("div");
+      valueCell.className = "land-info-val";
+      valueCell.textContent = normalizeInline(row.value);
+
+      elements.infoPanelContent.append(keyCell, valueCell);
+    });
+  };
+
+  const showInfoPanel = (): void => {
+    elements.infoPanelElement.classList.remove("is-hidden");
+  };
+
+  const dismissInfoPanel = (): void => {
+    isInfoPanelDismissedByUser = true;
+    elements.infoPanelElement.classList.add("is-hidden");
+  };
+
+  const renderInfoPanel = (feature: Feature<Geometry>): void => {
+    const props = feature.getProperties() as LandFeatureProperties;
+    const fields = Array.isArray(props.source_fields)
+      ? props.source_fields.filter((item) => isLandSourceField(item))
+      : [];
+
+    if (fields.length > 0) {
+      renderInfoRows(fields);
+      isInfoPanelDismissedByUser = false;
+      showInfoPanel();
+      elements.infoPanelElement.classList.add("has-selection");
+      return;
+    }
+
+    const fallback: LandSourceField[] = [
+      { key: "pnu", label: "PNU", value: stringifyValue(props.pnu) },
+      { key: "address", label: "주소", value: stringifyValue(props.address) },
+      { key: "area", label: "면적", value: props.area ? `${props.area}㎡` : "" },
+      { key: "land_type", label: "지목", value: stringifyValue(props.land_type) },
+      { key: "property_manager", label: "재산관리관", value: stringifyValue(props.property_manager) }
+    ].filter((item) => item.value !== "");
+
+    renderInfoRows(fallback);
+    isInfoPanelDismissedByUser = false;
+    showInfoPanel();
+    elements.infoPanelElement.classList.add("has-selection");
   };
 
   const init = (config: MapConfig): void => {
@@ -82,14 +151,13 @@ export function createMapView(elements: MapViewElements) {
         crossOrigin: "anonymous"
       });
 
-    baseLayer = new TileLayer({ source: commonSource("Base"), visible: true, zIndex: 0 });
-    satLayer = new TileLayer({ source: commonSource("Satellite"), visible: false, zIndex: 0 });
+    baseLayer = new TileLayer({ source: commonSource("Base"), visible: false, zIndex: 0 });
+    satLayer = new TileLayer({ source: commonSource("Satellite"), visible: true, zIndex: 0 });
     hybLayer = new TileLayer({ source: commonSource("Hybrid"), visible: false, zIndex: 1 });
 
     map = new Map({
       target: "map",
       layers: [baseLayer, satLayer, hybLayer],
-      overlays: [overlay],
       view: new View({
         center: fromLonLat(config.center),
         zoom: config.zoom,
@@ -107,7 +175,9 @@ export function createMapView(elements: MapViewElements) {
       const clickedFeature = map.forEachFeatureAtPixel(evt.pixel, (item) => item);
       const feature = asVectorFeature(clickedFeature);
       if (!feature) {
-        overlay.setPosition(undefined);
+        selectedFeatureId = null;
+        vectorLayer?.changed();
+        clearInfoPanel();
         return;
       }
 
@@ -120,6 +190,10 @@ export function createMapView(elements: MapViewElements) {
         index: Number(idx),
         coordinate: evt.coordinate as number[]
       });
+    });
+
+    map.on("moveend", () => {
+      onMoveEnd?.();
     });
   };
 
@@ -135,19 +209,14 @@ export function createMapView(elements: MapViewElements) {
     }
 
     baseLayer.setVisible(type === "Base");
-    satLayer.setVisible(type === "Satellite" || type === "Hybrid");
+    satLayer.setVisible(type !== "Base");
     hybLayer.setVisible(type === "Hybrid");
 
-    document
-      .querySelectorAll(".map-controls .layer-desktop, .map-controls .layer-popover button")
-      .forEach((btn) => btn.classList.remove("active"));
-    document.getElementById(`btn-${type}`)?.classList.add("active");
-    document.getElementById(`m-btn-${type}`)?.classList.add("active");
   };
 
-  const renderFeatures = (data: LandFeatureCollection): void => {
+  const renderFeatures = (data: LandFeatureCollection, options?: RenderOptions): number => {
     if (!map) {
-      return;
+      return 0;
     }
 
     if (vectorLayer) {
@@ -156,24 +225,30 @@ export function createMapView(elements: MapViewElements) {
 
     const vectorSource = new VectorSource<Feature<Geometry>>();
     const parsed = new GeoJSON().readFeatures(data, {
+      dataProjection: options?.dataProjection ?? "EPSG:4326",
       featureProjection: "EPSG:3857"
     }) as Feature<Geometry>[];
 
     parsed.forEach((feature, idx) => {
-      feature.setId(idx);
+      const props = feature.getProperties() as Record<string, unknown>;
+      const listIndex = props.list_index;
+      feature.setId(typeof listIndex === "number" ? listIndex : idx);
       vectorSource.addFeature(feature);
     });
 
     vectorLayer = new VectorLayer({
       source: vectorSource,
       zIndex: 10,
-      style: new Style({
-        stroke: new Stroke({ color: "#ff3333", width: 3 }),
-        fill: new Fill({ color: "rgba(255, 51, 51, 0.2)" })
-      })
+      style: (feature) => {
+        const featureId = feature.getId();
+        return typeof featureId === "number" && featureId === selectedFeatureId
+          ? selectedFeatureStyle
+          : defaultFeatureStyle;
+      }
     });
 
     map.addLayer(vectorLayer);
+    return parsed.length;
   };
 
   const fitToFeatures = (): void => {
@@ -199,6 +274,8 @@ export function createMapView(elements: MapViewElements) {
     if (!geometry) {
       return false;
     }
+    selectedFeatureId = index;
+    vectorLayer.changed();
 
     const extent = geometry.getExtent();
     const focusCoord = getCenter(extent);
@@ -225,8 +302,7 @@ export function createMapView(elements: MapViewElements) {
       }
     }
 
-    const popupCoordinate = options.coordinateOverride ?? focusCoord;
-    showPopup(feature, popupCoordinate, Boolean(options.panIntoView));
+    renderInfoPanel(feature);
 
     if (options.shouldFit) {
       window.setTimeout(() => {
@@ -237,22 +313,60 @@ export function createMapView(elements: MapViewElements) {
     return true;
   };
 
-  const clearPopup = (): void => {
-    overlay.setPosition(undefined);
+  const clearInfoPanel = (): void => {
+    selectedFeatureId = null;
+    vectorLayer?.changed();
+    elements.infoPanelContent.replaceChildren();
+    const empty = document.createElement("div");
+    empty.className = "land-info-empty";
+    empty.textContent = "토지를 선택하면 상세 정보가 표시됩니다.";
+    elements.infoPanelContent.appendChild(empty);
+    elements.infoPanelElement.classList.remove("has-selection");
+    if (!isInfoPanelDismissedByUser) {
+      showInfoPanel();
+    }
+  };
+
+  const getCurrentExtent = (): number[] | null => {
+    if (!map) {
+      return null;
+    }
+    return map.getView().calculateExtent(map.getSize());
+  };
+
+  const getCurrentZoom = (): number | null => {
+    if (!map) {
+      return null;
+    }
+    const zoom = map.getView().getZoom();
+    return typeof zoom === "number" ? zoom : null;
   };
 
   const setFeatureClickHandler = (handler: (payload: FeatureClickPayload) => void): void => {
     onFeatureClick = handler;
   };
 
+  const setMoveEndHandler = (handler: (() => void) | null): void => {
+    onMoveEnd = handler;
+  };
+
+  elements.infoPanelCloseButton?.addEventListener("click", () => {
+    dismissInfoPanel();
+  });
+
+  clearInfoPanel();
+
   return {
     changeLayer,
-    clearPopup,
+    clearInfoPanel,
     fitToFeatures,
     init,
+    getCurrentExtent,
+    getCurrentZoom,
     renderFeatures,
     selectFeatureByIndex,
-    setFeatureClickHandler
+    setFeatureClickHandler,
+    setMoveEndHandler
   };
 }
 

@@ -35,10 +35,8 @@ def get_admin_stats(limit: int = 10) -> dict[str, Any]:
 def get_land_stats() -> dict[str, int]:
     with db_connection() as conn:
         total_lands = poi_repository.count_all_lands(conn)
-        missing_geom_lands = poi_repository.count_missing_geom(conn)
     return {
         "totalLands": total_lands,
-        "missingGeomLands": missing_geom_lands,
     }
 
 

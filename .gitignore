@@ -36,3 +36,5 @@ static/dist/
 
 # --- Local agent memory ---
 .agent-memory/
+
+*.fgb

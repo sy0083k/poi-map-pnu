@@ -30,6 +30,10 @@ class MapConfigResponse(BaseModel):
     vworldKey: str
     center: tuple[float, float]
     zoom: int
+    cadastralFgbUrl: str
+    cadastralPnuField: str
+    cadastralCrs: str
+    cadastralMinRenderZoom: int
 
 
 class LandFeatureCollectionResponse(BaseModel):

@@ -1,7 +1,7 @@
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
-from app.clients import http_client, vworld_client
+from app.clients import http_client
 
 
 def test_http_client_retries_and_raises(monkeypatch: MonkeyPatch) -> None:
@@ -50,31 +50,26 @@ def test_http_client_does_not_retry_non_retryable_4xx(monkeypatch: MonkeyPatch) 
     assert calls["count"] == 1
 
 
-def test_vworld_client_returns_geometry(monkeypatch: MonkeyPatch) -> None:
-    responses = [
-        {"response": {"status": "OK", "result": {"point": {"x": "1", "y": "2"}}}},
-        {"features": [{"geometry": {"type": "Point", "coordinates": [1, 2]}}]},
-    ]
+def test_http_client_does_not_retry_non_json_response(monkeypatch: MonkeyPatch) -> None:
+    calls = {"count": 0}
 
-    def _get_json_with_retry(*_args: object, **_kwargs: object) -> dict[str, object]:
-        return responses.pop(0)
+    class DummyResponse:
+        status_code = 200
+        headers = {"content-type": "text/html"}
+        text = "<html>error</html>"
 
-    monkeypatch.setattr(vworld_client, "get_json_with_retry", _get_json_with_retry)
-    client = vworld_client.VWorldClient(api_key="k", timeout_s=1, retries=1, backoff_s=0)
-    geom = client.get_parcel_geometry("addr")
-    assert '"type": "Point"' in geom
+        def raise_for_status(self) -> None:
+            return None
 
+        def json(self) -> dict[str, object]:
+            raise ValueError("Expecting value: line 1 column 1 (char 0)")
 
-def test_vworld_client_falls_back_to_point(monkeypatch: MonkeyPatch) -> None:
-    responses = [
-        {"response": {"status": "OK", "result": {"point": {"x": "1", "y": "2"}}}},
-        {"features": []},
-    ]
+    def _get(*_args: object, **_kwargs: object) -> DummyResponse:
+        calls["count"] += 1
+        return DummyResponse()
 
-    def _get_json_with_retry(*_args: object, **_kwargs: object) -> dict[str, object]:
-        return responses.pop(0)
+    monkeypatch.setattr(http_client.requests, "get", _get)
 
-    monkeypatch.setattr(vworld_client, "get_json_with_retry", _get_json_with_retry)
-    client = vworld_client.VWorldClient(api_key="k", timeout_s=1, retries=1, backoff_s=0)
-    geom = client.get_parcel_geometry("addr")
-    assert '"coordinates": [1.0, 2.0]' in geom
+    with pytest.raises(http_client.NonRetryableHTTPError):
+        http_client.get_json_with_retry("http://example.com", timeout_s=0.1, retries=3, backoff_s=0)
+    assert calls["count"] == 1

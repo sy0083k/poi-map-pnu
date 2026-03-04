@@ -95,4 +95,3 @@ def test_stats_service_get_land_stats(db_path: object) -> None:
 
     payload = stats_service.get_land_stats()
     assert payload["totalLands"] == 2
-    assert payload["missingGeomLands"] == 1

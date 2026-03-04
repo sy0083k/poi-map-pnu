@@ -16,12 +16,13 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth_security import LoginAttemptLimiter
 from app.core import get_settings
+from app.db.connection import db_connection
 from app.exceptions import http_exception_handler, unhandled_exception_handler
 from app.logging_utils import RequestIdFilter, configure_logging
 from app.rate_limit import SlidingWindowRateLimiter
+from app.repositories import poi_repository
 from app.routers import admin, auth, map_router, map_v1_router
 from app.services import health_service
-from app.services.geo_service import init_db
 from app.utils import vite_assets
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -36,7 +37,8 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    init_db()
+    with db_connection() as conn:
+        poi_repository.init_db(conn)
     yield
 
 
@@ -78,9 +80,10 @@ async def add_security_headers(
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; "
-        "script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "default-src 'self' https://cdn.jsdelivr.net https://esm.sh https://api.vworld.kr; "
+        "script-src 'self' https://cdn.jsdelivr.net https://esm.sh https://api.vworld.kr; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
         "img-src 'self' data: https://api.vworld.kr https://xdworld.vworld.kr;"
     )
     return response
@@ -89,6 +92,7 @@ async def add_security_headers(
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key,
+    session_cookie=settings.session_cookie_name,
     max_age=None,
     https_only=settings.session_https_only,
     same_site="lax",
@@ -106,18 +110,20 @@ class Config:
     CENTER_LAT = settings.map_center_lat
     DEFAULT_ZOOM = settings.map_default_zoom
     VWORLD_WMTS_KEY = settings.vworld_wmts_key
-    VWORLD_GEOCODER_KEY = settings.vworld_geocoder_key
+    CADASTRAL_FGB_PATH = settings.cadastral_fgb_path
+    CADASTRAL_FGB_PNU_FIELD = settings.cadastral_fgb_pnu_field
+    CADASTRAL_FGB_CRS = settings.cadastral_fgb_crs
+    CADASTRAL_MIN_RENDER_ZOOM = settings.cadastral_min_render_zoom
     BASE_DIR = settings.base_dir
     ADMIN_ID = settings.admin_id
     ADMIN_PW_HASH = settings.admin_pw_hash
+    SESSION_COOKIE_NAME = settings.session_cookie_name
+    SESSION_NAMESPACE = settings.session_namespace
     ALLOWED_IP_NETWORKS = settings.allowed_ip_networks
     MAX_UPLOAD_SIZE_MB = settings.max_upload_size_mb
     MAX_UPLOAD_ROWS = settings.max_upload_rows
     LOGIN_MAX_ATTEMPTS = settings.login_max_attempts
     LOGIN_COOLDOWN_SECONDS = settings.login_cooldown_seconds
-    VWORLD_TIMEOUT_S = settings.vworld_timeout_s
-    VWORLD_RETRIES = settings.vworld_retries
-    VWORLD_BACKOFF_S = settings.vworld_backoff_s
     SESSION_HTTPS_ONLY = settings.session_https_only
     TRUST_PROXY_HEADERS = settings.trust_proxy_headers
     TRUSTED_PROXY_NETWORKS = settings.trusted_proxy_networks
@@ -144,6 +150,11 @@ app.include_router(map_v1_router.router, prefix="/api/v1", tags=["MapV1"])
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request) -> HTMLResponse:
     return cast(HTMLResponse, templates.TemplateResponse(request, "index.html", {}))
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> Response:
+    return Response(status_code=204)
 
 
 @app.get("/health")

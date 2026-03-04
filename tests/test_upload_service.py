@@ -61,12 +61,11 @@ def test_upload_service_success(
 
     df = pd.DataFrame(
         {
-            "소재지(지번)": ["addr"],
-            "(공부상)지목": ["답"],
-            "(공부상)면적(㎡)": [12.5],
-            "행정재산": ["Y"],
-            "일반재산": ["N"],
-            "담당자연락처": ["010"],
+            "고유번호": ["1111012345678901234"],
+            "소재지": ["addr"],
+            "지목": ["답"],
+            "실면적": [12.5],
+            "재산관리관": ["홍길동"],
         }
     )
     monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
@@ -104,12 +103,11 @@ def test_upload_service_rejects_bad_content_type(
 
     df = pd.DataFrame(
         {
-            "소재지(지번)": ["addr"],
-            "(공부상)지목": ["답"],
-            "(공부상)면적(㎡)": [12.5],
-            "행정재산": ["Y"],
-            "일반재산": ["N"],
-            "담당자연락처": ["010"],
+            "고유번호": ["1111012345678901234"],
+            "소재지": ["addr"],
+            "지목": ["답"],
+            "실면적": [12.5],
+            "재산관리관": ["홍길동"],
         }
     )
     monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
@@ -133,7 +131,7 @@ def test_upload_service_missing_columns(
     file = _make_upload_file(
         "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    df = pd.DataFrame({"소재지(지번)": ["addr"]})
+    df = pd.DataFrame({"소재지": ["addr"]})
     monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
     monkeypatch.setattr(pd, "read_excel", lambda *_args, **_kwargs: df)
 
@@ -162,12 +160,11 @@ def test_upload_service_sheet_name_fallback(
     )
     df = pd.DataFrame(
         {
-            "소재지(지번)": ["addr"],
-            "(공부상)지목": ["답"],
-            "(공부상)면적(㎡)": [12.5],
-            "행정재산": ["Y"],
-            "일반재산": ["N"],
-            "담당자연락처": ["010"],
+            "고유번호": ["1111012345678901234"],
+            "소재지": ["addr"],
+            "지목": ["답"],
+            "실면적": [12.5],
+            "재산관리관": ["홍길동"],
         }
     )
 
@@ -216,12 +213,11 @@ def test_upload_service_selects_excel_engine_by_extension(
     file = _make_upload_file(filename, b"dummy", content_type)
     df = pd.DataFrame(
         {
-            "소재지(지번)": ["addr"],
-            "(공부상)지목": ["답"],
-            "(공부상)면적(㎡)": [12.5],
-            "행정재산": ["Y"],
-            "일반재산": ["N"],
-            "담당자연락처": ["010"],
+            "고유번호": ["1111012345678901234"],
+            "소재지": ["addr"],
+            "지목": ["답"],
+            "실면적": [12.5],
+            "재산관리관": ["홍길동"],
         }
     )
 

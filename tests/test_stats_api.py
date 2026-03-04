@@ -75,60 +75,10 @@ async def test_map_event_and_admin_stats_flow(async_client: httpx.AsyncClient, d
     assert payload["summary"]["clickCount"] >= 1
     assert payload["summary"]["uniqueSessionCount"] >= 1
     assert payload["landSummary"]["totalLands"] >= 0
-    assert payload["landSummary"]["missingGeomLands"] >= 0
 
     assert len(payload["topRegions"]) >= 1
     assert payload["topRegions"][0]["region"] == "대산읍"
     assert len(payload["topClickedLands"]) >= 1
-
-
-@pytest.mark.anyio
-async def test_admin_geom_refresh_routes(
-    async_client: httpx.AsyncClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from app.services import geo_service
-
-    def _fake_start_job(
-        request: object,
-        background_tasks: object,
-        *,
-        csrf_token: str,
-    ) -> dict[str, object]:
-        assert csrf_token
-        return {"success": True, "jobId": 101, "started": True, "message": "started"}
-
-    def _fake_status(job_id: int) -> dict[str, object]:
-        assert job_id == 101
-        return {
-            "id": 101,
-            "status": "done",
-            "attempts": 1,
-            "updatedCount": 3,
-            "failedCount": 0,
-            "errorMessage": "",
-            "createdAt": "2026-02-25 00:00:00",
-            "updatedAt": "2026-02-25 00:00:01",
-        }
-
-    monkeypatch.setattr(geo_service, "start_geom_refresh_job", _fake_start_job)
-    monkeypatch.setattr(geo_service, "get_geom_refresh_job_status", _fake_status)
-
-    await _login_as_admin(async_client)
-    csrf_token = await _get_admin_csrf(async_client)
-
-    start = await async_client.post("/admin/lands/geom-refresh", data={"csrf_token": csrf_token})
-    assert start.status_code == 200
-    start_payload = start.json()
-    assert start_payload["success"] is True
-    assert int(start_payload["jobId"]) == 101
-    assert start_payload["started"] is True
-
-    status_response = await async_client.get("/admin/lands/geom-refresh/101")
-    assert status_response.status_code == 200
-    status_payload = status_response.json()
-    assert status_payload["success"] is True
-    assert status_payload["job"]["status"] == "done"
 
 
 @pytest.mark.anyio

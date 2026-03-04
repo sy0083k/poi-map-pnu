@@ -3,7 +3,12 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from app.services import land_service, public_download_service, stats_service
+from app.services import (
+    cadastral_fgb_service,
+    land_service,
+    public_download_service,
+    stats_service,
+)
 
 DEFAULT_LANDS_PAGE_LIMIT = 500
 MAX_LANDS_PAGE_LIMIT = 2000
@@ -47,7 +52,20 @@ def create_router() -> APIRouter:
             "vworldKey": config.VWORLD_WMTS_KEY,
             "center": [config.CENTER_LON, config.CENTER_LAT],
             "zoom": config.DEFAULT_ZOOM,
+            "cadastralFgbUrl": "/api/cadastral/fgb",
+            "cadastralPnuField": config.CADASTRAL_FGB_PNU_FIELD,
+            "cadastralCrs": config.CADASTRAL_FGB_CRS,
+            "cadastralMinRenderZoom": config.CADASTRAL_MIN_RENDER_ZOOM,
         }
+
+    @router.get("/cadastral/fgb")
+    async def get_cadastral_fgb(request: Request):
+        config = request.app.state.config
+        return cadastral_fgb_service.build_fgb_file_response(
+            base_dir=config.BASE_DIR,
+            configured_path=config.CADASTRAL_FGB_PATH,
+            range_header=request.headers.get("range"),
+        )
 
     @router.get("/lands")
     async def get_lands(
@@ -60,6 +78,18 @@ def create_router() -> APIRouter:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return land_service.get_public_land_features_page(cursor=parsed_cursor, limit=clamped_limit)
+
+    @router.get("/lands/list")
+    async def get_lands_list(
+        limit: int = DEFAULT_LANDS_PAGE_LIMIT,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        clamped_limit = max(1, min(limit, MAX_LANDS_PAGE_LIMIT))
+        try:
+            parsed_cursor = _parse_cursor(cursor)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return land_service.get_public_land_list_page(cursor=parsed_cursor, limit=clamped_limit)
 
     @router.post("/events")
     async def post_map_event(request: Request, payload: dict[str, Any]):

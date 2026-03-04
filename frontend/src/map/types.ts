@@ -1,23 +1,52 @@
+export type CadastralCrs = "EPSG:3857" | "EPSG:4326";
+
 export type MapConfig = {
   vworldKey: string;
   center: [number, number];
   zoom: number;
+  cadastralFgbUrl: string;
+  cadastralPnuField: string;
+  cadastralCrs: CadastralCrs;
+  cadastralMinRenderZoom: number;
 };
 
 export type LandFeatureProperties = {
+  list_index?: number;
   id?: number;
+  pnu?: string;
   address?: string;
   land_type?: string;
   area?: number;
-  adm_property?: string;
-  gen_property?: string;
-  contact?: string;
+  property_manager?: string;
+  source_fields?: LandSourceField[];
+  geom_status?: string;
 };
 
 export type LandFeature = {
   type: "Feature";
   geometry: unknown;
   properties: LandFeatureProperties;
+};
+
+export type LandListItem = {
+  id: number;
+  pnu: string;
+  address: string;
+  land_type: string;
+  area: number;
+  property_manager: string;
+  sourceFields: LandSourceField[];
+};
+
+export type LandSourceField = {
+  key: string;
+  label: string;
+  value: string;
+};
+
+export type LandListPageResponse = {
+  items: LandListItem[];
+  nextCursor: string | null;
 };
 
 export type LandFeatureCollection = {

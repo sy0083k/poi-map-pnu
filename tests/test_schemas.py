@@ -16,5 +16,13 @@ def test_response_schemas() -> None:
     assert upload.total == 1
     err = ApiErrorResponse(detail="err")
     assert err.detail == "err"
-    cfg = MapConfigResponse(vworldKey="k", center=(1.0, 2.0), zoom=10)
+    cfg = MapConfigResponse(
+        vworldKey="k",
+        center=(1.0, 2.0),
+        zoom=10,
+        cadastralFgbUrl="/api/cadastral/fgb",
+        cadastralPnuField="PNU",
+        cadastralCrs="EPSG:3857",
+        cadastralMinRenderZoom=15,
+    )
     assert cfg.vworldKey == "k"

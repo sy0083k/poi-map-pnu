@@ -1,4 +1,4 @@
-import type { LandFeature } from "./types";
+import type { LandListItem } from "./types";
 
 type ListPanelElements = {
   listContainer: HTMLElement | null;
@@ -31,36 +31,36 @@ export function createListPanel(elements: ListPanelElements) {
     elements.listContainer.replaceChildren(status);
   };
 
-  const render = (features: LandFeature[], onItemClick: (index: number) => void): void => {
+  const render = (items: LandListItem[], onItemClick: (index: number) => void): void => {
     if (!elements.listContainer) {
       return;
     }
 
     elements.listContainer.replaceChildren();
 
-    if (!features.length) {
+    if (!items.length) {
       setStatus("결과 없음", "red");
       return;
     }
 
-    features.forEach((feature, idx) => {
-      const item = document.createElement("div");
-      item.className = "list-item";
-      item.id = `item-${idx}`;
+    items.forEach((land, idx) => {
+      const row = document.createElement("div");
+      row.className = "list-item";
+      row.id = `item-${idx}`;
 
       const title = document.createElement("strong");
-      title.textContent = feature.properties.address || "";
+      title.textContent = land.address || "";
 
       const lineBreak = document.createElement("br");
 
       const desc = document.createElement("small");
-      desc.textContent = `${feature.properties.land_type || ""} | ${feature.properties.area || ""}㎡`;
+      desc.textContent = `${land.land_type || ""} | ${land.area || ""}㎡`;
 
-      item.appendChild(title);
-      item.appendChild(lineBreak);
-      item.appendChild(desc);
-      item.addEventListener("click", () => onItemClick(idx));
-      elements.listContainer?.appendChild(item);
+      row.appendChild(title);
+      row.appendChild(lineBreak);
+      row.appendChild(desc);
+      row.addEventListener("click", () => onItemClick(idx));
+      elements.listContainer?.appendChild(row);
     });
   };
 
