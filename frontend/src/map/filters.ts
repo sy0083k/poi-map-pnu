@@ -1,14 +1,12 @@
-import type { LandFeature } from "./types";
+import type { LandListItem } from "./types";
 
 type FilterElements = {
   regionSearchInput: HTMLInputElement | null;
   minAreaInput: HTMLInputElement | null;
   maxAreaInput: HTMLInputElement | null;
-  rentOnlyFilter: HTMLInputElement | null;
 };
 
 export type FilterValues = {
-  isRentOnly: boolean;
   rawSearchTerm: string;
   searchTerm: string;
   rawMinAreaInput: string;
@@ -25,7 +23,6 @@ export function createFilters(elements: FilterElements) {
     const rawMaxAreaInput = elements.maxAreaInput?.value ?? "";
 
     return {
-      isRentOnly: Boolean(elements.rentOnlyFilter?.checked),
       rawSearchTerm,
       searchTerm,
       rawMinAreaInput,
@@ -35,23 +32,14 @@ export function createFilters(elements: FilterElements) {
     };
   };
 
-  const filterFeatures = (features: LandFeature[], values: FilterValues): LandFeature[] => {
-    return features.filter((feature) => {
-      const props = feature.properties;
-      const address = props.address || "";
-      const area = props.area || 0;
+  const filterItems = (items: LandListItem[], values: FilterValues): LandListItem[] => {
+    return items.filter((item) => {
+      const address = item.address || "";
+      const area = item.area || 0;
 
       const matchRegion = values.searchTerm === "" || address.includes(values.searchTerm);
       const matchArea = area >= values.minArea && area <= values.maxArea;
-
-      let matchRent = true;
-      if (values.isRentOnly) {
-        const isAdmRentable = (props.adm_property || "").toLowerCase() === "o";
-        const isGenRentable = (props.gen_property || "").startsWith("대부");
-        matchRent = isAdmRentable || isGenRentable;
-      }
-
-      return matchRegion && matchArea && matchRent;
+      return matchRegion && matchArea;
     });
   };
 
@@ -64,9 +52,6 @@ export function createFilters(elements: FilterElements) {
     }
     if (elements.maxAreaInput) {
       elements.maxAreaInput.value = "";
-    }
-    if (elements.rentOnlyFilter) {
-      elements.rentOnlyFilter.checked = true;
     }
   };
 
@@ -90,7 +75,7 @@ export function createFilters(elements: FilterElements) {
 
   return {
     attachEnter,
-    filterFeatures,
+    filterItems,
     getValues,
     reset
   };

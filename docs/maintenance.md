@@ -2,183 +2,76 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-11  
-최종 수정일: 2026-02-27
-
-## 목적
-운영 중인 서비스의 안정성과 보안을 유지하기 위해 필요한 점검, 변경, 장애 대응 절차를 정의한다.
-
-## 문서 진입점
-- 문서 포털(한 페이지 허브): [`index.md`](index.md)
-- 목표/범위: [`goals.md`](goals.md)
-- 구조/흐름: [`architecture.md`](architecture.md)
-- 엔지니어링 기준(Tech Stack/코딩 철학/스타일): [`engineering-guidelines.md`](engineering-guidelines.md)
-- 보안 위협 모델: [`stride-lite.md`](stride-lite.md)
+최종 수정일: 2026-03-04
 
 ## 환경 변수
 ### 필수
 - `VWORLD_WMTS_KEY`
-- `VWORLD_GEOCODER_KEY`
 - `ADMIN_ID`
 - `ADMIN_PW_HASH`
 - `SECRET_KEY`
 
-### 선택
-- `ALLOWED_IPS`
-- `MAX_UPLOAD_SIZE_MB`
-- `MAX_UPLOAD_ROWS`
-- `LOGIN_MAX_ATTEMPTS`
-- `LOGIN_COOLDOWN_SECONDS`
-- `VWORLD_TIMEOUT_S`
-- `VWORLD_RETRIES`
-- `VWORLD_BACKOFF_S`
-- `SESSION_HTTPS_ONLY`
-- `TRUST_PROXY_HEADERS`
-- `TRUSTED_PROXY_IPS`
-- `UPLOAD_SHEET_NAME`
-- `PUBLIC_DOWNLOAD_MAX_SIZE_MB`
-- `PUBLIC_DOWNLOAD_ALLOWED_EXTS`
-- `PUBLIC_DOWNLOAD_DIR`
+### 주요 선택
+- `CADASTRAL_FGB_PATH`
+- `CADASTRAL_FGB_PNU_FIELD`
+- `CADASTRAL_FGB_CRS`
+- `CADASTRAL_MIN_RENDER_ZOOM`
+- `ALLOWED_IPS`, `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`
+- `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`, `SESSION_HTTPS_ONLY`
 
 ## 주기적 점검
-- VWorld API 키 유효성 확인
-- 관리자 계정 비밀번호 해시 갱신
-- 업로드 템플릿 변경 여부 확인(컬럼 스펙)
-- DB 파일 권한 및 백업 상태 점검
-- SQLite 잠금 징후(`database is locked`) 및 장기 쿼리 발생 여부 점검
-- 로그/통계 테이블(`map_event_log`, `raw_query_log`, `web_visit_event`) 증가 추이 점검
-- 공개 다운로드 파일(`data/public_download/current.*`) 및 메타(`current.json`) 무결성 점검
+- FlatGeobuf 파일 존재/권한/크기 점검
+- VWorld WMTS 키 유효성 점검
+- 배경지도 기본 레이어가 `Satellite`로 초기화되는지(UI 전환 버튼 미노출 정책) 점검
+- DB 파일 권한 및 백업 점검
+- 로그/통계 테이블 증가 추이 점검
 
 ## 배포 전 체크리스트
 1. `python -m compileall -q app tests`
 2. `mypy app tests create_hash.py`
-3. `cd frontend && npm ci && npm run typecheck && npm run build`
-4. `pytest -q`
-5. `docs/engineering-guidelines.md` 기준 준수 여부 확인
-6. 환경 변수 설정 확인
-7. `data/database.db` 파일 권한 확인
-8. `/health` 응답 정상 확인
-9. `/api/config`, `/api/lands`, `/api/public-download` 응답 정상 확인
-10. `/admin/stats`, `/admin/stats/web`, `/admin/raw-queries/export`, `/admin/lands/geom-refresh*` 권한/응답 정상 확인
-11. 지도 화면 핵심 사용자 흐름 수동 회귀(검색/엔터/지도 클릭/다운로드/이전·다음/레이어 전환) 확인
+3. `ruff check app tests`
+4. `scripts/check_quality_warnings.sh`
+5. `cd frontend && npm run typecheck && npm run build`
+6. `pytest -m unit -q`
+7. `pytest -m integration -q`
+8. `pytest -m e2e -q`
+9. `pytest -q`
 
-## CI/테스트 명령
-- `python -m compileall -q app tests`
-- `mypy app tests create_hash.py`
-- `ruff check app tests`
-- `scripts/check_quality_warnings.sh` (파일 길이/복잡도 경고 리포트)
-- `cd frontend && npm run typecheck`
-- `cd frontend && npm run build`
-- `pytest -q`
-- `pytest -m unit -q`
-- `pytest -m integration -q`
-- `pytest -m e2e -q` (`RUN_HTTP_E2E=1` 미설정 시 skip)
-- `coverage run -m pytest`
-- `coverage report -m`
-
-### 선택 실행
-- HTTP E2E 스모크: `RUN_HTTP_E2E=1 pytest -q tests/test_e2e_smoke.py`
-
-## API 버전 운영 정책 (`/api` vs `/api/v1`)
-- 현재 기본 정책: `/api/v1/*`는 유지되는 호환성(alias) 경로로 운영한다.
-- 운영 점검: `/api/*`와 `/api/v1/*`의 응답 계약(필드/상태코드)과 레이트리밋 동작이 동일한지 정기 확인한다.
-- 변경 적용: API 계약 변경 시 `/api/*` 반영과 동시에 `/api/v1/*` 동등성 테스트를 수행한다.
-
-### 향후 `/api/v1` 폐기 런북(정책 사전 정의)
-1. `T0` 공지: 제거 예정일과 대체 경로(`/api/*`)를 문서/공지 채널에 공지한다.
-2. `T0` 헤더 적용: `/api/v1/*` 응답에 `Deprecation: true`를 추가한다.
-3. `T0 + 2주` 고지 강화: `Sunset: <RFC1123 datetime>` 및 `Link: <정책 문서>; rel=\"deprecation\"`를 추가하고 재공지한다.
-4. `T0 + 4주` 관측 종료: 사용량/소비자 영향(로그 기반)을 확인하고 제거 승인 여부를 판단한다.
-5. 승인 후 제거: 라우터 제거, 문서 갱신, 회고 기록을 남긴다.
-
-## 테스트/검증 시나리오 (현행 기준)
-### 1. 공개 API 회귀
-- `GET /api/lands`: pagination/cursor 동작 유지
-- `POST /api/events`, `POST /api/web-events`: 수집/검증/레이트리밋 동작 유지
-- `GET /api/public-download`: 파일 응답/부재 시 404 유지
-- 권장 실행: `pytest -q tests/test_map_pagination.py tests/test_stats_api.py tests/test_public_download_api.py`
-
-### 2. 관리자 핵심 흐름
-- 로그인/CSRF/내부망 제한 유지
-- 엑셀 업로드 + 지오메트리 보강 잡 생성
-- 통계 조회/CSV export
-- 통계 탭 경계선 재수집 버튼 실행 + 완료 후 수치 갱신 확인
-- 권장 실행: `pytest -q tests/test_security_regression.py tests/test_upload_service.py tests/test_geo_service.py tests/test_stats_api.py`
-
-### 3. 프런트 핵심 UX
-- 지역/면적 Enter 검색
-- 리스트-지도 선택 동기화
-- 다운로드 버튼 동작
-- 실행 방식: 수동 회귀 + 선택적으로 `RUN_HTTP_E2E=1 pytest -m e2e -q`
-
-### 4. 비기능 검증
-- 동일 트래픽 기준 응답 시간 악화 여부(p95) 확인
-- 오류율 증가 여부 확인
-- 로그 관측성 확인(`X-Request-ID`, 구조화 로그 추적)
-- 실행 명령:
-  - `python scripts/run_nonfunctional_checks.py --samples 30`
-  - 기준선 비교 시: `python scripts/run_nonfunctional_checks.py --samples 30 --baseline <baseline.json>`
-- 기본 허용치(미합의 시):
-  - p95 regression <= 10%
-  - error rate <= 0.5%
+## API 운영
+- `/api/v1/*`는 `/api/*`와 동등 alias 계약 유지
+- 핵심 확인 경로:
+  - `/api/config`
+  - `/api/cadastral/fgb`
+  - `/api/lands/list`
+  - `/api/public-download`
 
 ## 장애 대응
-### 로그인 실패/차단 급증
-- `LOGIN_MAX_ATTEMPTS`, `LOGIN_COOLDOWN_SECONDS` 점검
-- 내부 IP 허용 목록(`ALLOWED_IPS`) 확인
-- 프록시 환경일 경우 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS` 설정 확인
-- 현재 로그인 제한은 인메모리 상태이므로 멀티 인스턴스 환경에서는 공유 스토어 기반 대안 검토
+### 지도 데이터 미표시
+- `CADASTRAL_FGB_PATH` 실제 경로/권한 확인(하이라이트 준비 시 사용)
+- `CADASTRAL_FGB_PNU_FIELD` 필드명 설정 확인
+- `CADASTRAL_FGB_CRS` 값(EPSG:3857/EPSG:4326)과 실제 파일 CRS 정합 확인
+- 브라우저 콘솔 `업로드 하이라이트 준비 실패` 메시지 확인(FlatGeobuf 모듈/네트워크)
+- `/api/lands/list` 실패 시 하이라이트가 비어 보일 수 있음
+
+### 우상단 상세 패널 데이터 누락
+- `/api/lands/list` 응답의 `sourceFields` 배열 포함 여부 확인
+- 업로드 파일의 필수 컬럼 외 추가 컬럼이 `source_fields_json`으로 저장됐는지 DB 확인
+- 지도에서 필지 선택 후에도 패널이 비어 있으면 브라우저 콘솔 타입 오류(`source_fields`) 확인
+- 패널은 2열(속성/값) 그리드로 렌더링되므로, Pair가 동일 라인에 안 보이면 CSS `align-items` / `line-height` / `padding` 적용 여부 확인
+- 패널이 보이지 않으면 헤더 `X`로 닫힌 상태인지 확인하고, 토지 재선택 시 재표시되는지 점검
+
+### 선택 경계선 색상 이상
+- 선택된 필지 경계선은 노란색, 비선택 하이라이트는 빨간색인지 확인
+- 색상 반영이 안 되면 프론트 `map-view`의 선택 상태(`selectedFeatureId`) 갱신 및 레이어 재렌더(`vectorLayer.changed`) 호출 여부 점검
 
 ### 업로드 실패
-- 파일 타입/용량 제한 확인 (`MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`)
-- 업로드 컬럼 스펙 및 시트명(`UPLOAD_SHEET_NAME`) 확인
-- VWorld API 호출 상태 확인
-- `geom_update_jobs` 상태 및 실패 원인 확인
+- 파일 타입/용량/행 제한(`MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`) 확인
+- 업로드 시트명(`UPLOAD_SHEET_NAME`) 및 필수 컬럼 확인
 
-### 공개 다운로드 실패
-- `/admin/public-download/meta`로 메타 존재 여부 확인
-- `PUBLIC_DOWNLOAD_ALLOWED_EXTS`, `PUBLIC_DOWNLOAD_MAX_SIZE_MB`, `PUBLIC_DOWNLOAD_DIR` 점검
-- `data/public_download/current.*`와 `current.json` 파일 존재/권한 확인
-
-### 통계/원시 로그 내보내기 실패
-- `/admin/stats`, `/admin/stats/web`, `/admin/raw-queries/export` 응답 및 권한 확인
-- 경계선 재수집 상태 확인 시 `/admin/lands/geom-refresh/{job_id}` 응답 및 권한 확인
-- `map_event_log`, `raw_query_log`, `web_visit_event` 테이블 상태 확인
-- 로그 누락 시 클라이언트 이벤트(`/api/events`, `/api/web-events`) 수집 상태 확인
-
-### `/api/v1` 관련 혼선/문의 증가
-- `/api/v1/*`는 현재 폐기 대상이 아닌 호환성 경로임을 안내한다.
-- 소비자에게 기본 경로는 `/api/*`임을 안내하고 마이그레이션 권장 공지를 병행한다.
-- 폐기 계획이 확정되기 전에는 Deprecation/Sunset 헤더를 임의 적용하지 않는다.
-
-### 설정/비밀번호 변경 후 반영 이슈
-- 관리자 화면 변경은 `.env` 파일을 갱신한다.
-- 실행 중 프로세스의 설정 객체는 자동 재로딩되지 않으므로 운영 절차에 재시작 단계를 포함한다.
-- 변경 직후 로그인/관리자 기능 점검(재로그인 포함)을 수행한다.
-
-### 지도 데이터 미표시
-- `/api/lands` 응답 확인
-- DB `poi.geom` 컬럼 상태 확인
-- VWorld API 호출 로그 및 `geom_update_jobs` 실패 건 확인
+### 설정 변경 미반영
+- `.env` 갱신 후 앱 재시작 필요
 
 ## 백업/복구
-- `data/database.db` 파일을 주기적으로 백업
-- `data/public_download/` 디렉터리(`current.*`, `current.json`)를 함께 백업
-- 복구 시 파일 권한 및 경로 확인
-- 이벤트 로그 테이블 보존 기간(예: N일)과 정리 배치 주기를 운영 정책으로 확정
-
-## 로그
-- 요청 ID 및 구조화 필드(event/actor/ip/status)를 사용하여 장애 추적
-- 관리자 업로드/로그인/설정변경 로그가 정상적으로 기록되는지 확인
-- 이벤트 수집 API 호출량과 오류율을 주기적으로 확인
-
-## 보안 운영
-- 세션 시크릿(`SECRET_KEY`) 정기 교체
-- VWorld 키(`VWORLD_WMTS_KEY`, `VWORLD_GEOCODER_KEY`) 사용량 모니터링 및 이상 징후 알림 점검
-- `VWORLD_GEOCODER_KEY` 유출 의심 시 재발급/교체 런북에 따라 즉시 로테이션 수행
-- 공개 데이터 필드 재검토
-- 내부망 접근 정책 주기 점검
-- 내보내기/다운로드 경로의 접근 통제 점검
-
-## 코드 변경 가이드
-- 상세 코딩 원칙/스타일/리뷰 체크리스트는 [`engineering-guidelines.md`](engineering-guidelines.md)를 따른다.
-- 기능 변경 시 관련 문서(`architecture`, `maintenance`, `stride-lite`)를 함께 갱신한다.
+- `data/database.db`
+- `data/public_download/`
+- `data/*.fgb` (운영 중 사용하는 지적도 파일)

@@ -1,6 +1,6 @@
 # 🏠 관심 필지 지도 (POI Map Geo)
 
-브이월드(VWorld) API와 FastAPI 기반으로 관심 필지(POI, Parcel of Interest)를 지도에 시각화하고,  
+브이월드(VWorld) WMTS와 FlatGeobuf 기반으로 관심 필지(POI, Parcel of Interest)를 지도에 시각화하고,  
 관리자가 엑셀 업로드로 데이터를 갱신할 수 있는 웹 애플리케이션입니다.
 
 ## 📌 활용 사례
@@ -10,7 +10,7 @@
 - Backend: Python 3.12, FastAPI, SQLite
 - Frontend: TypeScript, Vite, OpenLayers
 - Data: pandas, openpyxl/xlrd
-- External API: VWorld (WMTS/Geocoder/WFS)
+- External API/Data: VWorld (WMTS), FlatGeobuf
 
 세부 구현 원칙은 `docs/engineering-guidelines.md`를 기준으로 합니다.
 
@@ -19,7 +19,7 @@
 ### 1) 사전 준비
 - Python 3.12
 - Node.js + npm (frontend 빌드용)
-- VWorld API 키 (WMTS, Geocoder)
+- VWorld API 키 (WMTS)
 
 ### 2) 환경 변수 설정
 `.env.example`을 복사해 `.env`를 생성합니다.
@@ -30,7 +30,7 @@ cp .env.example .env
 
 필수 환경 변수:
 - `VWORLD_WMTS_KEY`
-- `VWORLD_GEOCODER_KEY`
+- `CADASTRAL_FGB_PATH`
 - `ADMIN_ID`
 - `ADMIN_PW_HASH`
 - `SECRET_KEY`
@@ -43,12 +43,15 @@ python create_hash.py
 
 선택 환경 변수(요약):
 - `ALLOWED_IPS`, `SESSION_HTTPS_ONLY`
+- `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`
 - `MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`
 - `LOGIN_MAX_ATTEMPTS`, `LOGIN_COOLDOWN_SECONDS`
-- `VWORLD_TIMEOUT_S`, `VWORLD_RETRIES`, `VWORLD_BACKOFF_S`
+- `CADASTRAL_FGB_PNU_FIELD`, `CADASTRAL_FGB_CRS`, `CADASTRAL_MIN_RENDER_ZOOM`
 - `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`
 - `UPLOAD_SHEET_NAME`
 - `PUBLIC_DOWNLOAD_MAX_SIZE_MB`, `PUBLIC_DOWNLOAD_ALLOWED_EXTS`, `PUBLIC_DOWNLOAD_DIR`
+
+지도 초기 화면에서 연속지적도를 바로 표시하려면 `MAP_DEFAULT_ZOOM >= CADASTRAL_MIN_RENDER_ZOOM` 조건을 만족해야 합니다.
 
 ### 3) 의존성 설치
 ```bash
@@ -77,9 +80,15 @@ uvicorn app.main:app --reload
 ## 🔐 관리자 사용 흐름
 1. `/admin/login`에서 로그인
 2. `/admin`에서 엑셀 업로드 (`/admin/upload`)
-3. 업로드 후 지오메트리 보강 작업이 백그라운드로 실행됨
-4. 공개 다운로드 파일은 `/admin/public-download/upload`로 갱신 가능
-5. 통계 탭에서 `전체 필지 수/경계선 없음 필지 수` 확인 및 경계선 재수집 실행 가능
+   - 필수 컬럼: `고유번호`, `소재지`, `지목`, `실면적`, `재산관리관`
+3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
+   - 배경지도는 기본적으로 `위성 지도`가 표시되며, UI에서 배경지도 전환 버튼은 제공하지 않는다.
+4. 지도에서 토지를 선택하면 팝업 대신 우상단 상세 패널에 업로드 원본 컬럼이 동적으로 표시되며, 속성과 값은 동일한 라인(y축)으로 정렬된다.
+   - 패널 우상단 `X` 버튼으로 닫을 수 있고, 토지를 다시 선택하면 패널이 다시 열린다.
+   - 현재 선택된 토지(지도 클릭/사이드바 선택)는 노란색 경계선으로 강조 표시된다.
+5. FGB 파일 조회 실패 시 지도 상태 문구에 오류가 표시된다.
+6. 공개 다운로드 파일은 `/admin/public-download/upload`로 갱신 가능
+7. 통계 탭에서 `전체 필지 수` 및 이벤트 통계를 확인 가능
 
 ## 📱 모바일 화면 흐름
 - 초기 화면: 지도 중심 화면 + 우하단 검색(돋보기) 버튼
@@ -91,7 +100,9 @@ uvicorn app.main:app --reload
 
 ### 공개 API (`/api`)
 - `GET /api/config`
+- `GET /api/cadastral/fgb`
 - `GET /api/lands`
+- `GET /api/lands/list`
 - `POST /api/events`
 - `POST /api/web-events`
 - `GET /api/public-download`
@@ -115,8 +126,6 @@ uvicorn app.main:app --reload
 - `GET /admin/stats`
 - `GET /admin/stats/web`
 - `GET /admin/raw-queries/export`
-- `POST /admin/lands/geom-refresh`
-- `GET /admin/lands/geom-refresh/{job_id}`
 
 ### 상태 점검
 - `GET /health`
@@ -124,9 +133,11 @@ uvicorn app.main:app --reload
 
 ## 🛡 보안/운영 포인트 (핵심)
 - 관리자 보호 경로는 내부망 허용 IP(`ALLOWED_IPS`)와 세션 인증으로 보호되며, 상태 변경 요청에는 CSRF 검증을 적용합니다.
-- `VWORLD_WMTS_KEY`는 공개 지도 렌더링(`/api/config`)용 예외 공개 키입니다.
-- `VWORLD_GEOCODER_KEY`는 관리자 보호 화면(`/admin`)에서 운영 편의를 위해 예외 공개될 수 있으며, 공개 API/로그 노출은 금지합니다.
+- `VWORLD_WMTS_KEY`는 일반/위성/하이브리드 베이스맵(WMTS) 렌더링용 예외 공개 키입니다.
+- 연속지적도는 `CADASTRAL_FGB_PATH` 파일에서 조회하며, PNU 매칭 필드는 `CADASTRAL_FGB_PNU_FIELD`를 사용합니다.
+- 클라이언트 렌더링은 `CADASTRAL_FGB_CRS`를 OpenLayers `dataProjection`으로 사용해 투영 오인(기본 4326) 문제를 방지합니다.
 - 프록시 환경에서는 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`를 정확히 설정해야 합니다.
+- 동일 브라우저/도메인에서 여러 앱을 운영하는 경우 앱별로 `SECRET_KEY`, `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`를 반드시 분리해야 세션 교차 인식을 방지할 수 있습니다.
 - 이벤트 수집 API는 레이트리밋이 적용됩니다.
   - `POST /api/events`: 60 req/min
   - `POST /api/web-events`: 120 req/min
@@ -134,10 +145,15 @@ uvicorn app.main:app --reload
 
 ## ⚠️ 운영 주의사항
 - 관리자 화면에서 `.env`를 갱신해도 실행 중 프로세스의 설정 객체는 즉시 교체되지 않습니다. 운영 환경에서는 설정/비밀번호 변경 후 앱 재시작 절차를 함께 운영하세요.
+- 관리자 설정 저장 시 `.env`의 동일 변수 중복 라인은 자동 정리되며, 마지막 값을 기준으로 키당 1줄만 유지됩니다.
 - 로그인 실패 제한과 이벤트 레이트리밋은 현재 인메모리 구현입니다. 다중 인스턴스 운영 시 인스턴스 간 상태가 공유되지 않으므로 별도 공유 스토어 기반 정책을 고려하세요.
 - API 버전 정책(`/api` vs `/api/v1`)의 운영 절차는 `docs/architecture.md`와 `docs/maintenance.md`를 기준으로 관리하세요.
+- 연속지적도 파일 교체 시 `CADASTRAL_FGB_PATH` 설정과 파일 권한을 확인하고 앱을 재시작하세요.
 
 ## ✅ 테스트 및 품질 체크
+루트 저장소의 기본 테스트 수집 대상은 `tests/`입니다.  
+`IdlePublicProperty/`는 레거시 복제본(참조용)으로 루트 `pytest -q` 수집 대상에서 제외됩니다.
+
 ```bash
 python -m compileall -q app tests
 mypy app tests create_hash.py

@@ -25,6 +25,15 @@ def fetch_lands_with_geom_page(
     return land_repository.fetch_lands_with_geom_page(conn, after_id=after_id, limit=limit)
 
 
+def fetch_lands_page_without_geom(
+    conn: sqlite3.Connection,
+    *,
+    after_id: int | None,
+    limit: int,
+) -> Sequence[sqlite3.Row]:
+    return land_repository.fetch_lands_page_without_geom(conn, after_id=after_id, limit=limit)
+
+
 def delete_all(conn: sqlite3.Connection) -> None:
     land_repository.delete_all(conn)
 
@@ -32,18 +41,24 @@ def delete_all(conn: sqlite3.Connection) -> None:
 def insert_land(
     conn: sqlite3.Connection,
     *,
+    pnu: str = "",
     address: str,
     land_type: str,
     area: float,
-    adm_property: str,
-    gen_property: str,
-    contact: str,
+    property_manager: str = "",
+    source_fields_json: str = "[]",
+    adm_property: str = "",
+    gen_property: str = "",
+    contact: str = "",
 ) -> None:
     land_repository.insert_land(
         conn,
+        pnu=pnu,
         address=address,
         land_type=land_type,
         area=area,
+        property_manager=property_manager,
+        source_fields_json=source_fields_json,
         adm_property=adm_property,
         gen_property=gen_property,
         contact=contact,
@@ -58,49 +73,57 @@ def update_geom(conn: sqlite3.Connection, item_id: int, geom: str) -> None:
     land_repository.update_geom(conn, item_id, geom)
 
 
+def update_geom_by_pnu(conn: sqlite3.Connection, pnu: str, geom: str) -> None:
+    land_repository.update_geom_by_pnu(conn, pnu, geom)
+
+
+def mark_geom_failed_by_pnu(conn: sqlite3.Connection, pnu: str, error_message: str) -> None:
+    land_repository.mark_geom_failed_by_pnu(conn, pnu, error_message)
+
+
 def count_missing_geom(conn: sqlite3.Connection) -> int:
     return land_repository.count_missing_geom(conn)
+
+
+def count_failed_geom(conn: sqlite3.Connection) -> int:
+    return land_repository.count_failed_geom(conn)
 
 
 def count_all_lands(conn: sqlite3.Connection) -> int:
     return land_repository.count_all_lands(conn)
 
 
-def create_geom_update_job(conn: sqlite3.Connection) -> int:
-    return job_repository.create_geom_update_job(conn)
+def fetch_distinct_pnu(conn: sqlite3.Connection) -> Sequence[str]:
+    return land_repository.fetch_distinct_pnu(conn)
 
 
-def mark_geom_job_running(conn: sqlite3.Connection, job_id: int) -> None:
-    job_repository.mark_geom_job_running(conn, job_id)
+def fetch_failed_pnu(conn: sqlite3.Connection, *, limit: int = 1000) -> Sequence[str]:
+    return land_repository.fetch_failed_pnu(conn, limit=limit)
 
 
-def mark_geom_job_done(conn: sqlite3.Connection, job_id: int, *, updated_count: int, failed_count: int) -> None:
-    job_repository.mark_geom_job_done(conn, job_id, updated_count=updated_count, failed_count=failed_count)
+def fetch_cached_cadastral_by_pnus(conn: sqlite3.Connection, pnus: Sequence[str]) -> dict[str, sqlite3.Row]:
+    return land_repository.fetch_cached_cadastral_by_pnus(conn, pnus)
 
 
-def mark_geom_job_failed(
+def upsert_cadastral_cache(
     conn: sqlite3.Connection,
-    job_id: int,
     *,
-    updated_count: int,
-    failed_count: int,
-    error_message: str,
+    pnu: str,
+    geom: str | None,
+    status: str,
+    error: str | None,
+    fetched_at: str,
+    validation_version: int = 0,
 ) -> None:
-    job_repository.mark_geom_job_failed(
+    land_repository.upsert_cadastral_cache(
         conn,
-        job_id,
-        updated_count=updated_count,
-        failed_count=failed_count,
-        error_message=error_message,
+        pnu=pnu,
+        geom=geom,
+        status=status,
+        error=error,
+        fetched_at=fetched_at,
+        validation_version=validation_version,
     )
-
-
-def fetch_geom_job(conn: sqlite3.Connection, job_id: int) -> sqlite3.Row | None:
-    return job_repository.fetch_geom_job(conn, job_id)
-
-
-def fetch_latest_active_geom_job(conn: sqlite3.Connection) -> sqlite3.Row | None:
-    return job_repository.fetch_latest_active_geom_job(conn)
 
 
 def insert_map_event(
@@ -254,3 +277,40 @@ def fetch_web_daily_unique_visitors_trend(
         page_path=page_path,
         since_utc=since_utc,
     )
+
+
+def create_geom_update_job(conn: sqlite3.Connection) -> int:
+    return job_repository.create_geom_update_job(conn)
+
+
+def mark_geom_job_running(conn: sqlite3.Connection, job_id: int) -> None:
+    job_repository.mark_geom_job_running(conn, job_id)
+
+
+def mark_geom_job_done(conn: sqlite3.Connection, job_id: int, *, updated_count: int, failed_count: int) -> None:
+    job_repository.mark_geom_job_done(conn, job_id, updated_count=updated_count, failed_count=failed_count)
+
+
+def mark_geom_job_failed(
+    conn: sqlite3.Connection,
+    job_id: int,
+    *,
+    updated_count: int,
+    failed_count: int,
+    error_message: str,
+) -> None:
+    job_repository.mark_geom_job_failed(
+        conn,
+        job_id,
+        updated_count=updated_count,
+        failed_count=failed_count,
+        error_message=error_message,
+    )
+
+
+def fetch_geom_job(conn: sqlite3.Connection, job_id: int) -> sqlite3.Row | None:
+    return job_repository.fetch_geom_job(conn, job_id)
+
+
+def fetch_latest_active_geom_job(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    return job_repository.fetch_latest_active_geom_job(conn)

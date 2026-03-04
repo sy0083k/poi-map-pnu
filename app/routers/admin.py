@@ -3,7 +3,15 @@ import logging
 from datetime import datetime
 from typing import cast
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.dependencies import (
@@ -15,7 +23,6 @@ from app.dependencies import (
 from app.logging_utils import RequestIdFilter
 from app.services import (
     admin_settings_service,
-    geo_service,
     public_download_service,
     stats_service,
     upload_service,
@@ -83,15 +90,15 @@ async def update_settings(
     settings_password: str = Form(default=""),
     app_name: str = Form(default=""),
     vworld_wmts_key: str = Form(default=""),
-    vworld_geocoder_key: str = Form(default=""),
+    cadastral_fgb_path: str = Form(default=""),
+    cadastral_fgb_pnu_field: str = Form(default=""),
+    cadastral_fgb_crs: str = Form(default=""),
+    cadastral_min_render_zoom: str = Form(default=""),
     allowed_ips: str = Form(default=""),
     max_upload_size_mb: str = Form(default=""),
     max_upload_rows: str = Form(default=""),
     login_max_attempts: str = Form(default=""),
     login_cooldown_seconds: str = Form(default=""),
-    vworld_timeout_s: str = Form(default=""),
-    vworld_retries: str = Form(default=""),
-    vworld_backoff_s: str = Form(default=""),
     session_https_only: str = Form(default=""),
     trust_proxy_headers: str = Form(default=""),
     trusted_proxy_ips: str = Form(default=""),
@@ -100,15 +107,15 @@ async def update_settings(
     updates = {
         "APP_NAME": app_name,
         "VWORLD_WMTS_KEY": vworld_wmts_key,
-        "VWORLD_GEOCODER_KEY": vworld_geocoder_key,
+        "CADASTRAL_FGB_PATH": cadastral_fgb_path,
+        "CADASTRAL_FGB_PNU_FIELD": cadastral_fgb_pnu_field,
+        "CADASTRAL_FGB_CRS": cadastral_fgb_crs,
+        "CADASTRAL_MIN_RENDER_ZOOM": cadastral_min_render_zoom,
         "ALLOWED_IPS": allowed_ips,
         "MAX_UPLOAD_SIZE_MB": max_upload_size_mb,
         "MAX_UPLOAD_ROWS": max_upload_rows,
         "LOGIN_MAX_ATTEMPTS": login_max_attempts,
         "LOGIN_COOLDOWN_SECONDS": login_cooldown_seconds,
-        "VWORLD_TIMEOUT_S": vworld_timeout_s,
-        "VWORLD_RETRIES": vworld_retries,
-        "VWORLD_BACKOFF_S": vworld_backoff_s,
         "SESSION_HTTPS_ONLY": session_https_only,
         "TRUST_PROXY_HEADERS": trust_proxy_headers,
         "TRUSTED_PROXY_IPS": trusted_proxy_ips,
@@ -170,27 +177,6 @@ async def get_stats(limit: int = 10) -> dict:
     payload = stats_service.get_admin_stats(limit=limit)
     payload["landSummary"] = stats_service.get_land_stats()
     return payload
-
-
-@router.post("/lands/geom-refresh", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
-async def start_land_geom_refresh(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    csrf_token: str = Form(default=""),
-) -> dict:
-    return geo_service.start_geom_refresh_job(
-        request=request,
-        background_tasks=background_tasks,
-        csrf_token=csrf_token,
-    )
-
-
-@router.get(
-    "/lands/geom-refresh/{job_id}",
-    dependencies=[Depends(check_internal_network), Depends(require_authenticated)],
-)
-async def get_land_geom_refresh_status(job_id: int) -> dict:
-    return {"success": True, "job": geo_service.get_geom_refresh_job_status(job_id)}
 
 
 @router.get("/stats/web", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])

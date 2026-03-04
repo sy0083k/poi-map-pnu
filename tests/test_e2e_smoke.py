@@ -26,7 +26,6 @@ def test_login_upload_and_lands_flow() -> None:
             "MAP_CENTER_LAT": "36.78",
             "MAP_DEFAULT_ZOOM": "14",
             "VWORLD_WMTS_KEY": "test-key",
-            "VWORLD_GEOCODER_KEY": "test-key",
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": "$2b$12$MGjgBz6IZSV2boORoUbbQeLqG11Nry5H75zvbYOpJWfMaucKkVSZ6",
             "SECRET_KEY": "test-secret-key",
@@ -41,11 +40,6 @@ def test_login_upload_and_lands_flow() -> None:
                 config.get_settings.cache_clear()
                 app_main = importlib.import_module("app.main")
                 app_main = importlib.reload(app_main)
-
-                from app.services import upload_service
-                def _noop_run_geom_update_job(*_args, **_kwargs):
-                    return (0, 0)
-                upload_service.run_geom_update_job = _noop_run_geom_update_job
 
                 transport = httpx.ASGITransport(app=app_main.app, client=("127.0.0.1", 50000))
                 async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -63,12 +57,11 @@ def test_login_upload_and_lands_flow() -> None:
 
                     df = pd.DataFrame(
                         {
-                            "소재지(지번)": ["addr"],
-                            "(공부상)지목": ["답"],
-                            "(공부상)면적(㎡)": [12.5],
-                            "행정재산": ["Y"],
-                            "일반재산": ["N"],
-                            "담당자연락처": ["010"],
+                            "고유번호": ["1111012345678901234"],
+                            "소재지": ["addr"],
+                            "지목": ["답"],
+                            "실면적": [12.5],
+                            "재산관리관": ["홍길동"],
                         }
                     )
                     buffer = io.BytesIO()

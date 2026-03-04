@@ -61,3 +61,28 @@ async def test_map_v1_router_matches_map_router(async_client: httpx.AsyncClient,
 async def test_lands_invalid_cursor_returns_400(async_client: httpx.AsyncClient) -> None:
     res = await async_client.get("/api/lands?cursor=bad")
     assert res.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_lands_list_includes_dynamic_source_fields(async_client: httpx.AsyncClient, db_path: object) -> None:
+    with db_connection() as conn:
+        poi_repository.init_db(conn)
+        poi_repository.delete_all(conn)
+        poi_repository.insert_land(
+            conn,
+            pnu="1111012345678901234",
+            address="addr-1",
+            land_type="답",
+            area=10.0,
+            property_manager="홍길동",
+            source_fields_json='[{"key":"고유번호","label":"고유번호","value":"1111012345678901234"},{"key":"비고","label":"비고","value":"테스트"}]',
+        )
+        conn.commit()
+
+    res = await async_client.get("/api/lands/list?limit=10")
+    assert res.status_code == 200
+    payload = res.json()
+    assert len(payload["items"]) == 1
+    item = payload["items"][0]
+    assert item["sourceFields"][0]["label"] == "고유번호"
+    assert item["sourceFields"][1]["value"] == "테스트"

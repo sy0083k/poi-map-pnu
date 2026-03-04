@@ -5,15 +5,16 @@ from typing import Any, cast
 import pandas as pd
 
 REQUIRED_COLUMNS = [
-    "소재지(지번)",
-    "(공부상)지목",
-    "(공부상)면적(㎡)",
-    "행정재산",
-    "일반재산",
-    "담당자연락처",
+    "고유번호",
+    "소재지",
+    "지목",
+    "실면적",
+    "재산관리관",
 ]
 
 MAX_ERROR_REPORT = 100
+
+SourceFields = list[dict[str, str]]
 
 
 def validate_required_columns(df: pd.DataFrame) -> list[str]:
@@ -29,12 +30,20 @@ def normalize_upload_rows(
 
     for idx, row in df.iterrows():
         row_num = int(cast(Any, idx)) + 1
-        address = _to_str(row.get("소재지(지번)"))
-        land_type = _to_str(row.get("(공부상)지목"))
-        area_raw = row.get("(공부상)면적(㎡)")
-        adm_property = _to_str(row.get("행정재산"))
-        gen_property = _to_str(row.get("일반재산"))
-        contact = _to_str(row.get("담당자연락처"))
+        pnu = _normalize_pnu(row.get("고유번호"))
+        address = _to_str(row.get("소재지"))
+        land_type = _to_str(row.get("지목"))
+        area_raw = row.get("실면적")
+        property_manager = _to_str(row.get("재산관리관"))
+
+        if not pnu:
+            total_errors += 1
+            _append_error(errors, row_num, "pnu", "missing", row.get("고유번호"))
+            continue
+        if len(pnu) != 19 or not pnu.isdigit():
+            total_errors += 1
+            _append_error(errors, row_num, "pnu", "invalid", row.get("고유번호"))
+            continue
 
         if not address:
             total_errors += 1
@@ -48,12 +57,12 @@ def normalize_upload_rows(
 
         normalized.append(
             {
+                "pnu": pnu,
                 "address": address,
                 "land_type": land_type,
                 "area": area,
-                "adm_property": adm_property,
-                "gen_property": gen_property,
-                "contact": contact,
+                "property_manager": property_manager,
+                "source_fields": _build_source_fields(row, df.columns),
             }
         )
 
@@ -77,6 +86,13 @@ def _to_str(value: Any) -> str:
     return str(value).strip()
 
 
+def _normalize_pnu(value: Any) -> str:
+    raw = _to_str(value)
+    if not raw:
+        return ""
+    return "".join(ch for ch in raw if ch.isdigit())
+
+
 def _append_error(
     errors: list[dict[str, Any]], row_num: int, field: str, code: str, value: Any
 ) -> None:
@@ -90,3 +106,18 @@ def _append_error(
             "value": "" if value is None else str(value),
         }
     )
+
+
+def _build_source_fields(row: pd.Series, columns: pd.Index) -> SourceFields:
+    fields: SourceFields = []
+    for column in columns:
+        label = str(column).strip()
+        if not label:
+            continue
+        value = row.get(column)
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            normalized_value = ""
+        else:
+            normalized_value = str(value).strip()
+        fields.append({"key": label, "label": label, "value": normalized_value})
+    return fields

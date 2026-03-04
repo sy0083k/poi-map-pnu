@@ -1,22 +1,26 @@
 import "ol/ol.css";
 
 import { HttpError, fetchJson } from "./http";
+import { loadUploadedHighlights } from "./map/cadastral-fgb-layer";
 import { createDownloadClient } from "./map/download-client";
 import { createFilters } from "./map/filters";
-import { loadAllLandFeatures } from "./map/lands-client";
+import { loadAllLandListItems } from "./map/lands-list-client";
 import { createListPanel } from "./map/list-panel";
 import { createMapView } from "./map/map-view";
 import { createSessionTracker } from "./map/session-tracker";
 import { createMapState } from "./map/state";
 import { createTelemetry } from "./map/telemetry";
 
-import type { BaseType, LandClickSource, LandFeatureCollection, MapConfig } from "./map/types";
+import type {
+  LandClickSource,
+  LandFeatureCollection,
+  LandListItem,
+  MapConfig
+} from "./map/types";
 
 type SelectOptions = {
   shouldFit: boolean;
   clickSource?: LandClickSource;
-  coordinateOverride?: number[];
-  panIntoView?: boolean;
 };
 
 type MobileViewState = "home" | "search" | "results";
@@ -38,28 +42,21 @@ async function bootstrap(): Promise<void> {
   const regionSearchInput = document.getElementById("region-search") as HTMLInputElement | null;
   const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
   const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;
-  const rentOnlyFilter = document.getElementById("rent-only-filter") as HTMLInputElement | null;
 
   const mobileRegionSearchInput = document.getElementById("mobile-region-search") as HTMLInputElement | null;
   const mobileMinAreaInput = document.getElementById("mobile-min-area") as HTMLInputElement | null;
   const mobileMaxAreaInput = document.getElementById("mobile-max-area") as HTMLInputElement | null;
-  const mobileRentOnlyFilter = document.getElementById("mobile-rent-only-filter") as HTMLInputElement | null;
   const mobileSearchFab = document.getElementById("mobile-search-fab");
   const mobileSearchCloseBtn = document.getElementById("mobile-search-close");
   const mobileSearchBtn = document.getElementById("mobile-btn-search");
   const mobileResetBtn = document.getElementById("mobile-btn-reset-filters");
 
-  const layerToggleBtn = document.getElementById("btn-layer-toggle");
-  const layerPopover = document.getElementById("layer-popover");
-  const mobileBaseBtn = document.getElementById("m-btn-Base");
-  const mobileSatelliteBtn = document.getElementById("m-btn-Satellite");
-  const mobileHybridBtn = document.getElementById("m-btn-Hybrid");
+  const infoPanelElement = document.getElementById("land-info-panel");
+  const infoPanelContent = document.getElementById("land-info-content");
+  const infoPanelCloseButton = document.getElementById("land-info-close");
+  const mapStatus = document.getElementById("map-status");
 
-  const popupElement = document.getElementById("popup");
-  const popupContent = document.getElementById("popup-content");
-  const popupCloser = document.getElementById("popup-closer");
-
-  if (!(popupElement instanceof HTMLElement) || !(popupContent instanceof HTMLElement)) {
+  if (!(infoPanelElement instanceof HTMLElement) || !(infoPanelContent instanceof HTMLElement)) {
     return;
   }
 
@@ -70,9 +67,9 @@ async function bootstrap(): Promise<void> {
     postWebEvent: telemetry.postWebEvent
   });
   const mapView = createMapView({
-    popupElement,
-    popupContent,
-    popupCloser: popupCloser instanceof HTMLElement ? popupCloser : null
+    infoPanelElement,
+    infoPanelContent,
+    infoPanelCloseButton: infoPanelCloseButton instanceof HTMLButtonElement ? infoPanelCloseButton : null
   });
   const listPanel = createListPanel({
     listContainer: document.getElementById("list-container"),
@@ -85,29 +82,29 @@ async function bootstrap(): Promise<void> {
   const filters = createFilters({
     regionSearchInput,
     minAreaInput,
-    maxAreaInput,
-    rentOnlyFilter
+    maxAreaInput
   });
   const downloadClient = createDownloadClient();
 
   let mobileState: MobileViewState = "home";
+  let config: MapConfig | null = null;
+  let uploadedHighlightFeatures: LandFeatureCollection = { type: "FeatureCollection", features: [] };
+  let uploadedHighlightsRequestSeq = 0;
+
   const syncDesktopToMobileInputs = (): void => {
     if (
       !regionSearchInput ||
       !minAreaInput ||
       !maxAreaInput ||
-      !rentOnlyFilter ||
       !mobileRegionSearchInput ||
       !mobileMinAreaInput ||
-      !mobileMaxAreaInput ||
-      !mobileRentOnlyFilter
+      !mobileMaxAreaInput
     ) {
       return;
     }
     mobileRegionSearchInput.value = regionSearchInput.value;
     mobileMinAreaInput.value = minAreaInput.value;
     mobileMaxAreaInput.value = maxAreaInput.value;
-    mobileRentOnlyFilter.checked = rentOnlyFilter.checked;
   };
 
   const syncMobileToDesktopInputs = (): void => {
@@ -115,18 +112,15 @@ async function bootstrap(): Promise<void> {
       !regionSearchInput ||
       !minAreaInput ||
       !maxAreaInput ||
-      !rentOnlyFilter ||
       !mobileRegionSearchInput ||
       !mobileMinAreaInput ||
-      !mobileMaxAreaInput ||
-      !mobileRentOnlyFilter
+      !mobileMaxAreaInput
     ) {
       return;
     }
     regionSearchInput.value = mobileRegionSearchInput.value;
     minAreaInput.value = mobileMinAreaInput.value;
     maxAreaInput.value = mobileMaxAreaInput.value;
-    rentOnlyFilter.checked = mobileRentOnlyFilter.checked;
   };
 
   const applyMobileClass = (): void => {
@@ -157,58 +151,138 @@ async function bootstrap(): Promise<void> {
   };
 
   const updateNavigation = (): void => {
-    listPanel.updateNavigation(state.getCurrentIndex(), state.getCurrentFeatures().length);
+    listPanel.updateNavigation(state.getCurrentIndex(), state.getCurrentItems().length);
+  };
+
+  const setMapStatus = (message: string, color = "#6b7280"): void => {
+    if (!(mapStatus instanceof HTMLElement)) {
+      return;
+    }
+    mapStatus.textContent = message;
+    mapStatus.style.color = color;
   };
 
   const selectItem = (index: number, options: SelectOptions): void => {
-    const currentFeatures = state.getCurrentFeatures();
-    if (index < 0 || index >= currentFeatures.length) {
+    const currentItems = state.getCurrentItems();
+    if (index < 0 || index >= currentItems.length) {
       return;
     }
 
     state.setCurrentIndex(index);
 
     if (options.clickSource) {
-      const selected = currentFeatures[index];
-      telemetry.trackLandClickEvent(
-        selected?.properties.address || "",
-        options.clickSource,
-        selected?.properties.id
-      );
+      const selected = currentItems[index];
+      telemetry.trackLandClickEvent(selected?.address || "", options.clickSource, selected?.id);
     }
 
-    mapView.selectFeatureByIndex(index, {
-      shouldFit: options.shouldFit,
-      coordinateOverride: options.coordinateOverride,
-      panIntoView: options.panIntoView
+    const moved = mapView.selectFeatureByIndex(index, {
+      shouldFit: options.shouldFit
     });
+    if (!moved) {
+      setMapStatus("선택한 필지 하이라이트를 찾지 못했습니다.", "#b45309");
+    }
 
     updateNavigation();
     listPanel.scrollTo(index);
   };
 
-  const updateMapAndList = (data: LandFeatureCollection): void => {
-    state.setCurrentFeatures(data.features);
-    mapView.renderFeatures(data);
-    listPanel.render(data.features, (idx) => {
-      selectItem(idx, { shouldFit: true, clickSource: "list_click" });
-    });
-
-    if (data.features.length > 0) {
-      mapView.fitToFeatures();
-    }
-
-    updateNavigation();
-  };
-
-  const applyFilters = (trackEvent = false): void => {
-    const originalData = state.getOriginalData();
-    if (!originalData) {
+  const reloadCadastralLayers = async (): Promise<void> => {
+    if (!config) {
       return;
     }
 
+    const currentItems = state.getCurrentItems();
+    const featuresByPnu = new Map<string, unknown>();
+    uploadedHighlightFeatures.features.forEach((feature) => {
+      const pnu = String(feature.properties.pnu || "");
+      if (pnu) {
+        featuresByPnu.set(pnu, feature.geometry);
+      }
+    });
+
+    const listLinkedFeatures = currentItems.flatMap((item, idx) => {
+      const geometry = featuresByPnu.get(item.pnu);
+      if (!geometry) {
+        return [];
+      }
+      return [
+        {
+          type: "Feature" as const,
+          geometry,
+          properties: {
+            list_index: idx,
+            id: item.id,
+            pnu: item.pnu,
+            address: item.address,
+            land_type: item.land_type,
+            area: item.area,
+            property_manager: item.property_manager,
+            source_fields: item.sourceFields ?? []
+          }
+        }
+      ];
+    });
+
+    const withProperties: LandFeatureCollection = {
+      type: "FeatureCollection",
+      features: listLinkedFeatures
+    };
+
+    mapView.renderFeatures(withProperties, { dataProjection: config.cadastralCrs });
+    if (currentItems.length === 0) {
+      setMapStatus(`업로드 하이라이트 ${uploadedHighlightFeatures.features.length}건 준비됨`, "#166534");
+    } else {
+      setMapStatus(
+        `업로드 하이라이트 ${uploadedHighlightFeatures.features.length}건, 관심 필지 강조 ${withProperties.features.length}건`,
+        "#166534"
+      );
+    }
+    updateNavigation();
+  };
+
+  const prepareUploadedHighlights = async (items: LandListItem[]): Promise<void> => {
+    if (!config) {
+      return;
+    }
+    const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu)));
+    if (uploadedPnus.length === 0) {
+      uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
+      return;
+    }
+    const seq = ++uploadedHighlightsRequestSeq;
+    const controller = new AbortController();
+    try {
+      setMapStatus("업로드 하이라이트를 준비하는 중입니다...");
+      const loaded = await loadUploadedHighlights({
+        fgbUrl: config.cadastralFgbUrl,
+        pnuField: config.cadastralPnuField,
+        cadastralCrs: config.cadastralCrs,
+        uploadedPnus,
+        signal: controller.signal
+      });
+      if (seq !== uploadedHighlightsRequestSeq) {
+        return;
+      }
+      uploadedHighlightFeatures = loaded;
+      await reloadCadastralLayers();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      const message =
+        error instanceof Error
+          ? `업로드 하이라이트 준비 실패: ${error.message}`
+          : "업로드 하이라이트 준비에 실패했습니다.";
+      console.warn("[cadastral]", message);
+      setMapStatus(message, "#b45309");
+    }
+  };
+
+  const applyFilters = async (trackEvent = false): Promise<void> => {
+    const originalItems = state.getOriginalItems() ?? [];
+
     const values = filters.getValues();
-    const filteredFeatures = filters.filterFeatures(originalData.features, values);
+    const filteredItems = filters.filterItems(originalItems, values);
 
     if (trackEvent) {
       telemetry.trackSearchEvent(
@@ -217,23 +291,29 @@ async function bootstrap(): Promise<void> {
         values.rawSearchTerm,
         values.rawMinAreaInput,
         values.rawMaxAreaInput,
-        String(values.isRentOnly)
+        "false"
       );
     }
 
-    updateMapAndList({ type: "FeatureCollection", features: filteredFeatures });
+    state.setCurrentItems(filteredItems);
+    listPanel.render(filteredItems, (idx) => {
+      selectItem(idx, { shouldFit: true, clickSource: "list_click" });
+    });
+    mapView.clearInfoPanel();
+    updateNavigation();
+    await reloadCadastralLayers();
   };
 
   const resetFilters = (): void => {
     filters.reset();
     syncDesktopToMobileInputs();
-    mapView.clearPopup();
-    applyFilters(false);
+    mapView.clearInfoPanel();
+    void applyFilters(false);
   };
 
   const navigateItem = (direction: number): void => {
     const nextIndex = state.getCurrentIndex() + direction;
-    if (nextIndex < 0 || nextIndex >= state.getCurrentFeatures().length) {
+    if (nextIndex < 0 || nextIndex >= state.getCurrentItems().length) {
       return;
     }
 
@@ -243,69 +323,22 @@ async function bootstrap(): Promise<void> {
     });
   };
 
-  const closeLayerPopover = (): void => {
-    if (!(layerPopover instanceof HTMLElement) || !(layerToggleBtn instanceof HTMLButtonElement)) {
-      return;
-    }
-    layerPopover.classList.remove("open");
-    layerPopover.setAttribute("aria-hidden", "true");
-    layerToggleBtn.setAttribute("aria-expanded", "false");
-  };
-
-  const changeLayerFromMobile = (type: BaseType): void => {
-    mapView.changeLayer(type);
-    closeLayerPopover();
-  };
-
-  mapView.setFeatureClickHandler(({ index, coordinate }) => {
+  mapView.setFeatureClickHandler(({ index }) => {
     selectItem(index, {
       shouldFit: false,
-      clickSource: "map_click",
-      coordinateOverride: coordinate,
-      panIntoView: true
+      clickSource: "map_click"
     });
   });
+  mapView.setMoveEndHandler(() => {
+    void reloadCadastralLayers();
+  });
 
-  document.getElementById("btn-search")?.addEventListener("click", () => applyFilters(true));
+  document.getElementById("btn-search")?.addEventListener("click", () => {
+    void applyFilters(true);
+  });
   document.getElementById("btn-reset-filters")?.addEventListener("click", resetFilters);
   document.getElementById("btn-download-all")?.addEventListener("click", () => {
     void downloadClient.downloadPreparedFile();
-  });
-  rentOnlyFilter?.addEventListener("change", () => applyFilters(false));
-
-  document.getElementById("btn-Base")?.addEventListener("click", () => mapView.changeLayer("Base"));
-  document.getElementById("btn-Satellite")?.addEventListener("click", () => mapView.changeLayer("Satellite"));
-  document.getElementById("btn-Hybrid")?.addEventListener("click", () => mapView.changeLayer("Hybrid"));
-
-  layerToggleBtn?.addEventListener("click", (event) => {
-    if (!(layerPopover instanceof HTMLElement) || !(layerToggleBtn instanceof HTMLButtonElement)) {
-      return;
-    }
-    event.stopPropagation();
-    const willOpen = !layerPopover.classList.contains("open");
-    layerPopover.classList.toggle("open", willOpen);
-    layerPopover.setAttribute("aria-hidden", willOpen ? "false" : "true");
-    layerToggleBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
-  });
-  mobileBaseBtn?.addEventListener("click", () => changeLayerFromMobile("Base"));
-  mobileSatelliteBtn?.addEventListener("click", () => changeLayerFromMobile("Satellite"));
-  mobileHybridBtn?.addEventListener("click", () => changeLayerFromMobile("Hybrid"));
-  document.addEventListener("click", (event) => {
-    if (
-      !(layerPopover instanceof HTMLElement) ||
-      !(layerToggleBtn instanceof HTMLElement) ||
-      !(event.target instanceof Node)
-    ) {
-      return;
-    }
-    if (!layerPopover.contains(event.target) && !layerToggleBtn.contains(event.target)) {
-      closeLayerPopover();
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeLayerPopover();
-    }
   });
 
   listPanel.bindNavigation(
@@ -313,7 +346,9 @@ async function bootstrap(): Promise<void> {
     () => navigateItem(1)
   );
 
-  filters.attachEnter(() => applyFilters(true));
+  filters.attachEnter(() => {
+    void applyFilters(true);
+  });
   listPanel.initBottomSheet();
   sessionTracker.mount();
 
@@ -335,7 +370,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
     syncMobileToDesktopInputs();
-    applyFilters(true);
+    void applyFilters(true);
     setMobileState("results", true);
   });
   mobileResetBtn?.addEventListener("click", () => {
@@ -365,11 +400,25 @@ async function bootstrap(): Promise<void> {
 
   try {
     listPanel.setStatus("데이터를 불러오는 중입니다...");
-    const config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
+    setMapStatus("지도를 초기화하는 중입니다...");
+    config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
     mapView.init(config);
-    const features = await loadAllLandFeatures();
-    state.setOriginalData({ type: "FeatureCollection", features });
-    applyFilters(false);
+    state.setOriginalItems([]);
+    await applyFilters(false);
+
+    try {
+      const items = await loadAllLandListItems();
+      state.setOriginalItems(items);
+      await applyFilters(false);
+      void prepareUploadedHighlights(items);
+    } catch (error) {
+      const fallbackMessage =
+        error instanceof HttpError
+          ? `관심 필지 목록 로딩 실패: ${error.message} (배경 연속지적도만 표시됩니다.)`
+          : "관심 필지 목록 로딩에 실패했습니다. 배경 연속지적도만 표시합니다.";
+      listPanel.setStatus(fallbackMessage, "#b45309");
+      setMapStatus("배경 연속지적도만 표시 중입니다. 관심 필지 목록 로딩에 실패했습니다.", "#b45309");
+    }
 
     syncDesktopToMobileInputs();
     maybeInitMobileHistory();
@@ -379,6 +428,7 @@ async function bootstrap(): Promise<void> {
   } catch (error) {
     const message = error instanceof HttpError ? error.message : "지도를 초기화하지 못했습니다.";
     listPanel.setStatus(message, "red");
+    setMapStatus(message, "#b91c1c");
   }
 }
 

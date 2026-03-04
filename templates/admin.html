@@ -337,7 +337,7 @@
                         </div>
 
                         <div id="status"></div>
-                        <div class="hint">업로드 후 지오메트리 보강 작업이 백그라운드에서 실행됩니다.</div>
+                        <div class="hint">업로드 후 지도는 FlatGeobuf 연속지적도와 PNU 매칭으로 표시됩니다.</div>
                     </div>
                     <div class="card">
                         <h3>전체 목록 다운로드 파일<span class="badge">지도 버튼 연동</span></h3>
@@ -370,8 +370,25 @@
                                 <input type="text" name="vworld_wmts_key" value="{{ settings['VWORLD_WMTS_KEY'] }}">
                             </div>
                             <div class="field">
-                                <label>브이월드 API 키(Geocoder)</label>
-                                <input type="text" name="vworld_geocoder_key" value="{{ settings['VWORLD_GEOCODER_KEY'] }}">
+                                <label>연속지적도 FlatGeobuf 경로</label>
+                                <input type="text" name="cadastral_fgb_path" value="{{ settings['CADASTRAL_FGB_PATH'] }}">
+                            </div>
+                            <div class="row">
+                                <div class="field">
+                                    <label>연속지적도 PNU 필드명</label>
+                                    <input type="text" name="cadastral_fgb_pnu_field" value="{{ settings['CADASTRAL_FGB_PNU_FIELD'] }}">
+                                </div>
+                                <div class="field">
+                                    <label>연속지적도 CRS</label>
+                                    <select name="cadastral_fgb_crs">
+                                        <option value="EPSG:3857" {% if settings['CADASTRAL_FGB_CRS'] == 'EPSG:3857' %}selected{% endif %}>EPSG:3857</option>
+                                        <option value="EPSG:4326" {% if settings['CADASTRAL_FGB_CRS'] == 'EPSG:4326' %}selected{% endif %}>EPSG:4326</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>연속지적도 최소 줌</label>
+                                    <input type="number" name="cadastral_min_render_zoom" value="{{ settings['CADASTRAL_MIN_RENDER_ZOOM'] }}">
+                                </div>
                             </div>
                             <div class="field">
                                 <label>관리자 접속이 허용된 IP</label>
@@ -402,27 +419,13 @@
 
                             <div class="row">
                                 <div class="field">
-                                    <label>VWORLD_TIMEOUT_S</label>
-                                    <input type="number" step="0.1" name="vworld_timeout_s" value="{{ settings['VWORLD_TIMEOUT_S'] }}">
-                                </div>
-                                <div class="field">
-                                    <label>VWORLD_RETRIES</label>
-                                    <input type="number" name="vworld_retries" value="{{ settings['VWORLD_RETRIES'] }}">
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="field">
-                                    <label>VWORLD_BACKOFF_S</label>
-                                    <input type="number" step="0.1" name="vworld_backoff_s" value="{{ settings['VWORLD_BACKOFF_S'] }}">
-                                </div>
-                                <div class="field">
                                     <label>SESSION_HTTPS_ONLY</label>
                                     <select name="session_https_only">
                                         <option value="true" {% if settings['SESSION_HTTPS_ONLY'] == 'true' %}selected{% endif %}>true</option>
                                         <option value="false" {% if settings['SESSION_HTTPS_ONLY'] == 'false' %}selected{% endif %}>false</option>
                                     </select>
                                 </div>
+                                <div></div>
                             </div>
 
                             <div class="row">
@@ -518,20 +521,12 @@
                         </div>
                     </div>
                     <div class="card">
-                        <h3>관심 필지 경계선 현황<span class="badge">poi</span></h3>
-                        <p>POI 경계 정보 기준 수집 현황입니다.</p>
-                        <div class="row">
-                            <div class="field">
-                                <label>전체 필지 수</label>
-                                <input type="text" id="stats-total-lands" value="0" readonly>
-                            </div>
-                            <div class="field">
-                                <label>경계선 없음 필지 수</label>
-                                <input type="text" id="stats-missing-geom-lands" value="0" readonly>
-                            </div>
+                        <h3>관심 필지 현황<span class="badge">poi</span></h3>
+                        <p>업로드된 관심 필지 전체 건수입니다.</p>
+                        <div class="field">
+                            <label>전체 필지 수</label>
+                            <input type="text" id="stats-total-lands" value="0" readonly>
                         </div>
-                        <button class="btn" type="button" id="refreshGeomBtn">경계선 정보 취득 실행</button>
-                        <div id="geomRefreshStatus" class="hint">필요 시 경계선 정보 재수집을 실행하세요.</div>
                     </div>
                 </div>
 

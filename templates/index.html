@@ -21,10 +21,6 @@
                 <h3>조건 검색</h3>
                 <button id="mobile-search-close" type="button" aria-label="검색 닫기">✕</button>
             </div>
-            <div class="checkbox-group">
-                <input type="checkbox" id="mobile-rent-only-filter" checked>
-                <label for="mobile-rent-only-filter">사용허가/대부 불가 토지 제외</label>
-            </div>
             <div class="filter-group">
                 <label>지역명 검색 (예: 대산읍, 동문동)</label>
                 <input
@@ -57,10 +53,6 @@
             <p style="margin:5px 0 0; font-size: 0.8em; opacity: 0.8;">공유재산 필지 검색 서비스</p>
         </div>
         <div id="filter-section">
-			<div class="checkbox-group">
-                <input type="checkbox" id="rent-only-filter" checked>
-                <label for="rent-only-filter">사용허가/대부 불가 토지 제외</label>
-            </div>
             <div class="filter-group">
                 <label>지역명 검색 (예: 대산읍, 동문동)</label>
                 <input type="text" id="region-search" placeholder="읍/면/동 이름을 입력하세요..." 
@@ -83,6 +75,7 @@
         <div id="list-container">
             <p style="padding: 20px; color: #999;">데이터 로딩 중...</p>
         </div>
+        <div id="map-status" aria-live="polite"></div>
         <div id="nav-footer">
             <button class="nav-btn" id="prev-btn" disabled>◀ 이전</button>
             <span id="nav-info">0 / 0</span>
@@ -90,31 +83,17 @@
         </div>
     </div>
 
-    <div id="map">
-        <div class="map-controls">
-            <button id="btn-layer-toggle" class="layer-mobile-toggle mobile-icon-btn" type="button" aria-label="레이어 선택" aria-haspopup="true" aria-expanded="false" aria-controls="layer-popover">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M12 4L20 8L12 12L4 8Z"></path>
-                    <path d="M4 12L12 16L20 12"></path>
-                    <path d="M4 16L12 20L20 16"></path>
-                </svg>
-                <span class="sr-only">레이어 선택</span>
-            </button>
-            <div id="layer-popover" class="layer-popover" role="menu" aria-hidden="true">
-                <button id="m-btn-Base" type="button" role="menuitem">일반 지도</button>
-                <button id="m-btn-Satellite" type="button" role="menuitem">위성 지도</button>
-                <button id="m-btn-Hybrid" type="button" role="menuitem">하이브리드</button>
-            </div>
-            <button id="btn-Base" class="layer-desktop active">일반 지도</button>
-            <button id="btn-Satellite" class="layer-desktop">위성 지도</button>
-            <button id="btn-Hybrid" class="layer-desktop">하이브리드</button>
-        </div>
-    </div>
+    <div id="map"></div>
 
-    <div id="popup" class="ol-popup">
-        <a href="#" id="popup-closer" class="ol-popup-closer">✖</a>
-        <div id="popup-content"></div>
-    </div>
+    <aside id="land-info-panel" aria-live="polite" aria-label="선택 토지 상세 정보">
+        <header class="land-info-header">
+            <h3>상세 정보</h3>
+            <button id="land-info-close" class="land-info-close" type="button" aria-label="상세 정보 닫기">✕</button>
+        </header>
+        <div id="land-info-content" class="land-info-content">
+            <div class="land-info-empty">토지를 선택하면 상세 정보가 표시됩니다.</div>
+        </div>
+    </aside>
 
     {% set assets = vite_assets('src/map.ts') %}
     {% for css_file in assets.css %}

@@ -1,31 +1,31 @@
-import type { LandFeature, LandFeatureCollection } from "./types";
+import type { LandListItem } from "./types";
 
 type MapState = {
-  originalData: LandFeatureCollection | null;
-  currentFeatures: LandFeature[];
+  originalItems: LandListItem[] | null;
+  currentItems: LandListItem[];
   currentIndex: number;
 };
 
 export function createMapState() {
   const state: MapState = {
-    originalData: null,
-    currentFeatures: [],
+    originalItems: null,
+    currentItems: [],
     currentIndex: -1
   };
 
   return {
-    setOriginalData(data: LandFeatureCollection): void {
-      state.originalData = data;
+    setOriginalItems(items: LandListItem[]): void {
+      state.originalItems = items;
     },
-    getOriginalData(): LandFeatureCollection | null {
-      return state.originalData;
+    getOriginalItems(): LandListItem[] | null {
+      return state.originalItems;
     },
-    setCurrentFeatures(features: LandFeature[]): void {
-      state.currentFeatures = features;
+    setCurrentItems(items: LandListItem[]): void {
+      state.currentItems = items;
       state.currentIndex = -1;
     },
-    getCurrentFeatures(): LandFeature[] {
-      return state.currentFeatures;
+    getCurrentItems(): LandListItem[] {
+      return state.currentItems;
     },
     setCurrentIndex(index: number): void {
       state.currentIndex = index;

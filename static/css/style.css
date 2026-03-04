@@ -62,6 +62,13 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 .list-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
 .list-item:hover { background: #f1f4f6; }
 .list-item.selected { background: #e3f2fd; border-left: 4px solid #3498db; }
+#map-status {
+    min-height: 20px;
+    padding: 6px 12px;
+    font-size: 0.82em;
+    border-top: 1px solid #e5e7eb;
+    background: #f8fafc;
+}
 
 /* 하단 네비게이션 */
 #nav-footer { 
@@ -79,10 +86,6 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
 
 /* 지도 및 팝업 */
 #map { flex: 1; position: relative; }
-.map-controls { position: absolute; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 5px; background: rgba(255, 255, 255, 0.9); padding: 6px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
-.map-controls button { border: 1px solid #ddd; background: #fff; padding: 8px 15px; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 4px; }
-.map-controls button.active { background: #2c3e50; color: white; border-color: #2c3e50; }
-.layer-mobile-toggle { display: none; }
 
 .mobile-icon-btn {
     display: inline-flex;
@@ -133,16 +136,6 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     white-space: nowrap;
     border: 0;
 }
-.layer-popover {
-    display: none;
-    flex-direction: column;
-    gap: 4px;
-    padding: 6px;
-    background: rgba(255, 255, 255, 0.98);
-    border: 1px solid #ddd;
-    border-radius: 8px;
-}
-.layer-popover.open { display: flex; }
 
 #mobile-search-fab {
     display: none;
@@ -199,14 +192,117 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     font-weight: bold;
 }
 
-.ol-popup { position: absolute; background-color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; border: 1px solid #cccccc; bottom: 12px; left: -50px; min-width: 350px; line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; }
-.ol-popup:after { top: 100%; border: solid transparent; content: " "; height: 0; width: 0; position: absolute; border-top-color: white; border-width: 10px; left: 48px; margin-left: -10px; }
-.ol-popup-closer { text-decoration: none; position: absolute; top: 2px; right: 8px; color: #666; font-weight: bold; }
+#land-info-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: clamp(260px, 28vw, 380px);
+    max-height: min(62vh, 560px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.16);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.land-info-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.land-info-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #111827;
+}
+
+.land-info-close {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 1rem;
+    line-height: 1;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.land-info-close:hover {
+    background: #eef2f7;
+    color: #111827;
+}
+
+.land-info-close:focus-visible {
+    outline: 2px solid #111827;
+    outline-offset: 1px;
+}
+
+.land-info-content {
+    overflow: auto;
+    padding: 8px 10px 12px;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 10px;
+    row-gap: 6px;
+    align-items: baseline;
+}
+
+.land-info-empty {
+    color: #6b7280;
+    font-size: 0.86rem;
+    line-height: 1.45;
+    padding: 4px 2px;
+    grid-column: 1 / -1;
+}
+
+.land-info-key {
+    font-size: 0.86rem;
+    color: #6b7280;
+    line-height: 1.4;
+    white-space: nowrap;
+    padding: 2px 0;
+    border-bottom: 1px solid #f1f5f9;
+    align-self: baseline;
+}
+
+.land-info-val {
+    font-size: 0.86rem;
+    color: #111827;
+    line-height: 1.4;
+    padding: 2px 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    border-bottom: 1px solid #f1f5f9;
+    align-self: baseline;
+}
+
+.land-info-content .land-info-key:last-of-type,
+.land-info-content .land-info-val:last-of-type {
+    border-bottom: none;
+}
+
+#land-info-panel.is-hidden {
+    display: none;
+}
 
 /* 태블릿 대응 */
 @media (max-width: 1024px) {
     #sidebar { width: 320px; }
-    .map-controls { top: 12px; right: 12px; }
+    #land-info-panel {
+        top: 12px;
+        right: 12px;
+        width: clamp(240px, 34vw, 340px);
+        max-height: 56vh;
+    }
 }
 
 /* 모바일 대응: 화면 폭이 768px 이하일 때 */
@@ -267,31 +363,6 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     /* 모바일에서는 핸들 미사용 */
     .mobile-handle { display: none !important; }
 
-    /* 레이어 선택: 단일 버튼 + 팝오버 */
-    .map-controls {
-        right: 10px;
-        top: 10px;
-        padding: 0;
-        background: transparent;
-        box-shadow: none;
-    }
-    .layer-desktop { display: none; }
-    .layer-mobile-toggle {
-        display: inline-flex;
-        min-width: 48px;
-    }
-    .layer-popover {
-        position: absolute;
-        top: 56px;
-        right: 0;
-        min-width: 124px;
-    }
-    .layer-popover button {
-        text-align: left;
-        padding: 8px 10px;
-        width: 100%;
-    }
-
     /* 바텀 시트 스타일(기본 정의 유지; 상태 클래스에서 override) */
     #sidebar {
         width: 100% !important;
@@ -316,15 +387,14 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     .btn-secondary { padding: 12px; font-size: 0.95rem; }
     .nav-btn { padding: 12px; font-size: 0.95em; }
     .list-item { padding: 16px; }
-    .map-controls button { font-size: 12px; }
     .ol-zoom { display: none !important; }
 
-    /* 팝업 모바일 대응 */
-    .ol-popup {
-        min-width: 0;
-        width: clamp(320px, 88vw, 520px);
-        max-width: calc(100vw - 24px);
-        left: -24px;
+    #land-info-panel {
+        top: 12px;
+        right: 12px;
+        left: auto;
+        width: min(72vw, 300px);
+        max-height: min(44vh, 340px);
     }
 
     /* 모바일에서는 헤더 패딩 축소 */
@@ -342,9 +412,7 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
         display: none;
     }
     #mobile-search-fab,
-    #mobile-search-overlay,
-    .layer-mobile-toggle,
-    .layer-popover {
+    #mobile-search-overlay {
         display: none !important;
     }
 }
@@ -354,5 +422,8 @@ body { margin: 0; display: flex; height: 100vh; font-family: 'Malgun Gothic', sa
     #header h2 { font-size: 1rem; }
     #filter-section { padding: 12px; }
     .area-input-container input { padding: 10px; }
-    .ol-popup { padding: 12px; }
+    #land-info-panel {
+        width: min(76vw, 280px);
+        max-height: min(40vh, 300px);
+    }
 }

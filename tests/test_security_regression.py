@@ -1,7 +1,10 @@
 import io
+import json
+from base64 import b64encode
 
 import httpx
 import pytest
+from itsdangerous import TimestampSigner
 
 from tests.helpers import temp_env
 
@@ -88,6 +91,7 @@ async def test_internal_network_rejects_untrusted_proxy_forwarded_for(app_env: d
 async def test_logout_cookie_secure_matches_session_https_setting(app_env: dict[str, str]) -> None:
     env = dict(app_env)
     env["SESSION_HTTPS_ONLY"] = "false"
+    env["SESSION_COOKIE_NAME"] = "poi_map_pnu_session"
 
     with temp_env(env):
         import importlib
@@ -102,3 +106,32 @@ async def test_logout_cookie_secure_matches_session_https_setting(app_env: dict[
             res = await client.get("/logout")
             cookie_header = res.headers.get("set-cookie", "")
             assert "Secure" not in cookie_header
+            assert "poi_map_pnu_session=" in cookie_header
+
+
+@pytest.mark.anyio
+async def test_admin_rejects_cross_app_namespace_session_cookie(app_env: dict[str, str]) -> None:
+    env = dict(app_env)
+    env["SECRET_KEY"] = "shared-secret-key-for-test"
+    env["SESSION_COOKIE_NAME"] = "session"
+    env["SESSION_NAMESPACE"] = "poi_map_pnu"
+
+    with temp_env(env):
+        import importlib
+
+        from app.core import config
+
+        config.get_settings.cache_clear()
+        app_main = importlib.import_module("app.main")
+        app_main = importlib.reload(app_main)
+
+        payload = {"user": "admin", "session_namespace": "idle_public_property"}
+        raw = b64encode(json.dumps(payload).encode("utf-8"))
+        cookie = TimestampSigner(env["SECRET_KEY"]).sign(raw).decode("utf-8")
+
+        transport = httpx.ASGITransport(app=app_main.app, client=("127.0.0.1", 50000))
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            client.cookies.set("session", cookie)
+            res = await client.get("/admin/", follow_redirects=False)
+            assert res.status_code == 303
+            assert res.headers.get("location") == "/admin/login"

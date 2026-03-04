@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import Literal
@@ -10,7 +11,6 @@ from app.db.connection import db_connection
 from app.dependencies import validate_csrf_token
 from app.logging_utils import RequestIdFilter
 from app.repositories import poi_repository
-from app.services.geo_service import enqueue_geom_update_job, run_geom_update_job
 from app.validators import land_validators
 
 logger = logging.getLogger(__name__)
@@ -106,18 +106,15 @@ def handle_excel_upload(
             for row in normalized_rows:
                 poi_repository.insert_land(
                     conn,
+                    pnu=row["pnu"],
                     address=row["address"],
                     land_type=row["land_type"],
                     area=row["area"],
-                    adm_property=row["adm_property"],
-                    gen_property=row["gen_property"],
-                    contact=row["contact"],
+                    property_manager=row["property_manager"],
+                    source_fields_json=json.dumps(row["source_fields"], ensure_ascii=False),
                 )
 
             conn.commit()
-
-        job_id = enqueue_geom_update_job()
-        background_tasks.add_task(run_geom_update_job, job_id, 5)
 
         logger.info(
             "upload accepted: %s rows",
@@ -134,7 +131,10 @@ def handle_excel_upload(
             "success": True,
             "total": len(df),
             "message": "엑셀 데이터 입력 완료",
-            "geomJobId": job_id,
+            "pnuSummary": {
+                "totalRows": len(df),
+                "uniquePnu": len({row["pnu"] for row in normalized_rows}),
+            },
         }
 
     except HTTPException:

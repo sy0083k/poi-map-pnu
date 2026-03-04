@@ -79,6 +79,7 @@ def login(request: Request, username: str, password: str, csrf_token: str) -> JS
     if is_id_match and is_pw_match:
         request.session.clear()
         request.session["user"] = username
+        request.session["session_namespace"] = config.SESSION_NAMESPACE
         request.session["csrf_token"] = get_or_create_csrf_token(request)
         limiter.reset(limiter_key)
         logger.info(
@@ -114,6 +115,14 @@ def logout(request: Request) -> RedirectResponse:
     config = request.app.state.config
     request.session.clear()
     response = RedirectResponse(url="/admin/login", status_code=303)
+    response.delete_cookie(
+        config.SESSION_COOKIE_NAME,
+        path="/",
+        secure=config.SESSION_HTTPS_ONLY,
+        httponly=True,
+        samesite="lax",
+    )
+    # Backward-compatible cleanup for old default cookie name.
     response.delete_cookie(
         "session",
         path="/",

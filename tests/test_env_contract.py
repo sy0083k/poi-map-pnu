@@ -18,10 +18,15 @@ def test_env_example_matches_runtime_contract() -> None:
     keys = parse_env_keys(ROOT / ".env.example")
     required = {
         "VWORLD_WMTS_KEY",
-        "VWORLD_GEOCODER_KEY",
+        "CADASTRAL_FGB_PATH",
+        "CADASTRAL_FGB_PNU_FIELD",
+        "CADASTRAL_FGB_CRS",
+        "CADASTRAL_MIN_RENDER_ZOOM",
         "ADMIN_ID",
         "ADMIN_PW_HASH",
         "SECRET_KEY",
+        "SESSION_COOKIE_NAME",
+        "SESSION_NAMESPACE",
         "ALLOWED_IPS",
         "SESSION_HTTPS_ONLY",
         "MAX_UPLOAD_SIZE_MB",
