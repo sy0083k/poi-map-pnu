@@ -182,6 +182,7 @@ body {
     border-radius: 10px;
     padding: 18px 20px 22px;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    overflow-x: auto;
 }
 
 .readme-title {
@@ -190,13 +191,109 @@ body {
     color: #0f172a;
 }
 
-.readme-body {
+.readme-markdown {
     margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-    line-height: 1.55;
-    font-size: 0.92rem;
+    line-height: 1.65;
+    font-size: 0.95rem;
     color: #111827;
+    word-break: break-word;
+}
+
+.readme-markdown h1,
+.readme-markdown h2,
+.readme-markdown h3,
+.readme-markdown h4,
+.readme-markdown h5,
+.readme-markdown h6 {
+    color: #0f172a;
+    line-height: 1.3;
+    margin-top: 1.35em;
+    margin-bottom: 0.55em;
+}
+
+.readme-markdown h1:first-child,
+.readme-markdown h2:first-child,
+.readme-markdown h3:first-child {
+    margin-top: 0;
+}
+
+.readme-markdown p {
+    margin: 0.75em 0;
+}
+
+.readme-markdown ul,
+.readme-markdown ol {
+    margin: 0.7em 0 0.8em 1.2em;
+    padding: 0;
+}
+
+.readme-markdown li {
+    margin: 0.2em 0;
+}
+
+.readme-markdown pre {
+    margin: 0.9em 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #d7dee7;
+    background: #f8fafc;
+    overflow-x: auto;
+    line-height: 1.45;
+}
+
+.readme-markdown code {
+    font-family: Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.readme-markdown p code,
+.readme-markdown li code {
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    border: 1px solid #dce3ea;
+    background: #f5f7fb;
+    font-size: 0.92em;
+}
+
+.readme-markdown blockquote {
+    margin: 0.9em 0;
+    padding: 0.5em 0.9em;
+    border-left: 4px solid #93c5fd;
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+
+.readme-markdown a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.readme-markdown table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    table-layout: auto;
+}
+
+.readme-markdown th,
+.readme-markdown td {
+    border: 1px solid #d9e1ea;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.readme-markdown th {
+    background: #f3f6fb;
+    color: #0f172a;
+}
+
+.readme-markdown td code,
+.readme-markdown th code {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 #sidebar-handle {
@@ -517,6 +614,19 @@ body.theme-city-owned .theme-city-only { display: block; }
 
 /* 모바일 대응: 화면 폭이 768px 이하일 때 */
 @media (max-width: 768px) {
+    .readme-content {
+        padding: 14px 12px 16px;
+    }
+
+    .readme-markdown table {
+        font-size: 0.88rem;
+    }
+
+    .readme-markdown th,
+    .readme-markdown td {
+        padding: 6px 8px;
+    }
+
     body {
         flex-direction: column !important;
         overflow: hidden;

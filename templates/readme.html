@@ -11,7 +11,7 @@
     <main class="readme-page">
         <section class="readme-content" aria-label="README 내용">
             <h1 class="readme-title">README</h1>
-            <pre class="readme-body">{{ readme_text }}</pre>
+            <article class="readme-markdown">{{ readme_html | safe }}</article>
         </section>
     </main>
 </body>

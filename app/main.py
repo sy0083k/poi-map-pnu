@@ -24,6 +24,7 @@ from app.repositories import poi_repository
 from app.routers import admin, auth, map_router, map_v1_router
 from app.services import health_service
 from app.utils import vite_assets
+from app.utils.markdown_render import render_markdown_to_html
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -187,12 +188,13 @@ async def readme_page(request: Request) -> HTMLResponse:
         readme_text = readme_path.read_text(encoding="utf-8")
     except OSError:
         readme_text = "README.MD 파일을 불러오지 못했습니다."
+    readme_html = render_markdown_to_html(readme_text)
     return cast(
         HTMLResponse,
         templates.TemplateResponse(
             request,
             "readme.html",
-            {"active_page": "readme", "readme_text": readme_text},
+            {"active_page": "readme", "readme_html": readme_html},
         ),
     )
 
