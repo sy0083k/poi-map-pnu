@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-23  
-최종 수정일: 2026-03-04  
+최종 수정일: 2026-03-05  
 운영 주기: 매주 1회 (월요일 기준)
 
 ## 목적
@@ -29,9 +29,9 @@
 |---|---|---|---|---|---|---|---|
 | RISK-001 | P0 | 설정 변경 즉시 반영 불가 | todo | unassigned | 2026-03-09 | 관리자 설정/비밀번호 변경 후 재시작 없이도 반영 전략이 문서화되고 구현/운영 절차가 확정된다. | 관련: `app/core/config.py`, `app/main.py` |
 | RISK-002 | P0 | 인메모리 제한기 다중 인스턴스 한계 | todo | unassigned | 2026-03-09 | 로그인/이벤트 레이트리밋이 멀티 인스턴스 환경에서 일관 동작하도록 공유 스토어 전략이 확정된다. | 관련: `app/auth_security.py`, `app/rate_limit.py` |
-| RISK-003 | P1 | FlatGeobuf 뷰포트 로딩 내구성/성능 검증 부족 | todo | unassigned | 2026-03-09 | 파일 교체/대용량 뷰포트 이동 시에도 지도 렌더링이 안정적으로 동작하고 성능 한계가 문서화된다. | 관련: `frontend/src/map/cadastral-fgb-layer.ts`, `app/services/cadastral_fgb_service.py` |
+| RISK-003 | P1 | FlatGeobuf 뷰포트 로딩 내구성/성능 검증 부족 | todo | unassigned | 2026-03-09 | 파일 교체/대용량 뷰포트 이동 시에도 지도 렌더링이 안정적으로 동작하고 성능 한계가 문서화된다. | 관련: `frontend/src/map/cadastral-fgb-layer.ts`, `app/services/cadastral_fgb_service.py` / 2026-03-05 조사: FGB 152MB, full scan 경로와 moveend 재렌더가 초기 지연 후보 |
 | RISK-004 | P1 | 공개 다운로드 응답 메모리 사용량 리스크 | todo | unassigned | 2026-03-09 | 대용량 파일에서도 서버 메모리 급증 없이 다운로드를 처리하도록 스트리밍 응답 방식이 적용된다. | 관련: `app/services/public_download_service.py` |
-| RISK-005 | P1 | 프런트 전체 데이터 선적재로 인한 확장성 한계 | todo | unassigned | 2026-03-09 | 데이터 증가 시 초기 로딩 시간/브라우저 메모리 사용을 제어하는 점진 로딩 전략이 수립된다. | 관련: `frontend/src/map/lands-client.ts` |
+| RISK-005 | P1 | 프런트 전체 데이터 선적재로 인한 확장성 한계 | todo | unassigned | 2026-03-09 | 데이터 증가 시 초기 로딩 시간/브라우저 메모리 사용을 제어하는 점진 로딩 전략이 수립된다. | 관련: `frontend/src/map/lands-list-client.ts`, `frontend/src/map.ts` |
 | RISK-006 | P1 | 루트 pytest 수집 충돌(복제본 tests 중복) | done | team | 2026-03-02 | 루트 `pytest -q`가 `tests/`만 수집하고 `IdlePublicProperty/`와의 `conftest` 충돌 없이 통과한다. | 관련: `pyproject.toml` (`testpaths`, `norecursedirs`) |
 | RISK-007 | P1 | 관리자 세션 쿠키 앱 간 교차 인식 | done | team | 2026-03-02 | 세션 쿠키명/네임스페이스 분리와 인증 검증 강화로 동일 도메인 다중 앱 간 세션 재사용이 차단된다. | 관련: `app/main.py`, `app/dependencies.py`, `app/services/auth_service.py` |
 
@@ -57,3 +57,8 @@
 - 2026-03-04 | reviewer: team | 배경지도 선택 UI를 제거하고 기본 배경 레이어를 위성 지도로 고정 | 다음 액션: 사용자 피드백에서 베이스맵 전환 요구 빈도 관측
 - 2026-03-04 | reviewer: team | 우상단 상세 패널 헤더에 닫기(`X`) 버튼을 추가하고 속성/값 Pair를 동일 라인(y축)으로 정렬해 표시 안정성을 개선 | 다음 액션: 운영에서 닫기 버튼 사용 빈도와 재선택 재표시 UX 관측
 - 2026-03-04 | reviewer: team | 지도 클릭/사이드바 선택된 필지의 경계선을 노란색으로 강조하고 비선택 필지는 빨간색을 유지하도록 선택 스타일 분기를 추가 | 다음 액션: 다건 필터링/페이지 이동 시 선택 스타일 유지 여부 관측
+- 2026-03-05 | reviewer: team | 메인 화면 상단 헤더 메뉴(`시작/배경지도/주제도`)와 데스크톱 사이드바 슬라이드 수납(상태 복원)을 추가하고, 메뉴 하위항목은 준비중 토스트 UI로 연결 | 다음 액션: 실제 배경지도/주제도 토글 정책 확정 및 문서 정책(위성 고정) 재검토
+- 2026-03-05 | reviewer: team | 사이드바 타이틀 영역 제거, 데스크톱 수납 트리거를 버튼에서 핸들로 전환, `배경지도` 메뉴를 `일반지도/위성지도/하이브리드` 순서의 실제 전환으로 반영 | 다음 액션: 주제도 메뉴 실데이터/렌더링 연동 범위 정의
+- 2026-03-05 | reviewer: team | 상단 헤더 `시작` 메뉴를 새 탭 링크에서 같은 창 `/readme` 전환으로 변경하고 글로벌 헤더를 유지한 README 페이지를 추가 | 다음 액션: README 마크다운 렌더링(서식/링크/목차) 고도화 필요성 검토
+- 2026-03-05 | reviewer: team | 지도 상세 패널 초기 숨김/헤더 메뉴 x좌표 고정 오프셋 정책을 반영하고 하이라이트 초기 지연 원인(Full scan, 초기 중복 렌더, moveend 재렌더) 조사 결과를 유지보수 문서에 기록 | 다음 액션: RISK-003, RISK-005 최적화 구현 우선순위 확정
+- 2026-03-05 | reviewer: team | 헤더 메뉴 구분 바 추가, 선택 필지 상위 레이어 렌더 적용, 사이드바 핸들 방향 힌트 UI를 반영 | 다음 액션: 인접 필지 밀집 구간에서 선택 경계선 가시성 회귀 모니터링

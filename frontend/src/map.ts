@@ -12,6 +12,7 @@ import { createMapState } from "./map/state";
 import { createTelemetry } from "./map/telemetry";
 
 import type {
+  BaseType,
   LandClickSource,
   LandFeatureCollection,
   LandListItem,
@@ -25,7 +26,9 @@ type SelectOptions = {
 
 type MobileViewState = "home" | "search" | "results";
 const MOBILE_MEDIA_QUERY = "(max-width: 768px)";
+const DESKTOP_MEDIA_QUERY = "(min-width: 769px)";
 const MOBILE_HISTORY_KEY = "mobileMapViewState";
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "sidebarCollapsed";
 
 function isMobileViewport(): boolean {
   return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
@@ -55,6 +58,10 @@ async function bootstrap(): Promise<void> {
   const infoPanelContent = document.getElementById("land-info-content");
   const infoPanelCloseButton = document.getElementById("land-info-close");
   const mapStatus = document.getElementById("map-status");
+  const uiToast = document.getElementById("ui-toast");
+  const sidebarHandle = document.getElementById("sidebar-handle");
+  const menuBasemapTrigger = document.getElementById("menu-basemap-trigger");
+  const menuThemeTrigger = document.getElementById("menu-theme-trigger");
 
   if (!(infoPanelElement instanceof HTMLElement) || !(infoPanelContent instanceof HTMLElement)) {
     return;
@@ -90,6 +97,7 @@ async function bootstrap(): Promise<void> {
   let config: MapConfig | null = null;
   let uploadedHighlightFeatures: LandFeatureCollection = { type: "FeatureCollection", features: [] };
   let uploadedHighlightsRequestSeq = 0;
+  let toastTimer: number | null = null;
 
   const syncDesktopToMobileInputs = (): void => {
     if (
@@ -160,6 +168,58 @@ async function bootstrap(): Promise<void> {
     }
     mapStatus.textContent = message;
     mapStatus.style.color = color;
+  };
+
+  const showToast = (message: string): void => {
+    if (!(uiToast instanceof HTMLElement)) {
+      return;
+    }
+    if (toastTimer !== null) {
+      window.clearTimeout(toastTimer);
+    }
+    uiToast.textContent = message;
+    uiToast.classList.add("is-visible");
+    toastTimer = window.setTimeout(() => {
+      uiToast.classList.remove("is-visible");
+      toastTimer = null;
+    }, 1800);
+  };
+
+  const menuTriggers = [
+    menuBasemapTrigger instanceof HTMLButtonElement ? menuBasemapTrigger : null,
+    menuThemeTrigger instanceof HTMLButtonElement ? menuThemeTrigger : null
+  ];
+
+  const closeAllMenus = (): void => {
+    menuTriggers.forEach((trigger) => {
+      if (!trigger) {
+        return;
+      }
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.parentElement?.classList.remove("is-open");
+    });
+  };
+
+  const applySidebarCollapsed = (collapsed: boolean, persist = true): void => {
+    if (!window.matchMedia(DESKTOP_MEDIA_QUERY).matches) {
+      document.body.classList.remove("sidebar-collapsed");
+      return;
+    }
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+    if (sidebarHandle instanceof HTMLButtonElement) {
+      sidebarHandle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      sidebarHandle.setAttribute("aria-label", collapsed ? "사이드 메뉴 펼치기" : "사이드 메뉴 접기");
+    }
+    if (persist) {
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, collapsed ? "true" : "false");
+      } catch {
+        // Ignore storage failures.
+      }
+    }
+    window.setTimeout(() => {
+      mapView.resize();
+    }, 240);
   };
 
   const selectItem = (index: number, options: SelectOptions): void => {
@@ -330,7 +390,7 @@ async function bootstrap(): Promise<void> {
     });
   });
   mapView.setMoveEndHandler(() => {
-    void reloadCadastralLayers();
+    // Keep moveend lightweight to avoid layer tear-down flicker during nav/fit animations.
   });
 
   document.getElementById("btn-search")?.addEventListener("click", () => {
@@ -351,6 +411,78 @@ async function bootstrap(): Promise<void> {
   });
   listPanel.initBottomSheet();
   sessionTracker.mount();
+
+  menuTriggers.forEach((trigger) => {
+    if (!trigger) {
+      return;
+    }
+    trigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = trigger.getAttribute("aria-expanded") === "true";
+      closeAllMenus();
+      if (!isOpen) {
+        trigger.setAttribute("aria-expanded", "true");
+        trigger.parentElement?.classList.add("is-open");
+      }
+    });
+  });
+
+  document.querySelectorAll<HTMLElement>(".menu-item[data-menu-action='coming-soon']").forEach((item) => {
+    item.addEventListener("click", () => {
+      closeAllMenus();
+      showToast("준비 중입니다.");
+    });
+  });
+
+  const asBaseType = (raw: string): BaseType | null => {
+    if (raw === "Base" || raw === "Satellite" || raw === "Hybrid") {
+      return raw;
+    }
+    return null;
+  };
+
+  document.querySelectorAll<HTMLElement>(".menu-item[data-basemap]").forEach((item) => {
+    item.addEventListener("click", () => {
+      const layerType = asBaseType(item.dataset.basemap || "");
+      if (!layerType) {
+        return;
+      }
+      mapView.changeLayer(layerType);
+      closeAllMenus();
+      const label =
+        layerType === "Base" ? "일반지도" : layerType === "Satellite" ? "영상지도" : "하이브리드";
+      showToast(`${label}로 변경했습니다.`);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+    if (!target.parentElement?.closest(".menu-group")) {
+      closeAllMenus();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAllMenus();
+    }
+  });
+
+  const toggleSidebar = (): void => {
+    const collapsed = !document.body.classList.contains("sidebar-collapsed");
+    applySidebarCollapsed(collapsed);
+  };
+
+  sidebarHandle?.addEventListener("click", toggleSidebar);
+  sidebarHandle?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleSidebar();
+    }
+  });
 
   mobileSearchFab?.addEventListener("click", () => {
     if (!isMobileViewport()) {
@@ -398,11 +530,33 @@ async function bootstrap(): Promise<void> {
     applyMobileClass();
   });
 
+  window.matchMedia(DESKTOP_MEDIA_QUERY).addEventListener("change", () => {
+    if (window.matchMedia(DESKTOP_MEDIA_QUERY).matches) {
+      let shouldCollapse = false;
+      try {
+        shouldCollapse = localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+      } catch {
+        shouldCollapse = false;
+      }
+      applySidebarCollapsed(shouldCollapse, false);
+    } else {
+      applySidebarCollapsed(false, false);
+    }
+    mapView.resize();
+  });
+
   try {
     listPanel.setStatus("데이터를 불러오는 중입니다...");
     setMapStatus("지도를 초기화하는 중입니다...");
     config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
     mapView.init(config);
+    let initialSidebarCollapsed = false;
+    try {
+      initialSidebarCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+    } catch {
+      initialSidebarCollapsed = false;
+    }
+    applySidebarCollapsed(initialSidebarCollapsed, false);
     state.setOriginalItems([]);
     await applyFilters(false);
 
