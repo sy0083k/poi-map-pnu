@@ -1,4 +1,4 @@
-# 🏠 관심 필지 지도 (POI Map Geo)
+# 🏠 관심 필지 지도 (POI Map PNU)
 
 브이월드(VWorld) WMTS와 FlatGeobuf 기반으로 관심 필지(POI, Parcel of Interest)를 지도에 시각화하고,  
 관리자가 엑셀 업로드로 데이터를 갱신할 수 있는 웹 애플리케이션입니다.
