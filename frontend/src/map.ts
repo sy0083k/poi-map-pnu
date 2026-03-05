@@ -634,7 +634,7 @@ async function bootstrap(): Promise<void> {
   });
 
   const asBaseType = (raw: string): BaseType | null => {
-    if (raw === "Base" || raw === "Satellite" || raw === "Hybrid") {
+    if (raw === "Base" || raw === "White" || raw === "Satellite" || raw === "Hybrid") {
       return raw;
     }
     return null;
@@ -649,7 +649,7 @@ async function bootstrap(): Promise<void> {
       mapView.changeLayer(layerType);
       closeAllMenus();
       const label =
-        layerType === "Base" ? "일반지도" : layerType === "Satellite" ? "영상지도" : "하이브리드";
+        layerType === "Base" ? "일반지도" : layerType === "White" ? "백지도" : layerType === "Satellite" ? "영상지도" : "하이브리드";
       showToast(`${label}로 변경했습니다.`);
     });
   });

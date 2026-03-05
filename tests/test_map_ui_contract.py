@@ -18,6 +18,8 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert "시유지" in res.text
     assert "공유지(시+도)" in res.text
     assert "국·공유지" in res.text
+    assert ">백지도<" in res.text
+    assert 'data-basemap="White"' in res.text
     assert "시유재산" not in res.text
     assert "공유재산(시·도)" not in res.text
     assert "시+도유지" not in res.text
@@ -82,6 +84,8 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert 'national_public: "/gukgongyu"' in map_ts
     assert 'city_owned: "/siyu"' in map_ts
     assert "pushThemeHistory(theme);" in map_ts
+    assert 'raw === "Base" || raw === "White" || raw === "Satellite" || raw === "Hybrid"' in map_ts
+    assert 'layerType === "White" ? "백지도"' in map_ts
 
 
 def test_lands_list_client_sends_theme_query() -> None:
@@ -95,3 +99,5 @@ def test_select_highlight_is_flushed_before_fit_animation() -> None:
     assert "renderFeatureLayers();" in map_view_ts
     assert "map.renderSync();" in map_view_ts
     assert "window.requestAnimationFrame(() => {" in map_view_ts
+    assert 'White: "white"' in map_view_ts
+    assert "White: 18" in map_view_ts

@@ -41,6 +41,20 @@ type RenderOptions = {
   dataProjection?: CadastralCrs;
 };
 
+const WMTS_LAYER_BY_BASE_TYPE: Record<BaseType, "Base" | "white" | "Satellite" | "Hybrid"> = {
+  Base: "Base",
+  White: "white",
+  Satellite: "Satellite",
+  Hybrid: "Hybrid"
+};
+
+const BASEMAP_MAX_ZOOM: Record<BaseType, number> = {
+  Base: 19,
+  White: 18,
+  Satellite: 19,
+  Hybrid: 19
+};
+
 function asVectorFeature(feature: unknown): Feature<Geometry> | null {
   return feature instanceof Feature ? feature : null;
 }
@@ -67,6 +81,7 @@ function isLandSourceField(value: unknown): value is LandSourceField {
 export function createMapView(elements: MapViewElements) {
   let map: Map | null = null;
   let baseLayer: TileLayer<XYZ> | null = null;
+  let whiteLayer: TileLayer<XYZ> | null = null;
   let satLayer: TileLayer<XYZ> | null = null;
   let hybLayer: TileLayer<XYZ> | null = null;
   let vectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
@@ -205,19 +220,22 @@ export function createMapView(elements: MapViewElements) {
   };
 
   const init = (config: MapConfig): void => {
-    const commonSource = (type: BaseType) =>
-      new XYZ({
-        url: `https://api.vworld.kr/req/wmts/1.0.0/${config.vworldKey}/${type}/{z}/{y}/{x}.${type === "Satellite" ? "jpeg" : "png"}`,
+    const commonSource = (type: BaseType) => {
+      const wmtsLayer = WMTS_LAYER_BY_BASE_TYPE[type];
+      return new XYZ({
+        url: `https://api.vworld.kr/req/wmts/1.0.0/${config.vworldKey}/${wmtsLayer}/{z}/{y}/{x}.${wmtsLayer === "Satellite" ? "jpeg" : "png"}`,
         crossOrigin: "anonymous"
       });
+    };
 
     baseLayer = new TileLayer({ source: commonSource("Base"), visible: false, zIndex: 0 });
+    whiteLayer = new TileLayer({ source: commonSource("White"), visible: false, zIndex: 0 });
     satLayer = new TileLayer({ source: commonSource("Satellite"), visible: true, zIndex: 0 });
     hybLayer = new TileLayer({ source: commonSource("Hybrid"), visible: false, zIndex: 1 });
 
     map = new Map({
       target: "map",
-      layers: [baseLayer, satLayer, hybLayer],
+      layers: [baseLayer, whiteLayer, satLayer, hybLayer],
       view: new View({
         center: fromLonLat(config.center),
         zoom: config.zoom,
@@ -259,18 +277,20 @@ export function createMapView(elements: MapViewElements) {
   };
 
   const changeLayer = (type: BaseType): void => {
-    if (!map || !baseLayer || !satLayer || !hybLayer) {
+    if (!map || !baseLayer || !whiteLayer || !satLayer || !hybLayer) {
       return;
     }
 
     const view = map.getView();
     const zoomLevel = view.getZoom();
-    if (typeof zoomLevel === "number" && zoomLevel >= 20) {
-      view.setZoom(19);
+    const maxZoomForType = BASEMAP_MAX_ZOOM[type];
+    if (typeof zoomLevel === "number" && zoomLevel > maxZoomForType) {
+      view.setZoom(maxZoomForType);
     }
 
     baseLayer.setVisible(type === "Base");
-    satLayer.setVisible(type !== "Base");
+    whiteLayer.setVisible(type === "White");
+    satLayer.setVisible(type === "Satellite" || type === "Hybrid");
     hybLayer.setVisible(type === "Hybrid");
 
   };

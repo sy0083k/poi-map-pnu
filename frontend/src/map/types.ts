@@ -58,7 +58,7 @@ export type LandsPageResponse = LandFeatureCollection & {
   nextCursor: string | null;
 };
 
-export type BaseType = "Base" | "Satellite" | "Hybrid";
+export type BaseType = "Base" | "White" | "Satellite" | "Hybrid";
 export type ThemeType = "national_public" | "city_owned";
 export type LandClickSource = "map_click" | "list_click" | "nav_prev" | "nav_next";
 
