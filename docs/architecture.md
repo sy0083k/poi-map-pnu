@@ -23,7 +23,6 @@
 - `POST /api/lands/export`
 - `POST /api/events`
 - `POST /api/web-events`
-- `GET /api/public-download`
 - `/api/v1/*`는 `/api/*`와 동등 alias
 
 ## 공개 페이지
@@ -40,8 +39,6 @@
 - `GET /admin`
 - `POST /admin/upload`
 - `POST /admin/upload/city`
-- `POST /admin/public-download/upload`
-- `GET /admin/public-download/meta`
 - `POST /admin/settings`
 - `POST /admin/password`
 - `GET /admin/stats`

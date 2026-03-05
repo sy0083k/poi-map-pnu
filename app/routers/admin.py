@@ -23,7 +23,6 @@ from app.dependencies import (
 from app.logging_utils import RequestIdFilter
 from app.services import (
     admin_settings_service,
-    public_download_service,
     stats_service,
     upload_service,
 )
@@ -80,24 +79,6 @@ async def upload_city_excel(
         file=file,
         theme="city_owned",
     )
-
-
-@router.post("/public-download/upload", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
-async def upload_public_download_file(
-    request: Request,
-    csrf_token: str = Form(default=""),
-    file: UploadFile = File(...),  # noqa: B008
-):
-    return public_download_service.handle_public_download_upload(
-        request=request,
-        csrf_token=csrf_token,
-        file=file,
-    )
-
-
-@router.get("/public-download/meta", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
-async def get_public_download_meta(request: Request) -> dict:
-    return public_download_service.get_public_download_meta(request)
 
 
 @router.post("/settings", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])

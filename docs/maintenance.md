@@ -77,7 +77,6 @@
   - `/api/cadastral/fgb`
   - `/api/lands/list`
   - `/api/lands/export`
-  - `/api/public-download`
 
 ## 장애 대응
 ### 지도 데이터 미표시
@@ -107,5 +106,4 @@
 
 ## 백업/복구
 - `data/database.db`
-- `data/public_download/`
 - `data/*.fgb` (운영 중 사용하는 지적도 파일)

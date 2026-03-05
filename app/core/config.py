@@ -39,9 +39,6 @@ class Settings:
     trust_proxy_headers: bool
     trusted_proxy_networks: tuple[IPAddressNetwork, ...]
     upload_sheet_name: str
-    public_download_max_size_mb: int
-    public_download_allowed_exts: tuple[str, ...]
-    public_download_dir: str
     base_dir: str
 
 
@@ -126,17 +123,6 @@ def _parse_bool_env(name: str, default: bool) -> bool:
     raise SettingsError(f"Invalid boolean value for {name}: {raw_value}")
 
 
-def _parse_allowed_exts(raw_value: str) -> tuple[str, ...]:
-    values: list[str] = []
-    for raw_entry in raw_value.split(","):
-        entry = raw_entry.strip().lower().lstrip(".")
-        if entry:
-            values.append(entry)
-    if not values:
-        raise SettingsError("PUBLIC_DOWNLOAD_ALLOWED_EXTS must include at least one extension.")
-    return tuple(dict.fromkeys(values))
-
-
 def _validate_admin_hash(hash_value: str) -> str:
     if not BCRYPT_HASH_RE.match(hash_value):
         raise SettingsError("ADMIN_PW_HASH must be a valid bcrypt hash.")
@@ -190,11 +176,5 @@ def get_settings() -> Settings:
         trust_proxy_headers=_parse_bool_env("TRUST_PROXY_HEADERS", False),
         trusted_proxy_networks=_parse_network_list(os.getenv("TRUSTED_PROXY_IPS", "")),
         upload_sheet_name=os.getenv("UPLOAD_SHEET_NAME", "목록").strip() or "목록",
-        public_download_max_size_mb=int(os.getenv("PUBLIC_DOWNLOAD_MAX_SIZE_MB", "25")),
-        public_download_allowed_exts=_parse_allowed_exts(
-            os.getenv("PUBLIC_DOWNLOAD_ALLOWED_EXTS", "pdf,csv,xlsx")
-        ),
-        public_download_dir=os.getenv("PUBLIC_DOWNLOAD_DIR", "data/public_download").strip()
-        or "data/public_download",
         base_dir=str(base_dir),
     )

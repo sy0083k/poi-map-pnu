@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 from app.services import (
     cadastral_fgb_service,
     land_service,
-    public_download_service,
     stats_service,
 )
 
@@ -176,10 +175,6 @@ def create_router() -> APIRouter:
             return _rate_limited_response(retry_after)
         stats_service.record_web_visit_event(payload, request)
         return {"success": True}
-
-    @router.get("/public-download")
-    async def get_public_download(request: Request):
-        return public_download_service.get_public_download_file_response(request)
 
     return router
 
