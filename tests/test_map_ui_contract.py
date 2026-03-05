@@ -6,13 +6,21 @@ import pytest
 
 @pytest.mark.anyio
 async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.AsyncClient) -> None:
-    res = await async_client.get("/")
+    redirect = await async_client.get("/", follow_redirects=False)
+    assert redirect.status_code == 307
+    assert redirect.headers.get("location") == "/siyu"
+
+    res = await async_client.get("/", follow_redirects=True)
     assert res.status_code == 200
+    assert 'data-initial-theme="city_owned"' in res.text
     assert 'id="land-info-panel" class="is-hidden"' in res.text
     assert 'class="topbar-separator"' in res.text
-    assert "시유재산" in res.text
-    assert "공유재산(시·도)" in res.text
+    assert "시유지" in res.text
+    assert "공유지(시+도)" in res.text
     assert "국·공유지" in res.text
+    assert "시유재산" not in res.text
+    assert "공유재산(시·도)" not in res.text
+    assert "시+도유지" not in res.text
     assert ">검색 결과 다운로드<" in res.text
     assert ">전체 목록 다운로드<" not in res.text
     assert res.text.count(">재산관리관 (예: 회계과)<") >= 2
@@ -26,6 +34,16 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert ">관심 필지<" not in res.text
     assert ">행정 경계<" not in res.text
     assert ">개발 예정<" not in res.text
+
+
+@pytest.mark.anyio
+async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClient) -> None:
+    national = await async_client.get("/gukgongyu")
+    city = await async_client.get("/siyu")
+    assert national.status_code == 200
+    assert city.status_code == 200
+    assert 'data-initial-theme="national_public"' in national.text
+    assert 'data-initial-theme="city_owned"' in city.text
 
 
 def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
@@ -55,6 +73,10 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert "정확한 재산관리관을 입력하세요." in map_ts
     assert 'mapView.renderFeatures({ type: "FeatureCollection", features: [] }' in map_ts
     assert 'downloadClient.downloadSearchResultFile({' in map_ts
+    assert 'const THEME_PATHS: Record<ThemeType, string> = {' in map_ts
+    assert 'national_public: "/gukgongyu"' in map_ts
+    assert 'city_owned: "/siyu"' in map_ts
+    assert "pushThemeHistory(theme);" in map_ts
 
 
 def test_lands_list_client_sends_theme_query() -> None:

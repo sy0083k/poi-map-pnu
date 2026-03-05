@@ -30,6 +30,11 @@ const MOBILE_MEDIA_QUERY = "(max-width: 768px)";
 const DESKTOP_MEDIA_QUERY = "(min-width: 769px)";
 const MOBILE_HISTORY_KEY = "mobileMapViewState";
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "sidebarCollapsed";
+const THEME_HISTORY_KEY = "mapTheme";
+const THEME_PATHS: Record<ThemeType, string> = {
+  national_public: "/gukgongyu",
+  city_owned: "/siyu"
+};
 
 function isMobileViewport(): boolean {
   return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
@@ -40,6 +45,13 @@ function readMobileViewState(value: unknown): MobileViewState | null {
     return value;
   }
   return null;
+}
+
+function normalizePathname(pathname: string): string {
+  if (pathname === "/") {
+    return pathname;
+  }
+  return pathname.replace(/\/+$/, "");
 }
 
 async function bootstrap(): Promise<void> {
@@ -203,6 +215,21 @@ async function bootstrap(): Promise<void> {
     return null;
   };
 
+  const getThemeFromPathname = (pathname: string): ThemeType | null => {
+    const normalized = normalizePathname(pathname);
+    if (normalized === THEME_PATHS.national_public) {
+      return "national_public";
+    }
+    if (normalized === THEME_PATHS.city_owned) {
+      return "city_owned";
+    }
+    return null;
+  };
+
+  const getThemePath = (theme: ThemeType): string => {
+    return THEME_PATHS[theme];
+  };
+
   const getThemeLabel = (theme: ThemeType): string => {
     return theme === "national_public" ? "국·공유재산" : "시유재산";
   };
@@ -222,6 +249,20 @@ async function bootstrap(): Promise<void> {
   };
 
   const themeMenuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".menu-item[data-theme]"));
+
+  const pushThemeHistory = (theme: ThemeType): void => {
+    const targetPath = getThemePath(theme);
+    if (normalizePathname(window.location.pathname) === targetPath) {
+      return;
+    }
+    const current = history.state && typeof history.state === "object" ? history.state : {};
+    history.pushState({ ...current, [THEME_HISTORY_KEY]: theme }, "", targetPath);
+  };
+
+  const replaceThemeHistory = (theme: ThemeType): void => {
+    const current = history.state && typeof history.state === "object" ? history.state : {};
+    history.replaceState({ ...current, [THEME_HISTORY_KEY]: theme }, "");
+  };
 
   const syncThemeMenuActiveState = (): void => {
     const currentTheme = state.getCurrentTheme();
@@ -572,6 +613,7 @@ async function bootstrap(): Promise<void> {
       syncThemeMenuActiveState();
       mapView.clearInfoPanel();
       closeAllMenus();
+      pushThemeHistory(theme);
       void loadThemeData(theme);
       showToast(`${getThemeLabel(theme)} 레이어로 전환했습니다.`);
     });
@@ -658,18 +700,28 @@ async function bootstrap(): Promise<void> {
   });
 
   window.addEventListener("popstate", (event) => {
+    const nextTheme = getThemeFromPathname(window.location.pathname);
+    if (nextTheme && nextTheme !== state.getCurrentTheme()) {
+      const previousTheme = state.getCurrentTheme();
+      if (previousTheme === "city_owned" && nextTheme !== "city_owned") {
+        clearPropertyManagerInputs();
+      }
+      state.setCurrentTheme(nextTheme);
+      applyThemeUiState(nextTheme);
+      syncThemeMenuActiveState();
+      mapView.clearInfoPanel();
+      void loadThemeData(nextTheme);
+    }
+
     if (!isMobileViewport()) {
       return;
     }
-    const nextState = readMobileViewState(
-      event.state && typeof event.state === "object"
-        ? (event.state as Record<string, unknown>)[MOBILE_HISTORY_KEY]
-        : null
-    );
-    if (!nextState) {
-      return;
+    const statePayload =
+      event.state && typeof event.state === "object" ? (event.state as Record<string, unknown>) : {};
+    const nextMobileState = readMobileViewState(statePayload[MOBILE_HISTORY_KEY]);
+    if (nextMobileState) {
+      setMobileState(nextMobileState, false);
     }
-    setMobileState(nextState, false);
   });
 
   window.matchMedia(MOBILE_MEDIA_QUERY).addEventListener("change", () => {
@@ -703,6 +755,14 @@ async function bootstrap(): Promise<void> {
       initialSidebarCollapsed = false;
     }
     applySidebarCollapsed(initialSidebarCollapsed, false);
+    const initialTheme =
+      asThemeType(document.body.dataset.initialTheme || "") ??
+      getThemeFromPathname(window.location.pathname) ??
+      "national_public";
+    state.setCurrentTheme(initialTheme);
+    applyThemeUiState(initialTheme);
+    syncThemeMenuActiveState();
+    replaceThemeHistory(initialTheme);
     state.setOriginalItems([]);
     await applyFilters(false);
     await loadThemeData(state.getCurrentTheme());
