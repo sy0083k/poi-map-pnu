@@ -49,7 +49,6 @@ python create_hash.py
 - `CADASTRAL_FGB_PNU_FIELD`, `CADASTRAL_FGB_CRS`, `CADASTRAL_MIN_RENDER_ZOOM`
 - `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`
 - `UPLOAD_SHEET_NAME`
-- `PUBLIC_DOWNLOAD_MAX_SIZE_MB`, `PUBLIC_DOWNLOAD_ALLOWED_EXTS`, `PUBLIC_DOWNLOAD_DIR`
 
 지도 초기 화면에서 연속지적도를 바로 표시하려면 `MAP_DEFAULT_ZOOM >= CADASTRAL_MIN_RENDER_ZOOM` 조건을 만족해야 합니다.
 
@@ -129,8 +128,7 @@ uvicorn app.main:app --reload
    - 데스크톱 사이드바 핸들은 `>`/`<` 방향 힌트로 접기/펼치기 가능성을 직관적으로 표시한다.
 5. FGB 파일 조회 실패 시 지도 상태 문구에 오류가 표시된다.
 6. 사이드바의 `검색 결과 다운로드` 버튼은 현재 검색 결과 목록의 토지 전체 속성을 DB에서 조회해 Excel로 내려받는다.
-7. 공개 다운로드 파일(`/api/public-download`)은 `/admin/public-download/upload`로 별도 운영 가능(레거시 경로).
-8. 통계 탭에서 `전체 필지 수` 및 이벤트 통계를 확인 가능
+7. 통계 탭에서 `전체 필지 수` 및 이벤트 통계를 확인 가능
 
 ## 📱 모바일 화면 흐름
 - 초기 화면: 지도 중심 화면 + 우하단 검색(돋보기) 버튼
@@ -151,7 +149,6 @@ uvicorn app.main:app --reload
   - 응답: 검색 결과 토지의 원본 업로드 컬럼 전체 속성 Excel(`.xlsx`)
 - `POST /api/events`
 - `POST /api/web-events`
-- `GET /api/public-download`
 
 ### 버전 경로 (`/api/v1`)
 - `/api/v1/*`는 현재 **유지 중인 호환성(alias) 경로**입니다.
@@ -166,8 +163,6 @@ uvicorn app.main:app --reload
 - `GET /admin`
 - `POST /admin/upload`
 - `POST /admin/upload/city`
-- `POST /admin/public-download/upload`
-- `GET /admin/public-download/meta`
 - `POST /admin/settings`
 - `POST /admin/password`
 - `GET /admin/stats`
@@ -254,7 +249,7 @@ curl http://127.0.0.1:8000/health
 
 운영 메모:
 - `docker-compose.yml`은 IP-only 환경을 위해 `SESSION_HTTPS_ONLY=false`, `TRUST_PROXY_HEADERS=false`를 기본값으로 사용합니다.
-- SQLite 및 공개 다운로드 파일은 `./data` 볼륨으로 영속화됩니다.
+- SQLite DB는 `./data` 볼륨으로 영속화됩니다.
 
 ## 📂 디렉터리 구조
 ```text
@@ -270,8 +265,7 @@ project-root/
 │  └─src/map/             # 지도 화면 기능 모듈(map-view, filters, list-panel, telemetry, download-client, session-tracker 등)
 ├─templates/              # 서버 렌더링 템플릿
 ├─static/                 # 정적 파일 및 빌드 산출물(static/dist)
-├─data/                   # SQLite DB 및 공개 다운로드 파일
-│  └─public_download/
+├─data/                   # SQLite DB 및 운영 데이터 파일
 ├─tests/                  # 테스트 코드
 ├─docs/                   # 운영/아키텍처/보안 문서
 └─.github/workflows/      # CI/CD 워크플로

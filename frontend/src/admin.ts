@@ -11,13 +11,6 @@ type UploadResponse = {
   };
 };
 
-type PublicDownloadUploadResponse = {
-  success: boolean;
-  message: string;
-  filename?: string;
-  uploadedAt?: string;
-};
-
 type StatsResponse = {
   summary: {
     searchCount: number;
@@ -121,44 +114,6 @@ async function handleThemeUpload(csrfToken: string, options: ThemeUploadOptions)
     } else {
       status.innerText = `업로드 완료: ${result.message}`;
     }
-  } catch (error) {
-    status.style.color = "red";
-    const message = error instanceof HttpError ? error.message : String(error);
-    status.innerText = `오류 발생: ${message}`;
-  }
-}
-
-async function handlePublicDownloadUpload(csrfToken: string): Promise<void> {
-  const fileInput = requireElement("publicDownloadFile", HTMLInputElement);
-  const status = requireElement("publicDownloadStatus", HTMLDivElement);
-
-  if (!fileInput || !status) {
-    return;
-  }
-
-  const file = fileInput.files?.[0];
-  if (!file) {
-    alert("다운로드 파일을 선택해주세요.");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("csrf_token", csrfToken);
-
-  status.style.color = "black";
-
-  try {
-    status.innerText = "다운로드 파일 업로드 중...";
-    const result = await fetchJson<PublicDownloadUploadResponse>("/admin/public-download/upload", {
-      method: "POST",
-      body: formData,
-      timeoutMs: 45000
-    });
-    status.style.color = "green";
-    status.innerText = result.filename
-      ? `업로드 완료: ${result.filename}`
-      : "업로드가 완료되었습니다.";
   } catch (error) {
     status.style.color = "red";
     const message = error instanceof HttpError ? error.message : String(error);
@@ -453,7 +408,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const csrfInput = requireElement("csrfToken", HTMLInputElement);
   const uploadNationalButton = document.getElementById("uploadBtnNational");
   const uploadCityButton = document.getElementById("uploadBtnCity");
-  const publicDownloadUploadButton = document.getElementById("publicDownloadUploadBtn");
   const settingsForm = document.getElementById("settingsForm");
   const refreshStatsButton = document.getElementById("refreshStatsBtn");
 
@@ -478,12 +432,6 @@ document.addEventListener("DOMContentLoaded", () => {
         emptyFileMessage: "시유지 파일을 선택해주세요.",
         loadingMessage: "시유지 파일 업로드 중..."
       });
-    });
-  }
-
-  if (publicDownloadUploadButton && csrfInput) {
-    publicDownloadUploadButton.addEventListener("click", () => {
-      void handlePublicDownloadUpload(csrfInput.value);
     });
   }
 

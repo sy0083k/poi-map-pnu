@@ -30,7 +30,7 @@
 | RISK-001 | P0 | 설정 변경 즉시 반영 불가 | todo | unassigned | 2026-03-09 | 관리자 설정/비밀번호 변경 후 재시작 없이도 반영 전략이 문서화되고 구현/운영 절차가 확정된다. | 관련: `app/core/config.py`, `app/main.py` |
 | RISK-002 | P0 | 인메모리 제한기 다중 인스턴스 한계 | todo | unassigned | 2026-03-09 | 로그인/이벤트 레이트리밋이 멀티 인스턴스 환경에서 일관 동작하도록 공유 스토어 전략이 확정된다. | 관련: `app/auth_security.py`, `app/rate_limit.py` |
 | RISK-003 | P1 | FlatGeobuf 뷰포트 로딩 내구성/성능 검증 부족 | todo | unassigned | 2026-03-09 | 파일 교체/대용량 뷰포트 이동 시에도 지도 렌더링이 안정적으로 동작하고 성능 한계가 문서화된다. | 관련: `frontend/src/map/cadastral-fgb-layer.ts`, `app/services/cadastral_fgb_service.py` / 2026-03-05 조사: FGB 152MB, full scan 경로와 moveend 재렌더가 초기 지연 후보 |
-| RISK-004 | P1 | 공개 다운로드 응답 메모리 사용량 리스크 | todo | unassigned | 2026-03-09 | 대용량 파일에서도 서버 메모리 급증 없이 다운로드를 처리하도록 스트리밍 응답 방식이 적용된다. | 관련: `app/services/public_download_service.py` |
+| RISK-004 | P1 | 공개 다운로드 응답 메모리 사용량 리스크 | done | team | 2026-03-05 | 공개 다운로드 기능 제거로 관련 응답 메모리 리스크가 소거된다. | 관련 코드(`app/services/public_download_service.py`, `/api/public-download`, `/admin/public-download/*`) 제거 완료 |
 | RISK-005 | P1 | 프런트 전체 데이터 선적재로 인한 확장성 한계 | todo | unassigned | 2026-03-09 | 데이터 증가 시 초기 로딩 시간/브라우저 메모리 사용을 제어하는 점진 로딩 전략이 수립된다. | 관련: `frontend/src/map/lands-list-client.ts`, `frontend/src/map.ts` |
 | RISK-006 | P1 | 루트 pytest 수집 충돌(복제본 tests 중복) | done | team | 2026-03-02 | 루트 `pytest -q`가 `tests/`만 수집하고 `IdlePublicProperty/`와의 `conftest` 충돌 없이 통과한다. | 관련: `pyproject.toml` (`testpaths`, `norecursedirs`) |
 | RISK-007 | P1 | 관리자 세션 쿠키 앱 간 교차 인식 | done | team | 2026-03-02 | 세션 쿠키명/네임스페이스 분리와 인증 검증 강화로 동일 도메인 다중 앱 간 세션 재사용이 차단된다. | 관련: `app/main.py`, `app/dependencies.py`, `app/services/auth_service.py` |
@@ -70,3 +70,4 @@
 - 2026-03-05 | reviewer: team | 주제도별 진입 경로를 `국·공유지=/gukgongyu`, `시유재산=/siyu`로 추가하고 메뉴 전환/뒤로가기/popstate 동기화를 반영 | 다음 액션: `.html` 별칭 경로(`/gukgongyu.html`, `/siyu.html`) 필요 여부 결정
 - 2026-03-05 | reviewer: team | 루트 경로(`/`)를 `307 Temporary Redirect`로 `/siyu`에 위임해 기본 진입 주제도를 시유재산으로 고정 | 다음 액션: 운영 배포 후 북마크/링크 유입의 경로 전환 영향(로그) 모니터링
 - 2026-03-05 | reviewer: team | 글로벌 헤더 `주제도` 하위 메뉴 표기명을 `시유지/공유지(시+도)/국·공유지` 순서로 조정하고 기존 `시유재산/공유재산(시·도)` 표기를 대체 | 다음 액션: 운영 용어집(사용자 안내 문구/매뉴얼) 동기화 점검
+- 2026-03-05 | reviewer: team | `public_download` 기능(`/api/public-download`, `/admin/public-download/*`)과 설정(`PUBLIC_DOWNLOAD_*`)을 코드/문서/테스트에서 제거 | 다음 액션: 운영 환경의 잔존 `data/public_download/` 파일 수동 정리 여부 결정

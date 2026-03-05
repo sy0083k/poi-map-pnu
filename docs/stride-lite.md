@@ -2,12 +2,12 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-04
+최종 수정일: 2026-03-05
 
 ## 범위
-- 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/lands`, `/api/lands/list`, `/api/events`, `/api/web-events`, `/api/public-download`, `/api/v1/*`
+- 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/lands`, `/api/lands/list`, `/api/events`, `/api/web-events`, `/api/v1/*`
 - 관리자 API: `/admin/*`, `/login`, `/logout`
-- 저장소: `data/database.db`, `data/*.fgb`, `data/public_download/*`
+- 저장소: `data/database.db`, `data/*.fgb`
 
 ## 핵심 자산
 - 관리자 세션/자격
