@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Final, Literal
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -12,9 +12,12 @@ from app.services import (
 
 DEFAULT_LANDS_PAGE_LIMIT = 500
 MAX_LANDS_PAGE_LIMIT = 2000
+MAX_EXPORT_IDS = 10000
 EVENT_LIMIT_PER_MINUTE = 60
 WEB_EVENT_LIMIT_PER_MINUTE = 120
 RATE_LIMIT_WINDOW_SECONDS = 60
+THEME_NATIONAL_PUBLIC: Final[Literal["national_public"]] = "national_public"
+THEME_CITY_OWNED: Final[Literal["city_owned"]] = "city_owned"
 
 
 def _parse_cursor(raw_cursor: str | None) -> int | None:
@@ -24,6 +27,35 @@ def _parse_cursor(raw_cursor: str | None) -> int | None:
     if cursor < 0:
         raise ValueError("cursor must be >= 0")
     return cursor
+
+
+def _parse_theme(raw_theme: str | None) -> Literal["national_public", "city_owned"]:
+    if raw_theme is None or raw_theme.strip() == "":
+        return THEME_NATIONAL_PUBLIC
+    theme = raw_theme.strip()
+    if theme == THEME_NATIONAL_PUBLIC:
+        return THEME_NATIONAL_PUBLIC
+    if theme == THEME_CITY_OWNED:
+        return THEME_CITY_OWNED
+    raise ValueError("theme must be one of: national_public, city_owned")
+
+
+def _parse_land_ids(raw_ids: Any) -> list[int]:
+    if not isinstance(raw_ids, list):
+        raise ValueError("landIds must be an array of integers")
+    parsed: list[int] = []
+    seen: set[int] = set()
+    for value in raw_ids:
+        item_id = int(value)
+        if item_id <= 0 or item_id in seen:
+            continue
+        seen.add(item_id)
+        parsed.append(item_id)
+    if not parsed:
+        raise ValueError("landIds must include at least one positive integer")
+    if len(parsed) > MAX_EXPORT_IDS:
+        raise ValueError(f"landIds must be <= {MAX_EXPORT_IDS}")
+    return parsed
 
 
 def _rate_limit_key(request: Request, payload: dict[str, Any]) -> str:
@@ -71,25 +103,53 @@ def create_router() -> APIRouter:
     async def get_lands(
         limit: int = DEFAULT_LANDS_PAGE_LIMIT,
         cursor: str | None = None,
+        theme: str | None = None,
     ) -> dict[str, Any]:
         clamped_limit = max(1, min(limit, MAX_LANDS_PAGE_LIMIT))
         try:
             parsed_cursor = _parse_cursor(cursor)
+            parsed_theme = _parse_theme(theme)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return land_service.get_public_land_features_page(cursor=parsed_cursor, limit=clamped_limit)
+        return land_service.get_public_land_features_page(
+            cursor=parsed_cursor,
+            limit=clamped_limit,
+            theme=parsed_theme,
+        )
 
     @router.get("/lands/list")
     async def get_lands_list(
         limit: int = DEFAULT_LANDS_PAGE_LIMIT,
         cursor: str | None = None,
+        theme: str | None = None,
     ) -> dict[str, Any]:
         clamped_limit = max(1, min(limit, MAX_LANDS_PAGE_LIMIT))
         try:
             parsed_cursor = _parse_cursor(cursor)
+            parsed_theme = _parse_theme(theme)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return land_service.get_public_land_list_page(cursor=parsed_cursor, limit=clamped_limit)
+        return land_service.get_public_land_list_page(
+            cursor=parsed_cursor,
+            limit=clamped_limit,
+            theme=parsed_theme,
+        )
+
+    @router.post("/lands/export")
+    async def export_lands(payload: dict[str, Any]):
+        try:
+            parsed_theme = _parse_theme(str(payload.get("theme", "")))
+            parsed_land_ids = _parse_land_ids(payload.get("landIds"))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        try:
+            return land_service.build_public_land_export_response(
+                land_ids=parsed_land_ids,
+                theme=parsed_theme,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/events")
     async def post_map_event(request: Request, payload: dict[str, Any]):

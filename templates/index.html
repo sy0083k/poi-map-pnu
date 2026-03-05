@@ -44,6 +44,15 @@
                     <input type="number" id="mobile-max-area" placeholder="최대" min="0">
                 </div>
             </div>
+            <div class="filter-group theme-city-only">
+                <label>재산관리관 (예: 회계과)</label>
+                <input
+                    type="text"
+                    id="mobile-property-manager-search"
+                    placeholder="재산관리관 이름을 입력하세요..."
+                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
+                >
+            </div>
             <div class="action-cluster mobile-search-actions" role="group" aria-label="모바일 검색 작업">
                 <button id="mobile-btn-search" type="button">검색 실행</button>
                 <button id="mobile-btn-reset-filters" class="btn-secondary" type="button">조건 초기화</button>
@@ -67,16 +76,25 @@
                     <input type="number" id="max-area" placeholder="최대" min="0">
                 </div>
             </div>
+            <div class="filter-group theme-city-only">
+                <label>재산관리관 (예: 회계과)</label>
+                <input
+                    type="text"
+                    id="property-manager-search"
+                    placeholder="재산관리관 이름을 입력하세요..."
+                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
+                >
+            </div>
             <button id="btn-search">조건에 맞는 토지 찾기</button>
             <div class="action-cluster" role="group" aria-label="검색 옵션 작업">
                 <button id="btn-reset-filters" class="btn-secondary" type="button">검색 조건 초기화</button>
-                <button id="btn-download-all" class="btn-secondary" type="button">전체 목록 다운로드</button>
+                <button id="btn-download-all" class="btn-secondary" type="button">검색 결과 다운로드</button>
             </div>
         </div>
+        <div id="map-status" aria-live="polite"></div>
         <div id="list-container">
             <p style="padding: 20px; color: #999;">데이터 로딩 중...</p>
         </div>
-        <div id="map-status" aria-live="polite"></div>
         <div id="nav-footer">
             <button class="nav-btn" id="prev-btn" disabled>◀ 이전</button>
             <span id="nav-info">0 / 0</span>

@@ -80,6 +80,53 @@ def test_upload_service_success(
     assert result["success"] is True
 
 
+def test_upload_service_success_city_theme(
+    build_app: Any, monkeypatch: MonkeyPatch, db_path: Any
+) -> None:
+    app = build_app()
+    from app.db.connection import db_connection
+    from app.repositories import poi_repository
+
+    with db_connection() as conn:
+        poi_repository.init_db(conn)
+    request = _make_request(app, csrf_token="csrf")
+    file = _make_upload_file(
+        "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    df = pd.DataFrame(
+        {
+            "고유번호": ["1111012345678901234"],
+            "소재지": ["city-addr"],
+            "지목": ["답"],
+            "실면적": [12.5],
+            "재산관리관": ["시유담당"],
+        }
+    )
+    monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
+    monkeypatch.setattr(pd, "read_excel", lambda *_args, **_kwargs: df)
+
+    result = upload_service.handle_excel_upload(
+        request=request,
+        background_tasks=BackgroundTasks(),
+        csrf_token="csrf",
+        file=file,
+        theme="city_owned",
+    )
+    assert result["success"] is True
+
+    with db_connection(row_factory=True) as conn:
+        city_rows = poi_repository.fetch_lands_page_without_geom_for_theme(
+            conn, after_id=None, limit=10, theme="city_owned"
+        )
+        national_rows = poi_repository.fetch_lands_page_without_geom_for_theme(
+            conn, after_id=None, limit=10, theme="national_public"
+        )
+    assert len(city_rows) == 1
+    assert city_rows[0]["address"] == "city-addr"
+    assert len(national_rows) == 0
+
+
 def test_upload_service_rejects_bad_extension(build_app: Any, db_path: Any) -> None:
     app = build_app()
     request = _make_request(app, csrf_token="csrf")

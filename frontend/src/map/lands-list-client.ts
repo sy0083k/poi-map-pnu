@@ -1,13 +1,13 @@
 import { fetchJson } from "../http";
 
-import type { LandListItem, LandListPageResponse } from "./types";
+import type { LandListItem, LandListPageResponse, ThemeType } from "./types";
 
-export async function loadAllLandListItems(): Promise<LandListItem[]> {
+export async function loadAllLandListItems(theme: ThemeType): Promise<LandListItem[]> {
   const allItems: LandListItem[] = [];
   let cursor: string | null = null;
 
   while (true) {
-    const query = new URLSearchParams({ limit: "500" });
+    const query = new URLSearchParams({ limit: "500", theme });
     if (cursor) {
       query.set("cursor", cursor);
     }

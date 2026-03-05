@@ -46,6 +46,14 @@ async def test_upload_requires_authentication(async_client: httpx.AsyncClient) -
 
 
 @pytest.mark.anyio
+async def test_city_upload_requires_authentication(async_client: httpx.AsyncClient) -> None:
+    file_bytes = io.BytesIO(b"not-an-excel")
+    files = {"file": ("test.xlsx", file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    res = await async_client.post("/admin/upload/city", data={"csrf_token": "x"}, files=files)
+    assert res.status_code == 401
+
+
+@pytest.mark.anyio
 async def test_internal_network_accepts_trusted_proxy_forwarded_for(app_env: dict[str, str]) -> None:
     env = dict(app_env)
     env["ALLOWED_IPS"] = "192.168.0.0/24"

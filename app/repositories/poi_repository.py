@@ -1,19 +1,32 @@
 import sqlite3
-from typing import Iterable, Sequence
+from typing import Iterable, Literal, Sequence
 
 from app.repositories import event_repository, job_repository, land_repository, web_visit_repository
+
+ThemeType = Literal["national_public", "city_owned"]
 
 
 def init_db(conn: sqlite3.Connection) -> None:
     land_repository.init_land_schema(conn)
+    land_repository.init_land_schema(conn, table_name=land_repository.CITY_TABLE_NAME)
     job_repository.init_job_schema(conn)
     event_repository.init_event_schema(conn)
     web_visit_repository.init_web_visit_schema(conn)
     conn.commit()
 
 
+def _table_name_for_theme(theme: ThemeType) -> str:
+    if theme == "city_owned":
+        return land_repository.CITY_TABLE_NAME
+    return land_repository.TABLE_NAME
+
+
 def fetch_lands_with_geom(conn: sqlite3.Connection) -> Sequence[sqlite3.Row]:
     return land_repository.fetch_lands_with_geom(conn)
+
+
+def fetch_lands_with_geom_for_theme(conn: sqlite3.Connection, *, theme: ThemeType) -> Sequence[sqlite3.Row]:
+    return land_repository.fetch_lands_with_geom(conn, table_name=_table_name_for_theme(theme))
 
 
 def fetch_lands_with_geom_page(
@@ -25,6 +38,21 @@ def fetch_lands_with_geom_page(
     return land_repository.fetch_lands_with_geom_page(conn, after_id=after_id, limit=limit)
 
 
+def fetch_lands_with_geom_page_for_theme(
+    conn: sqlite3.Connection,
+    *,
+    after_id: int | None,
+    limit: int,
+    theme: ThemeType,
+) -> Sequence[sqlite3.Row]:
+    return land_repository.fetch_lands_with_geom_page(
+        conn,
+        after_id=after_id,
+        limit=limit,
+        table_name=_table_name_for_theme(theme),
+    )
+
+
 def fetch_lands_page_without_geom(
     conn: sqlite3.Connection,
     *,
@@ -34,8 +62,40 @@ def fetch_lands_page_without_geom(
     return land_repository.fetch_lands_page_without_geom(conn, after_id=after_id, limit=limit)
 
 
+def fetch_lands_page_without_geom_for_theme(
+    conn: sqlite3.Connection,
+    *,
+    after_id: int | None,
+    limit: int,
+    theme: ThemeType,
+) -> Sequence[sqlite3.Row]:
+    return land_repository.fetch_lands_page_without_geom(
+        conn,
+        after_id=after_id,
+        limit=limit,
+        table_name=_table_name_for_theme(theme),
+    )
+
+
+def fetch_lands_by_ids_for_theme(
+    conn: sqlite3.Connection,
+    *,
+    ids: Sequence[int],
+    theme: ThemeType,
+) -> Sequence[sqlite3.Row]:
+    return land_repository.fetch_lands_by_ids(
+        conn,
+        ids=ids,
+        table_name=_table_name_for_theme(theme),
+    )
+
+
 def delete_all(conn: sqlite3.Connection) -> None:
     land_repository.delete_all(conn)
+
+
+def delete_all_for_theme(conn: sqlite3.Connection, *, theme: ThemeType) -> None:
+    land_repository.delete_all(conn, table_name=_table_name_for_theme(theme))
 
 
 def insert_land(
@@ -65,6 +125,35 @@ def insert_land(
     )
 
 
+def insert_land_for_theme(
+    conn: sqlite3.Connection,
+    *,
+    theme: ThemeType,
+    pnu: str = "",
+    address: str,
+    land_type: str,
+    area: float,
+    property_manager: str = "",
+    source_fields_json: str = "[]",
+    adm_property: str = "",
+    gen_property: str = "",
+    contact: str = "",
+) -> None:
+    land_repository.insert_land(
+        conn,
+        pnu=pnu,
+        address=address,
+        land_type=land_type,
+        area=area,
+        property_manager=property_manager,
+        source_fields_json=source_fields_json,
+        adm_property=adm_property,
+        gen_property=gen_property,
+        contact=contact,
+        table_name=_table_name_for_theme(theme),
+    )
+
+
 def fetch_missing_geom(conn: sqlite3.Connection, *, limit: int | None = None) -> Iterable[tuple[int, str]]:
     return land_repository.fetch_missing_geom(conn, limit=limit)
 
@@ -91,6 +180,10 @@ def count_failed_geom(conn: sqlite3.Connection) -> int:
 
 def count_all_lands(conn: sqlite3.Connection) -> int:
     return land_repository.count_all_lands(conn)
+
+
+def count_all_lands_for_theme(conn: sqlite3.Connection, *, theme: ThemeType) -> int:
+    return land_repository.count_all_lands(conn, table_name=_table_name_for_theme(theme))
 
 
 def fetch_distinct_pnu(conn: sqlite3.Connection) -> Sequence[str]:

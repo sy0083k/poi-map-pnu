@@ -1,16 +1,19 @@
 import type { LandListItem } from "./types";
+import type { ThemeType } from "./types";
 
 type MapState = {
   originalItems: LandListItem[] | null;
   currentItems: LandListItem[];
   currentIndex: number;
+  currentTheme: ThemeType;
 };
 
 export function createMapState() {
   const state: MapState = {
     originalItems: null,
     currentItems: [],
-    currentIndex: -1
+    currentIndex: -1,
+    currentTheme: "national_public"
   };
 
   return {
@@ -32,6 +35,12 @@ export function createMapState() {
     },
     getCurrentIndex(): number {
       return state.currentIndex;
+    },
+    setCurrentTheme(theme: ThemeType): void {
+      state.currentTheme = theme;
+    },
+    getCurrentTheme(): ThemeType {
+      return state.currentTheme;
     }
   };
 }

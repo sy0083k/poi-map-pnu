@@ -77,9 +77,17 @@ function initTabs(onStatsSelected: () => void): void {
   });
 }
 
-async function handleUpload(csrfToken: string): Promise<void> {
-  const fileInput = requireElement("excelFile", HTMLInputElement);
-  const status = requireElement("status", HTMLDivElement);
+type ThemeUploadOptions = {
+  fileInputId: string;
+  statusId: string;
+  endpoint: string;
+  emptyFileMessage: string;
+  loadingMessage: string;
+};
+
+async function handleThemeUpload(csrfToken: string, options: ThemeUploadOptions): Promise<void> {
+  const fileInput = requireElement(options.fileInputId, HTMLInputElement);
+  const status = requireElement(options.statusId, HTMLDivElement);
 
   if (!fileInput || !status) {
     return;
@@ -87,7 +95,7 @@ async function handleUpload(csrfToken: string): Promise<void> {
 
   const file = fileInput.files?.[0];
   if (!file) {
-    alert("파일을 선택해주세요.");
+    alert(options.emptyFileMessage);
     return;
   }
 
@@ -98,8 +106,8 @@ async function handleUpload(csrfToken: string): Promise<void> {
   status.style.color = "black";
 
   try {
-    status.innerText = "1단계: 엑셀 파일 입력 중...";
-    const result = await fetchJson<UploadResponse>("/admin/upload", {
+    status.innerText = options.loadingMessage;
+    const result = await fetchJson<UploadResponse>(options.endpoint, {
       method: "POST",
       body: formData,
       timeoutMs: 45000
@@ -443,14 +451,33 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const csrfInput = requireElement("csrfToken", HTMLInputElement);
-  const uploadButton = document.getElementById("uploadBtn");
+  const uploadNationalButton = document.getElementById("uploadBtnNational");
+  const uploadCityButton = document.getElementById("uploadBtnCity");
   const publicDownloadUploadButton = document.getElementById("publicDownloadUploadBtn");
   const settingsForm = document.getElementById("settingsForm");
   const refreshStatsButton = document.getElementById("refreshStatsBtn");
 
-  if (uploadButton && csrfInput) {
-    uploadButton.addEventListener("click", () => {
-      void handleUpload(csrfInput.value);
+  if (uploadNationalButton && csrfInput) {
+    uploadNationalButton.addEventListener("click", () => {
+      void handleThemeUpload(csrfInput.value, {
+        fileInputId: "excelFileNational",
+        statusId: "statusNational",
+        endpoint: "/admin/upload",
+        emptyFileMessage: "국·공유재산 파일을 선택해주세요.",
+        loadingMessage: "국·공유재산 파일 업로드 중..."
+      });
+    });
+  }
+
+  if (uploadCityButton && csrfInput) {
+    uploadCityButton.addEventListener("click", () => {
+      void handleThemeUpload(csrfInput.value, {
+        fileInputId: "excelFileCity",
+        statusId: "statusCity",
+        endpoint: "/admin/upload/city",
+        emptyFileMessage: "시유지 파일을 선택해주세요.",
+        loadingMessage: "시유지 파일 업로드 중..."
+      });
     });
   }
 

@@ -15,6 +15,7 @@ from app.validators import land_validators
 
 logger = logging.getLogger(__name__)
 logger.addFilter(RequestIdFilter())
+ThemeType = Literal["national_public", "city_owned"]
 
 
 def handle_excel_upload(
@@ -22,6 +23,7 @@ def handle_excel_upload(
     background_tasks: BackgroundTasks,
     csrf_token: str,
     file: UploadFile,
+    theme: ThemeType = "national_public",
 ) -> JSONResponse | dict:
     config = request.app.state.config
     request_id = getattr(request.state, "request_id", "-")
@@ -62,6 +64,7 @@ def handle_excel_upload(
             extra={
                 "request_id": request_id,
                 "event": "admin.upload.started",
+                "theme": theme,
                 "actor": actor,
                 "ip": client_ip,
                 "status": 202,
@@ -101,11 +104,12 @@ def handle_excel_upload(
             )
 
         with db_connection() as conn:
-            poi_repository.delete_all(conn)
+            poi_repository.delete_all_for_theme(conn, theme=theme)
 
             for row in normalized_rows:
-                poi_repository.insert_land(
+                poi_repository.insert_land_for_theme(
                     conn,
+                    theme=theme,
                     pnu=row["pnu"],
                     address=row["address"],
                     land_type=row["land_type"],
@@ -122,6 +126,7 @@ def handle_excel_upload(
             extra={
                 "request_id": request_id,
                 "event": "admin.upload.succeeded",
+                "theme": theme,
                 "actor": actor,
                 "ip": client_ip,
                 "status": 200,
@@ -145,6 +150,7 @@ def handle_excel_upload(
             extra={
                 "request_id": request_id,
                 "event": "admin.upload.failed",
+                "theme": theme,
                 "actor": actor,
                 "ip": client_ip,
                 "status": 500,

@@ -4,6 +4,7 @@ type FilterElements = {
   regionSearchInput: HTMLInputElement | null;
   minAreaInput: HTMLInputElement | null;
   maxAreaInput: HTMLInputElement | null;
+  propertyManagerInput: HTMLInputElement | null;
 };
 
 export type FilterValues = {
@@ -11,8 +12,10 @@ export type FilterValues = {
   searchTerm: string;
   rawMinAreaInput: string;
   rawMaxAreaInput: string;
+  rawPropertyManagerInput: string;
   minArea: number;
   maxArea: number;
+  propertyManagerTerm: string;
 };
 
 export function createFilters(elements: FilterElements) {
@@ -21,14 +24,18 @@ export function createFilters(elements: FilterElements) {
     const searchTerm = rawSearchTerm.trim();
     const rawMinAreaInput = elements.minAreaInput?.value ?? "";
     const rawMaxAreaInput = elements.maxAreaInput?.value ?? "";
+    const rawPropertyManagerInput = elements.propertyManagerInput?.value ?? "";
+    const propertyManagerTerm = rawPropertyManagerInput.trim();
 
     return {
       rawSearchTerm,
       searchTerm,
       rawMinAreaInput,
       rawMaxAreaInput,
+      rawPropertyManagerInput,
       minArea: Number.parseFloat(rawMinAreaInput || "") || 0,
-      maxArea: Number.parseFloat(rawMaxAreaInput || "") || Number.POSITIVE_INFINITY
+      maxArea: Number.parseFloat(rawMaxAreaInput || "") || Number.POSITIVE_INFINITY,
+      propertyManagerTerm
     };
   };
 
@@ -36,10 +43,13 @@ export function createFilters(elements: FilterElements) {
     return items.filter((item) => {
       const address = item.address || "";
       const area = item.area || 0;
+      const propertyManager = item.property_manager || "";
 
       const matchRegion = values.searchTerm === "" || address.includes(values.searchTerm);
       const matchArea = area >= values.minArea && area <= values.maxArea;
-      return matchRegion && matchArea;
+      const matchPropertyManager =
+        values.propertyManagerTerm === "" || propertyManager.includes(values.propertyManagerTerm);
+      return matchRegion && matchArea && matchPropertyManager;
     });
   };
 
@@ -52,6 +62,9 @@ export function createFilters(elements: FilterElements) {
     }
     if (elements.maxAreaInput) {
       elements.maxAreaInput.value = "";
+    }
+    if (elements.propertyManagerInput) {
+      elements.propertyManagerInput.value = "";
     }
   };
 
@@ -71,6 +84,7 @@ export function createFilters(elements: FilterElements) {
     attach(elements.regionSearchInput);
     attach(elements.minAreaInput);
     attach(elements.maxAreaInput);
+    attach(elements.propertyManagerInput);
   };
 
   return {
