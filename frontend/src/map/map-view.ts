@@ -5,7 +5,7 @@ import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import Map from "ol/Map";
 import View from "ol/View";
-import { getCenter } from "ol/extent";
+import { createEmpty, extend, getCenter } from "ol/extent";
 import { fromLonLat } from "ol/proj";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
@@ -70,10 +70,12 @@ export function createMapView(elements: MapViewElements) {
   let satLayer: TileLayer<XYZ> | null = null;
   let hybLayer: TileLayer<XYZ> | null = null;
   let vectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
+  let selectedVectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
   let selectedFeatureId: number | null = null;
+  let allFeaturesById = new globalThis.Map<number, Feature<Geometry>>();
   let onFeatureClick: ((payload: FeatureClickPayload) => void) | null = null;
   let onMoveEnd: (() => void) | null = null;
-  let isInfoPanelDismissedByUser = false;
+  let isInfoPanelDismissedByUser = true;
   const defaultFeatureStyle = new Style({
     stroke: new Stroke({ color: "#ff3333", width: 3 }),
     fill: new Fill({ color: "rgba(255, 51, 51, 0.2)" })
@@ -82,6 +84,64 @@ export function createMapView(elements: MapViewElements) {
     stroke: new Stroke({ color: "#ffd400", width: 4 }),
     fill: new Fill({ color: "rgba(255, 212, 0, 0.18)" })
   });
+
+  const removeFeatureLayers = (): void => {
+    if (!map) {
+      return;
+    }
+    if (vectorLayer) {
+      map.removeLayer(vectorLayer);
+      vectorLayer = null;
+    }
+    if (selectedVectorLayer) {
+      map.removeLayer(selectedVectorLayer);
+      selectedVectorLayer = null;
+    }
+  };
+
+  const ensureFeatureLayers = (): boolean => {
+    if (!map) {
+      return false;
+    }
+    if (!vectorLayer) {
+      vectorLayer = new VectorLayer({
+        source: new VectorSource<Feature<Geometry>>(),
+        zIndex: 10,
+        style: defaultFeatureStyle
+      });
+      map.addLayer(vectorLayer);
+    }
+    if (!selectedVectorLayer) {
+      selectedVectorLayer = new VectorLayer({
+        source: new VectorSource<Feature<Geometry>>(),
+        zIndex: 11,
+        style: selectedFeatureStyle
+      });
+      map.addLayer(selectedVectorLayer);
+    }
+    return true;
+  };
+
+  const renderFeatureLayers = (): void => {
+    if (!ensureFeatureLayers()) {
+      return;
+    }
+    const baseSource = vectorLayer?.getSource();
+    const selectedSource = selectedVectorLayer?.getSource();
+    if (!baseSource || !selectedSource) {
+      return;
+    }
+    baseSource.clear();
+    selectedSource.clear();
+
+    for (const [featureId, feature] of allFeaturesById.entries()) {
+      if (selectedFeatureId !== null && featureId === selectedFeatureId) {
+        selectedSource.addFeature(feature);
+      } else {
+        baseSource.addFeature(feature);
+      }
+    }
+  };
 
   const renderInfoRows = (rows: LandSourceField[]): void => {
     elements.infoPanelContent.replaceChildren();
@@ -195,6 +255,7 @@ export function createMapView(elements: MapViewElements) {
     map.on("moveend", () => {
       onMoveEnd?.();
     });
+    ensureFeatureLayers();
   };
 
   const changeLayer = (type: BaseType): void => {
@@ -219,11 +280,7 @@ export function createMapView(elements: MapViewElements) {
       return 0;
     }
 
-    if (vectorLayer) {
-      map.removeLayer(vectorLayer);
-    }
-
-    const vectorSource = new VectorSource<Feature<Geometry>>();
+    allFeaturesById = new globalThis.Map<number, Feature<Geometry>>();
     const parsed = new GeoJSON().readFeatures(data, {
       dataProjection: options?.dataProjection ?? "EPSG:4326",
       featureProjection: "EPSG:3857"
@@ -232,40 +289,41 @@ export function createMapView(elements: MapViewElements) {
     parsed.forEach((feature, idx) => {
       const props = feature.getProperties() as Record<string, unknown>;
       const listIndex = props.list_index;
-      feature.setId(typeof listIndex === "number" ? listIndex : idx);
-      vectorSource.addFeature(feature);
+      const featureId = typeof listIndex === "number" ? listIndex : idx;
+      feature.setId(featureId);
+      allFeaturesById.set(featureId, feature);
     });
 
-    vectorLayer = new VectorLayer({
-      source: vectorSource,
-      zIndex: 10,
-      style: (feature) => {
-        const featureId = feature.getId();
-        return typeof featureId === "number" && featureId === selectedFeatureId
-          ? selectedFeatureStyle
-          : defaultFeatureStyle;
-      }
-    });
+    if (selectedFeatureId !== null && !allFeaturesById.has(selectedFeatureId)) {
+      selectedFeatureId = null;
+    }
 
-    map.addLayer(vectorLayer);
+    renderFeatureLayers();
     return parsed.length;
   };
 
   const fitToFeatures = (): void => {
-    const source = vectorLayer?.getSource();
-    if (!source || !map || source.getFeatures().length === 0) {
+    if (!map || allFeaturesById.size === 0) {
       return;
     }
 
-    map.getView().fit(source.getExtent(), { padding: [50, 50, 50, 50], duration: 500 });
+    const extent = createEmpty();
+    for (const feature of allFeaturesById.values()) {
+      const geometry = feature.getGeometry();
+      if (!geometry) {
+        continue;
+      }
+      extend(extent, geometry.getExtent());
+    }
+    map.getView().fit(extent, { padding: [50, 50, 50, 50], duration: 500 });
   };
 
   const selectFeatureByIndex = (index: number, options: SelectOptions): boolean => {
-    if (!vectorLayer || !map) {
+    if (!map) {
       return false;
     }
 
-    const feature = vectorLayer.getSource()?.getFeatureById(index) as Feature<Geometry> | null;
+    const feature = allFeaturesById.get(index) ?? null;
     if (!feature) {
       return false;
     }
@@ -275,39 +333,40 @@ export function createMapView(elements: MapViewElements) {
       return false;
     }
     selectedFeatureId = index;
-    vectorLayer.changed();
+    renderFeatureLayers();
+    map.renderSync();
 
     const extent = geometry.getExtent();
     const focusCoord = getCenter(extent);
 
+    renderInfoPanel(feature);
+
     if (options.shouldFit) {
-      const view = map.getView();
       const [minX, minY, maxX, maxY] = extent;
       const isPointLike = minX === maxX && minY === maxY;
-      if (isPointLike) {
-        view.animate({
-          center: focusCoord,
-          duration: 300
-        });
-        const zoomLevel = view.getZoom();
-        if (typeof zoomLevel === "number" && zoomLevel < 19) {
-          view.setZoom(19);
+      window.requestAnimationFrame(() => {
+        const currentMap = map;
+        if (!currentMap) {
+          return;
         }
-      } else {
+        const view = currentMap.getView();
+        if (isPointLike) {
+          view.animate({
+            center: focusCoord,
+            duration: 300
+          });
+          const zoomLevel = view.getZoom();
+          if (typeof zoomLevel === "number" && zoomLevel < 19) {
+            view.setZoom(19);
+          }
+          return;
+        }
         view.fit(extent, {
           padding: [100, 100, 100, 100],
           duration: 300,
           maxZoom: 19
         });
-      }
-    }
-
-    renderInfoPanel(feature);
-
-    if (options.shouldFit) {
-      window.setTimeout(() => {
-        map?.getView().animate({ center: focusCoord, duration: 120 });
-      }, 220);
+      });
     }
 
     return true;
@@ -315,7 +374,7 @@ export function createMapView(elements: MapViewElements) {
 
   const clearInfoPanel = (): void => {
     selectedFeatureId = null;
-    vectorLayer?.changed();
+    renderFeatureLayers();
     elements.infoPanelContent.replaceChildren();
     const empty = document.createElement("div");
     empty.className = "land-info-empty";
@@ -350,6 +409,10 @@ export function createMapView(elements: MapViewElements) {
     onMoveEnd = handler;
   };
 
+  const resize = (): void => {
+    map?.updateSize();
+  };
+
   elements.infoPanelCloseButton?.addEventListener("click", () => {
     dismissInfoPanel();
   });
@@ -364,6 +427,7 @@ export function createMapView(elements: MapViewElements) {
     getCurrentExtent,
     getCurrentZoom,
     renderFeatures,
+    resize,
     selectFeatureByIndex,
     setFeatureClickHandler,
     setMoveEndHandler

@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 </head>
 <body>
+    {% include "partials/topbar.html" %}
+
+    <div id="ui-toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="app-shell">
+    <button id="sidebar-handle" type="button" aria-expanded="true" aria-controls="sidebar" aria-label="사이드 메뉴 접기/펼치기"></button>
     <button id="mobile-search-fab" class="mobile-icon-btn" type="button" aria-label="검색 열기">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <circle cx="10.5" cy="10.5" r="5.5"></circle>
@@ -47,11 +53,6 @@
 
     <div id="sidebar">
         <div class="mobile-handle"></div>
-        
-        <div id="header">
-            <h2 style="margin:0; font-size: 1.2em;">{{ request.app.state.config.APP_NAME }}</h2>
-            <p style="margin:5px 0 0; font-size: 0.8em; opacity: 0.8;">공유재산 필지 검색 서비스</p>
-        </div>
         <div id="filter-section">
             <div class="filter-group">
                 <label>지역명 검색 (예: 대산읍, 동문동)</label>
@@ -85,7 +86,7 @@
 
     <div id="map"></div>
 
-    <aside id="land-info-panel" aria-live="polite" aria-label="선택 토지 상세 정보">
+    <aside id="land-info-panel" class="is-hidden" aria-live="polite" aria-label="선택 토지 상세 정보">
         <header class="land-info-header">
             <h3>상세 정보</h3>
             <button id="land-info-close" class="land-info-close" type="button" aria-label="상세 정보 닫기">✕</button>
@@ -94,6 +95,7 @@
             <div class="land-info-empty">토지를 선택하면 상세 정보가 표시됩니다.</div>
         </div>
     </aside>
+    </div>
 
     {% set assets = vite_assets('src/map.ts') %}
     {% for css_file in assets.css %}

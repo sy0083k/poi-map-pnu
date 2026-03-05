@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import cast
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -149,12 +149,34 @@ app.include_router(map_v1_router.router, prefix="/api/v1", tags=["MapV1"])
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request) -> HTMLResponse:
-    return cast(HTMLResponse, templates.TemplateResponse(request, "index.html", {}))
+    return cast(HTMLResponse, templates.TemplateResponse(request, "index.html", {"active_page": "map"}))
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon() -> Response:
     return Response(status_code=204)
+
+
+@app.get("/README.MD", include_in_schema=False)
+async def readme_file() -> FileResponse:
+    return FileResponse(os.path.join(BASE_DIR, "README.MD"), media_type="text/markdown; charset=utf-8")
+
+
+@app.get("/readme", response_class=HTMLResponse, include_in_schema=False)
+async def readme_page(request: Request) -> HTMLResponse:
+    readme_path = Path(BASE_DIR) / "README.MD"
+    try:
+        readme_text = readme_path.read_text(encoding="utf-8")
+    except OSError:
+        readme_text = "README.MD 파일을 불러오지 못했습니다."
+    return cast(
+        HTMLResponse,
+        templates.TemplateResponse(
+            request,
+            "readme.html",
+            {"active_page": "readme", "readme_text": readme_text},
+        ),
+    )
 
 
 @app.get("/health")

@@ -1,0 +1,50 @@
+<header id="app-topbar" aria-label="상단 메뉴">
+    <div class="topbar-brand">
+        <a class="brand-link" href="/" aria-label="메인 페이지">{{ request.app.state.config.APP_NAME }}</a>
+    </div>
+    <nav class="topbar-menu" aria-label="주요 메뉴">
+        <a
+            id="menu-start"
+            class="topbar-link{% if active_page == 'readme' %} is-active{% endif %}"
+            href="/readme"
+        >
+            시작
+        </a>
+        <span class="topbar-separator" aria-hidden="true"></span>
+        <div class="menu-group">
+            <button
+                id="menu-basemap-trigger"
+                class="menu-trigger"
+                type="button"
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-controls="menu-basemap-list"
+            >
+                배경지도
+            </button>
+            <div id="menu-basemap-list" class="menu-dropdown" role="menu" aria-label="배경지도">
+                <button class="menu-item" type="button" role="menuitem" data-basemap="Base">일반지도</button>
+                <button class="menu-item" type="button" role="menuitem" data-basemap="Satellite">영상지도</button>
+                <button class="menu-item" type="button" role="menuitem" data-basemap="Hybrid">하이브리드</button>
+            </div>
+        </div>
+        <span class="topbar-separator" aria-hidden="true"></span>
+        <div class="menu-group">
+            <button
+                id="menu-theme-trigger"
+                class="menu-trigger"
+                type="button"
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-controls="menu-theme-list"
+            >
+                주제도
+            </button>
+            <div id="menu-theme-list" class="menu-dropdown" role="menu" aria-label="주제도">
+                <button class="menu-item" type="button" role="menuitem" data-menu-action="coming-soon">관심 필지</button>
+                <button class="menu-item" type="button" role="menuitem" data-menu-action="coming-soon">행정 경계</button>
+                <button class="menu-item" type="button" role="menuitem" data-menu-action="coming-soon">개발 예정</button>
+            </div>
+        </div>
+    </nav>
+</header>

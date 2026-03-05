@@ -24,6 +24,7 @@ TEST_MARKER_BY_FILE: dict[str, str] = {
     "test_health.py": "integration",
     "test_land_repository_split.py": "unit",
     "test_map_event_service.py": "unit",
+    "test_map_ui_contract.py": "integration",
     "test_map_pagination.py": "integration",
     "test_observability_headers.py": "integration",
     "test_phase1.py": "integration",

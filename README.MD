@@ -77,15 +77,51 @@ uvicorn app.main:app --reload
 - 메인: `http://127.0.0.1:8000/`
 - 관리자 로그인: `http://127.0.0.1:8000/admin/login`
 
+## 🧩 화면 구성 (UI Composition & Terminology)
+
+### 데스크톱 레이아웃 용어표
+| 영역명(국문) | 전문 명칭(영문) | 역할 | 주요 요소 ID/Class |
+|---|---|---|---|
+| 글로벌 헤더 | Global Navigation Header | 상위 메뉴(`시작/배경지도/주제도`)와 전역 이동 제공 | `#app-topbar`, `.topbar-menu` |
+| 애플리케이션 셸 | Application Shell | 지도/사이드바/패널을 포함하는 메인 레이아웃 컨테이너 | `#app-shell` |
+| 유틸리티 사이드바 | Utility Sidebar (Filter & Result Panel) | 필터 입력, 검색 결과 목록, 네비게이션(이전/다음) 제공 | `#sidebar`, `#filter-section`, `#list-container` |
+| 지도 캔버스 | Primary Map Canvas | OpenLayers 기반 필지 시각화 및 사용자 상호작용 처리 | `#map` |
+| 상세 정보 패널 | Detail Information Panel | 선택 필지의 동적 속성/값 표시 | `#land-info-panel`, `#land-info-content` |
+| 사이드바 토글 핸들 | Sidebar Toggle Handle | 데스크톱에서 사이드바 접기/펼치기 제어 | `#sidebar-handle` |
+| 토스트 알림 | Transient Toast | 짧은 상태/피드백 메시지 표시 | `#ui-toast` |
+
+### 모바일 레이아웃 용어표
+| 영역명(국문) | 전문 명칭(영문) | 역할 | 주요 요소 ID/Class |
+|---|---|---|---|
+| 검색 플로팅 버튼 | Floating Action Button (FAB) | 모바일에서 검색 화면 진입 트리거 | `#mobile-search-fab` |
+| 검색 오버레이 | Full-screen Search Overlay | 전체화면 검색 조건 입력 UI | `#mobile-search-overlay` |
+| 결과 바텀시트 | Result Bottom Sheet | 검색 결과 목록 및 네비게이션 제공 | `body.mobile-results #sidebar` |
+
+### 상태/상호작용 규칙
+- 모바일 UI 상태는 `mobile-home` → `mobile-search` → `mobile-results` 순으로 전환된다.
+- 선택 필지는 `Selected Feature Highlight`로 처리되며, 노란색 경계선으로 강조된다.
+- 상세 정보 패널(`Detail Information Panel`)은 초기 진입 시 숨김이며, 필지 선택 시 표시된다.
+- 헤더 메뉴(`Top-level Navigation Menu`)는 항목 간 짧은 구분 바로 시각적으로 분리된다.
+- 사이드바 토글은 `Expanded/Collapsed State`를 사용하며, 상태는 로컬 스토리지로 복원된다.
+
 ## 🔐 관리자 사용 흐름
 1. `/admin/login`에서 로그인
 2. `/admin`에서 엑셀 업로드 (`/admin/upload`)
    - 필수 컬럼: `고유번호`, `소재지`, `지목`, `실면적`, `재산관리관`
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
-   - 배경지도는 기본적으로 `위성 지도`가 표시되며, UI에서 배경지도 전환 버튼은 제공하지 않는다.
+   - 상단 헤더에 `시작`, `배경지도`, `주제도` 메뉴가 표시된다.
+   - 헤더 메뉴(`시작`, `배경지도`, `주제도`) 사이에는 짧은 세로 구분 바가 표시된다.
+   - 데스크톱에서 헤더 메뉴의 시작 x좌표는 사이드바 끝점 고정 오프셋(`--topbar-menu-anchor-x`)을 기준으로 배치된다.
+   - `시작`은 새 창이 아니라 같은 창에서 `/readme` 페이지로 이동하며, 글로벌 헤더를 유지한 상태로 README 본문을 표시한다.
+   - `배경지도` 메뉴는 `일반지도/영상지도/하이브리드` 순서로 제공되며, 실제로 베이스맵이 전환된다.
+   - `주제도` 메뉴는 현재 하위 항목 구조와 준비중 안내 UI를 제공한다.
+   - 초기 배경지도는 `영상 지도(Satellite)`로 시작한다.
+   - 데스크톱에서는 지도-사이드바 경계의 `핸들` 클릭으로 좌측 패널을 슬라이드 수납할 수 있고, 상태가 복원된다.
 4. 지도에서 토지를 선택하면 팝업 대신 우상단 상세 패널에 업로드 원본 컬럼이 동적으로 표시되며, 속성과 값은 동일한 라인(y축)으로 정렬된다.
+   - 초기 진입 시 상세 패널은 숨김 상태이며, 필지 첫 선택 시 자동으로 열린다.
    - 패널 우상단 `X` 버튼으로 닫을 수 있고, 토지를 다시 선택하면 패널이 다시 열린다.
-   - 현재 선택된 토지(지도 클릭/사이드바 선택)는 노란색 경계선으로 강조 표시된다.
+   - 현재 선택된 토지(지도 클릭/사이드바 선택)는 노란색 경계선으로 강조 표시되며, 별도 상위 레이어로 렌더링되어 인접 필지보다 위에 보인다.
+   - 데스크톱 사이드바 핸들은 `>`/`<` 방향 힌트로 접기/펼치기 가능성을 직관적으로 표시한다.
 5. FGB 파일 조회 실패 시 지도 상태 문구에 오류가 표시된다.
 6. 공개 다운로드 파일은 `/admin/public-download/upload`로 갱신 가능
 7. 통계 탭에서 `전체 필지 수` 및 이벤트 통계를 확인 가능
@@ -149,6 +185,7 @@ uvicorn app.main:app --reload
 - 로그인 실패 제한과 이벤트 레이트리밋은 현재 인메모리 구현입니다. 다중 인스턴스 운영 시 인스턴스 간 상태가 공유되지 않으므로 별도 공유 스토어 기반 정책을 고려하세요.
 - API 버전 정책(`/api` vs `/api/v1`)의 운영 절차는 `docs/architecture.md`와 `docs/maintenance.md`를 기준으로 관리하세요.
 - 연속지적도 파일 교체 시 `CADASTRAL_FGB_PATH` 설정과 파일 권한을 확인하고 앱을 재시작하세요.
+- 하이라이트 초기 표시 지연을 줄이려면 클라이언트 full scan(`loadUploadedHighlights`) 경로를 우선 점검하고, 필요 시 서버 서브셋 API/사전 인덱스 전략을 검토하세요.
 
 ## ✅ 테스트 및 품질 체크
 루트 저장소의 기본 테스트 수집 대상은 `tests/`입니다.  
