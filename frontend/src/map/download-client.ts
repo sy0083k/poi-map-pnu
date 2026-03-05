@@ -1,4 +1,5 @@
 import { HttpError, fetchBlob } from "../http";
+import type { ThemeType } from "./types";
 
 function parseFilenameFromDisposition(contentDisposition: string | null): string | null {
   if (!contentDisposition) {
@@ -22,9 +23,14 @@ function parseFilenameFromDisposition(contentDisposition: string | null): string
 }
 
 export function createDownloadClient() {
-  const downloadPreparedFile = async (): Promise<void> => {
+  const downloadSearchResultFile = async (params: { theme: ThemeType; landIds: number[] }): Promise<void> => {
     try {
-      const { blob, headers } = await fetchBlob("/api/public-download", { method: "GET", timeoutMs: 10000 });
+      const { blob, headers } = await fetchBlob("/api/lands/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+        timeoutMs: 30000
+      });
       const disposition = headers.get("content-disposition");
       const fallbackName = "poi-map-geo-download";
       const filename = parseFilenameFromDisposition(disposition) || fallbackName;
@@ -44,6 +50,6 @@ export function createDownloadClient() {
   };
 
   return {
-    downloadPreparedFile
+    downloadSearchResultFile
   };
 }

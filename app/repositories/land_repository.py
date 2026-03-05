@@ -2,14 +2,15 @@ import sqlite3
 from typing import Iterable, Sequence
 
 TABLE_NAME = "poi"
+CITY_TABLE_NAME = "poi_city"
 CACHE_TABLE_NAME = "cadastral_polygon_cache"
 
 
-def init_land_schema(conn: sqlite3.Connection) -> None:
+def init_land_schema(conn: sqlite3.Connection, *, table_name: str = TABLE_NAME) -> None:
     cursor = conn.cursor()
     cursor.execute(
         f"""
-        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+        CREATE TABLE IF NOT EXISTS {table_name} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             pnu TEXT NOT NULL DEFAULT '',
             address TEXT,
@@ -26,9 +27,9 @@ def init_land_schema(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    _ensure_land_columns(conn)
-    cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_pnu ON {TABLE_NAME} (pnu)")
-    cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_geom_status ON {TABLE_NAME} (geom_status)")
+    _ensure_land_columns(conn, table_name=table_name)
+    cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_pnu ON {table_name} (pnu)")
+    cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_geom_status ON {table_name} (geom_status)")
     cursor.execute(
         f"""
         CREATE TABLE IF NOT EXISTS {CACHE_TABLE_NAME} (
@@ -45,10 +46,10 @@ def init_land_schema(conn: sqlite3.Connection) -> None:
     cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{CACHE_TABLE_NAME}_status ON {CACHE_TABLE_NAME} (status)")
 
 
-def fetch_lands_with_geom(conn: sqlite3.Connection) -> Sequence[sqlite3.Row]:
-    init_land_schema(conn)
+def fetch_lands_with_geom(conn: sqlite3.Connection, *, table_name: str = TABLE_NAME) -> Sequence[sqlite3.Row]:
+    init_land_schema(conn, table_name=table_name)
     cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM {TABLE_NAME} WHERE geom IS NOT NULL")
+    cursor.execute(f"SELECT * FROM {table_name} WHERE geom IS NOT NULL")
     return cursor.fetchall()
 
 
@@ -57,14 +58,15 @@ def fetch_lands_with_geom_page(
     *,
     after_id: int | None,
     limit: int,
+    table_name: str = TABLE_NAME,
 ) -> Sequence[sqlite3.Row]:
-    init_land_schema(conn)
+    init_land_schema(conn, table_name=table_name)
     cursor = conn.cursor()
     if after_id is None:
-        cursor.execute(f"SELECT * FROM {TABLE_NAME} WHERE geom IS NOT NULL ORDER BY id LIMIT ?", (limit,))
+        cursor.execute(f"SELECT * FROM {table_name} WHERE geom IS NOT NULL ORDER BY id LIMIT ?", (limit,))
     else:
         cursor.execute(
-            f"SELECT * FROM {TABLE_NAME} WHERE geom IS NOT NULL AND id > ? ORDER BY id LIMIT ?",
+            f"SELECT * FROM {table_name} WHERE geom IS NOT NULL AND id > ? ORDER BY id LIMIT ?",
             (after_id, limit),
         )
     return cursor.fetchall()
@@ -75,14 +77,15 @@ def fetch_lands_page_without_geom(
     *,
     after_id: int | None,
     limit: int,
+    table_name: str = TABLE_NAME,
 ) -> Sequence[sqlite3.Row]:
-    init_land_schema(conn)
+    init_land_schema(conn, table_name=table_name)
     cursor = conn.cursor()
     if after_id is None:
         cursor.execute(
             f"""
             SELECT id, pnu, address, land_type, area, property_manager, source_fields_json
-              FROM {TABLE_NAME}
+              FROM {table_name}
              ORDER BY id
              LIMIT ?
             """,
@@ -92,7 +95,7 @@ def fetch_lands_page_without_geom(
         cursor.execute(
             f"""
             SELECT id, pnu, address, land_type, area, property_manager, source_fields_json
-              FROM {TABLE_NAME}
+              FROM {table_name}
              WHERE id > ?
              ORDER BY id
              LIMIT ?
@@ -102,10 +105,40 @@ def fetch_lands_page_without_geom(
     return cursor.fetchall()
 
 
-def delete_all(conn: sqlite3.Connection) -> None:
-    init_land_schema(conn)
+def fetch_lands_by_ids(
+    conn: sqlite3.Connection,
+    *,
+    ids: Sequence[int],
+    table_name: str = TABLE_NAME,
+) -> Sequence[sqlite3.Row]:
+    init_land_schema(conn, table_name=table_name)
+    if not ids:
+        return []
+
+    # Keep room under SQLite variable limit.
+    chunk_size = 900
+    rows: list[sqlite3.Row] = []
+    for start in range(0, len(ids), chunk_size):
+        chunk = ids[start : start + chunk_size]
+        placeholders = ",".join("?" for _ in chunk)
+        cursor = conn.cursor()
+        cursor.execute(
+            f"""
+            SELECT id, pnu, address, land_type, area, property_manager, source_fields_json
+              FROM {table_name}
+             WHERE id IN ({placeholders})
+            """,
+            tuple(chunk),
+        )
+        rows.extend(cursor.fetchall())
+
+    return rows
+
+
+def delete_all(conn: sqlite3.Connection, *, table_name: str = TABLE_NAME) -> None:
+    init_land_schema(conn, table_name=table_name)
     cursor = conn.cursor()
-    cursor.execute(f"DELETE FROM {TABLE_NAME}")
+    cursor.execute(f"DELETE FROM {table_name}")
 
 
 def insert_land(
@@ -120,12 +153,13 @@ def insert_land(
     adm_property: str = "",
     gen_property: str = "",
     contact: str = "",
+    table_name: str = TABLE_NAME,
 ) -> None:
-    init_land_schema(conn)
+    init_land_schema(conn, table_name=table_name)
     cursor = conn.cursor()
     cursor.execute(
         f"""
-        INSERT INTO {TABLE_NAME} (pnu, address, land_type, area, property_manager, source_fields_json, adm_property, gen_property, contact, geom, geom_status, geom_error)
+        INSERT INTO {table_name} (pnu, address, land_type, area, property_manager, source_fields_json, adm_property, gen_property, contact, geom, geom_status, geom_error)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
@@ -206,10 +240,10 @@ def count_missing_geom(conn: sqlite3.Connection) -> int:
     return int(row[0]) if row else 0
 
 
-def count_all_lands(conn: sqlite3.Connection) -> int:
-    init_land_schema(conn)
+def count_all_lands(conn: sqlite3.Connection, *, table_name: str = TABLE_NAME) -> int:
+    init_land_schema(conn, table_name=table_name)
     cursor = conn.cursor()
-    cursor.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}")
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
     row = cursor.fetchone()
     return int(row[0]) if row else 0
 
@@ -299,20 +333,20 @@ def count_failed_geom(conn: sqlite3.Connection) -> int:
     return int(row[0]) if row else 0
 
 
-def _ensure_land_columns(conn: sqlite3.Connection) -> None:
+def _ensure_land_columns(conn: sqlite3.Connection, *, table_name: str = TABLE_NAME) -> None:
     cursor = conn.cursor()
-    columns = cursor.execute(f"PRAGMA table_info({TABLE_NAME})").fetchall()
+    columns = cursor.execute(f"PRAGMA table_info({table_name})").fetchall()
     names = {str(row[1]) for row in columns}
     if "pnu" not in names:
-        cursor.execute(f"ALTER TABLE {TABLE_NAME} ADD COLUMN pnu TEXT NOT NULL DEFAULT ''")
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN pnu TEXT NOT NULL DEFAULT ''")
     if "property_manager" not in names:
-        cursor.execute(f"ALTER TABLE {TABLE_NAME} ADD COLUMN property_manager TEXT")
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN property_manager TEXT")
     if "source_fields_json" not in names:
-        cursor.execute(f"ALTER TABLE {TABLE_NAME} ADD COLUMN source_fields_json TEXT")
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN source_fields_json TEXT")
     if "geom_status" not in names:
-        cursor.execute(f"ALTER TABLE {TABLE_NAME} ADD COLUMN geom_status TEXT NOT NULL DEFAULT 'pending'")
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN geom_status TEXT NOT NULL DEFAULT 'pending'")
     if "geom_error" not in names:
-        cursor.execute(f"ALTER TABLE {TABLE_NAME} ADD COLUMN geom_error TEXT")
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN geom_error TEXT")
 
 
 def _ensure_cache_columns(conn: sqlite3.Connection) -> None:

@@ -16,7 +16,8 @@ import type {
   LandClickSource,
   LandFeatureCollection,
   LandListItem,
-  MapConfig
+  MapConfig,
+  ThemeType
 } from "./map/types";
 
 type SelectOptions = {
@@ -45,10 +46,12 @@ async function bootstrap(): Promise<void> {
   const regionSearchInput = document.getElementById("region-search") as HTMLInputElement | null;
   const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
   const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;
+  const propertyManagerSearchInput = document.getElementById("property-manager-search") as HTMLInputElement | null;
 
   const mobileRegionSearchInput = document.getElementById("mobile-region-search") as HTMLInputElement | null;
   const mobileMinAreaInput = document.getElementById("mobile-min-area") as HTMLInputElement | null;
   const mobileMaxAreaInput = document.getElementById("mobile-max-area") as HTMLInputElement | null;
+  const mobilePropertyManagerSearchInput = document.getElementById("mobile-property-manager-search") as HTMLInputElement | null;
   const mobileSearchFab = document.getElementById("mobile-search-fab");
   const mobileSearchCloseBtn = document.getElementById("mobile-search-close");
   const mobileSearchBtn = document.getElementById("mobile-btn-search");
@@ -89,7 +92,8 @@ async function bootstrap(): Promise<void> {
   const filters = createFilters({
     regionSearchInput,
     minAreaInput,
-    maxAreaInput
+    maxAreaInput,
+    propertyManagerInput: propertyManagerSearchInput
   });
   const downloadClient = createDownloadClient();
 
@@ -97,6 +101,7 @@ async function bootstrap(): Promise<void> {
   let config: MapConfig | null = null;
   let uploadedHighlightFeatures: LandFeatureCollection = { type: "FeatureCollection", features: [] };
   let uploadedHighlightsRequestSeq = 0;
+  let themeLoadRequestSeq = 0;
   let toastTimer: number | null = null;
 
   const syncDesktopToMobileInputs = (): void => {
@@ -104,15 +109,18 @@ async function bootstrap(): Promise<void> {
       !regionSearchInput ||
       !minAreaInput ||
       !maxAreaInput ||
+      !propertyManagerSearchInput ||
       !mobileRegionSearchInput ||
       !mobileMinAreaInput ||
-      !mobileMaxAreaInput
+      !mobileMaxAreaInput ||
+      !mobilePropertyManagerSearchInput
     ) {
       return;
     }
     mobileRegionSearchInput.value = regionSearchInput.value;
     mobileMinAreaInput.value = minAreaInput.value;
     mobileMaxAreaInput.value = maxAreaInput.value;
+    mobilePropertyManagerSearchInput.value = propertyManagerSearchInput.value;
   };
 
   const syncMobileToDesktopInputs = (): void => {
@@ -120,15 +128,18 @@ async function bootstrap(): Promise<void> {
       !regionSearchInput ||
       !minAreaInput ||
       !maxAreaInput ||
+      !propertyManagerSearchInput ||
       !mobileRegionSearchInput ||
       !mobileMinAreaInput ||
-      !mobileMaxAreaInput
+      !mobileMaxAreaInput ||
+      !mobilePropertyManagerSearchInput
     ) {
       return;
     }
     regionSearchInput.value = mobileRegionSearchInput.value;
     minAreaInput.value = mobileMinAreaInput.value;
     maxAreaInput.value = mobileMaxAreaInput.value;
+    propertyManagerSearchInput.value = mobilePropertyManagerSearchInput.value;
   };
 
   const applyMobileClass = (): void => {
@@ -183,6 +194,40 @@ async function bootstrap(): Promise<void> {
       uiToast.classList.remove("is-visible");
       toastTimer = null;
     }, 1800);
+  };
+
+  const asThemeType = (raw: string): ThemeType | null => {
+    if (raw === "national_public" || raw === "city_owned") {
+      return raw;
+    }
+    return null;
+  };
+
+  const getThemeLabel = (theme: ThemeType): string => {
+    return theme === "national_public" ? "국·공유재산" : "시유재산";
+  };
+
+  const clearPropertyManagerInputs = (): void => {
+    if (propertyManagerSearchInput) {
+      propertyManagerSearchInput.value = "";
+    }
+    if (mobilePropertyManagerSearchInput) {
+      mobilePropertyManagerSearchInput.value = "";
+    }
+  };
+
+  const applyThemeUiState = (theme: ThemeType): void => {
+    document.body.classList.toggle("theme-city-owned", theme === "city_owned");
+    document.body.classList.toggle("theme-national-public", theme === "national_public");
+  };
+
+  const themeMenuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".menu-item[data-theme]"));
+
+  const syncThemeMenuActiveState = (): void => {
+    const currentTheme = state.getCurrentTheme();
+    themeMenuItems.forEach((item) => {
+      item.classList.toggle("is-active", item.dataset.theme === currentTheme);
+    });
   };
 
   const menuTriggers = [
@@ -260,40 +305,49 @@ async function bootstrap(): Promise<void> {
       }
     });
 
-    const listLinkedFeatures = currentItems.flatMap((item, idx) => {
-      const geometry = featuresByPnu.get(item.pnu);
-      if (!geometry) {
-        return [];
-      }
-      return [
-        {
-          type: "Feature" as const,
-          geometry,
-          properties: {
-            list_index: idx,
-            id: item.id,
-            pnu: item.pnu,
-            address: item.address,
-            land_type: item.land_type,
-            area: item.area,
-            property_manager: item.property_manager,
-            source_fields: item.sourceFields ?? []
-          }
+    const buildThemeFeatureCollection = (theme: ThemeType): LandFeatureCollection => {
+      const listLinkedFeatures = currentItems.flatMap((item, idx) => {
+        const geometry = featuresByPnu.get(item.pnu);
+        if (!geometry) {
+          return [];
         }
-      ];
-    });
+        return [
+          {
+            type: "Feature" as const,
+            geometry,
+            properties: {
+              list_index: idx,
+              id: item.id,
+              pnu: item.pnu,
+              address: item.address,
+              land_type: item.land_type,
+              area: item.area,
+              property_manager: item.property_manager,
+              source_fields: item.sourceFields ?? []
+            }
+          }
+        ];
+      });
 
-    const withProperties: LandFeatureCollection = {
-      type: "FeatureCollection",
-      features: listLinkedFeatures
+      switch (theme) {
+        case "national_public":
+        case "city_owned":
+          return {
+            type: "FeatureCollection",
+            features: listLinkedFeatures
+          };
+      }
     };
+
+    const currentTheme = state.getCurrentTheme();
+    const withProperties = buildThemeFeatureCollection(currentTheme);
 
     mapView.renderFeatures(withProperties, { dataProjection: config.cadastralCrs });
     if (currentItems.length === 0) {
       setMapStatus(`업로드 하이라이트 ${uploadedHighlightFeatures.features.length}건 준비됨`, "#166534");
     } else {
       setMapStatus(
-        `업로드 하이라이트 ${uploadedHighlightFeatures.features.length}건, 관심 필지 강조 ${withProperties.features.length}건`,
+        `업로드 하이라이트 ${uploadedHighlightFeatures.features.length}건, ${getThemeLabel(currentTheme)} 강조 ${withProperties.features.length}건`,
         "#166534"
       );
     }
@@ -338,11 +392,46 @@ async function bootstrap(): Promise<void> {
     }
   };
 
+  const loadThemeData = async (theme: ThemeType): Promise<void> => {
+    const seq = ++themeLoadRequestSeq;
+    const themeLabel = getThemeLabel(theme);
+    try {
+      listPanel.setStatus(`${themeLabel} 목록을 불러오는 중입니다...`);
+      const items = await loadAllLandListItems(theme);
+      if (seq !== themeLoadRequestSeq) {
+        return;
+      }
+      state.setOriginalItems(items);
+      await applyFilters(false);
+      void prepareUploadedHighlights(items);
+    } catch (error) {
+      if (seq !== themeLoadRequestSeq) {
+        return;
+      }
+      state.setOriginalItems([]);
+      await applyFilters(false);
+      const fallbackMessage =
+        error instanceof HttpError
+          ? `${themeLabel} 목록 로딩 실패: ${error.message} (하이라이트 없이 표시됩니다.)`
+          : `${themeLabel} 목록 로딩에 실패했습니다. 하이라이트 없이 표시합니다.`;
+      listPanel.setStatus(fallbackMessage, "#b45309");
+      setMapStatus(fallbackMessage, "#b45309");
+    }
+  };
+
   const applyFilters = async (trackEvent = false): Promise<void> => {
     const originalItems = state.getOriginalItems() ?? [];
+    const currentTheme = state.getCurrentTheme();
 
     const values = filters.getValues();
-    const filteredItems = filters.filterItems(originalItems, values);
+    const effectiveValues =
+      currentTheme === "city_owned"
+        ? values
+        : {
+            ...values,
+            propertyManagerTerm: ""
+          };
+    const filteredItems = filters.filterItems(originalItems, effectiveValues);
 
     if (trackEvent) {
       telemetry.trackSearchEvent(
@@ -353,6 +442,32 @@ async function bootstrap(): Promise<void> {
         values.rawMaxAreaInput,
         "false"
       );
+    }
+
+    if (currentTheme === "city_owned" && effectiveValues.propertyManagerTerm !== "") {
+      const uniqueManagers = Array.from(
+        new Set(
+          filteredItems
+            .map((item) => (item.property_manager || "").trim())
+            .filter((value) => value !== "")
+        )
+      );
+      if (uniqueManagers.length >= 2) {
+        state.setCurrentItems([]);
+        listPanel.render([], () => {
+          // Intentionally noop. Search is aborted when multiple managers are detected.
+        });
+        mapView.clearInfoPanel();
+        updateNavigation();
+        if (config) {
+          mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
+        }
+        setMapStatus(
+          `재산관리관 다중 검출: ${uniqueManagers.join(", ")}. 정확한 재산관리관을 입력하세요.`,
+          "#1d4ed8"
+        );
+        return;
+      }
     }
 
     state.setCurrentItems(filteredItems);
@@ -398,7 +513,15 @@ async function bootstrap(): Promise<void> {
   });
   document.getElementById("btn-reset-filters")?.addEventListener("click", resetFilters);
   document.getElementById("btn-download-all")?.addEventListener("click", () => {
-    void downloadClient.downloadPreparedFile();
+    const landIds = state.getCurrentItems().map((item) => item.id);
+    if (landIds.length === 0) {
+      setMapStatus("검색 결과가 없어 다운로드할 수 없습니다.", "#b45309");
+      return;
+    }
+    void downloadClient.downloadSearchResultFile({
+      theme: state.getCurrentTheme(),
+      landIds
+    });
   });
 
   listPanel.bindNavigation(
@@ -434,6 +557,26 @@ async function bootstrap(): Promise<void> {
     });
   });
 
+  themeMenuItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      const theme = asThemeType(item.dataset.theme || "");
+      if (!theme) {
+        return;
+      }
+      const previousTheme = state.getCurrentTheme();
+      if (previousTheme === "city_owned" && theme !== "city_owned") {
+        clearPropertyManagerInputs();
+      }
+      state.setCurrentTheme(theme);
+      applyThemeUiState(theme);
+      syncThemeMenuActiveState();
+      mapView.clearInfoPanel();
+      closeAllMenus();
+      void loadThemeData(theme);
+      showToast(`${getThemeLabel(theme)} 레이어로 전환했습니다.`);
+    });
+  });
+
   const asBaseType = (raw: string): BaseType | null => {
     if (raw === "Base" || raw === "Satellite" || raw === "Hybrid") {
       return raw;
@@ -454,6 +597,9 @@ async function bootstrap(): Promise<void> {
       showToast(`${label}로 변경했습니다.`);
     });
   });
+
+  syncThemeMenuActiveState();
+  applyThemeUiState(state.getCurrentTheme());
 
   document.addEventListener("click", (event) => {
     const target = event.target;
@@ -559,20 +705,7 @@ async function bootstrap(): Promise<void> {
     applySidebarCollapsed(initialSidebarCollapsed, false);
     state.setOriginalItems([]);
     await applyFilters(false);
-
-    try {
-      const items = await loadAllLandListItems();
-      state.setOriginalItems(items);
-      await applyFilters(false);
-      void prepareUploadedHighlights(items);
-    } catch (error) {
-      const fallbackMessage =
-        error instanceof HttpError
-          ? `관심 필지 목록 로딩 실패: ${error.message} (배경 연속지적도만 표시됩니다.)`
-          : "관심 필지 목록 로딩에 실패했습니다. 배경 연속지적도만 표시합니다.";
-      listPanel.setStatus(fallbackMessage, "#b45309");
-      setMapStatus("배경 연속지적도만 표시 중입니다. 관심 필지 목록 로딩에 실패했습니다.", "#b45309");
-    }
+    await loadThemeData(state.getCurrentTheme());
 
     syncDesktopToMobileInputs();
     maybeInitMobileHistory();
