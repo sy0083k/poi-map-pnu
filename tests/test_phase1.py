@@ -1,4 +1,5 @@
 import importlib
+import importlib.util
 import os
 import sys
 import unittest
@@ -97,6 +98,14 @@ class AppSmokeTests(unittest.TestCase):
                     payload = cfg.json()
                     self.assertIn("center", payload)
                     self.assertEqual(payload["cadastralCrs"], "EPSG:3857")
+
+                    readme_page = await client.get("/readme")
+                    self.assertEqual(readme_page.status_code, 200)
+                    self.assertIn('<article class="readme-markdown">', readme_page.text)
+                    self.assertNotIn('<pre class="readme-body">', readme_page.text)
+                    if importlib.util.find_spec("markdown_it"):
+                        self.assertIn("<table", readme_page.text)
+                        self.assertNotIn("| 영역명(국문) |", readme_page.text)
                 self.assertEqual(payload["vworldKey"], "test-key")
 
             anyio.run(run_flow)

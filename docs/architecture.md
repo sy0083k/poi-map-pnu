@@ -29,7 +29,7 @@
 - `GET /` (307으로 `/siyu` 리디렉션)
 - `GET /gukgongyu` (국·공유지 지도 메인)
 - `GET /siyu` (시유재산 지도 메인)
-- `GET /readme` (글로벌 헤더 유지 README 뷰)
+- `GET /readme` (글로벌 헤더 유지 README 마크다운 렌더 뷰)
 - `GET /README.MD` (원문 파일 응답, 호환 경로)
 
 ## 관리자/인증 엔드포인트
