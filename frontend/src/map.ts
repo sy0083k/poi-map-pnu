@@ -73,6 +73,8 @@ async function bootstrap(): Promise<void> {
   const infoPanelContent = document.getElementById("land-info-content");
   const infoPanelCloseButton = document.getElementById("land-info-close");
   const mapStatus = document.getElementById("map-status");
+  const mapStatusText = document.getElementById("map-status-text");
+  const mapStatusCloseButton = document.getElementById("map-status-close");
   const uiToast = document.getElementById("ui-toast");
   const sidebarHandle = document.getElementById("sidebar-handle");
   const menuBasemapTrigger = document.getElementById("menu-basemap-trigger");
@@ -189,9 +191,21 @@ async function bootstrap(): Promise<void> {
     if (!(mapStatus instanceof HTMLElement)) {
       return;
     }
+    mapStatus.classList.remove("is-hidden");
+    if (mapStatusText instanceof HTMLElement) {
+      mapStatusText.textContent = message;
+      mapStatusText.style.color = color;
+      return;
+    }
     mapStatus.textContent = message;
     mapStatus.style.color = color;
   };
+
+  if (mapStatus instanceof HTMLElement && mapStatusCloseButton instanceof HTMLButtonElement) {
+    mapStatusCloseButton.addEventListener("click", () => {
+      mapStatus.classList.add("is-hidden");
+    });
+  }
 
   const showToast = (message: string): void => {
     if (!(uiToast instanceof HTMLElement)) {

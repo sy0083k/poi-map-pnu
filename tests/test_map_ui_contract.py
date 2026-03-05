@@ -27,7 +27,12 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert "재산관리관 검색" not in res.text
     assert 'id="property-manager-search"' in res.text
     assert 'id="mobile-property-manager-search"' in res.text
-    assert res.text.index('id="filter-section"') < res.text.index('id="map-status"') < res.text.index('id="list-container"')
+    map_idx = res.text.index('id="map"')
+    status_idx = res.text.index('id="map-status"')
+    status_text_idx = res.text.index('id="map-status-text"')
+    status_close_idx = res.text.index('id="map-status-close"')
+    info_panel_idx = res.text.index('id="land-info-panel"')
+    assert map_idx < status_idx < status_text_idx < status_close_idx < info_panel_idx
     assert 'data-theme="city_owned"' in res.text
     assert 'data-theme="national_public"' in res.text
     assert 'class="menu-item is-active" type="button" role="menuitem" data-theme="national_public"' in res.text

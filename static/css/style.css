@@ -367,12 +367,61 @@ body.theme-city-owned .theme-city-only { display: block; }
 .list-item:hover { background: #f1f4f6; }
 .list-item.selected { background: #e3f2fd; border-left: 4px solid #3498db; }
 #map-status {
-    min-height: 20px;
-    padding: 6px 12px;
-    font-size: 0.82em;
-    border-top: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f8fafc;
+    position: absolute;
+    top: 12px;
+    left: 74px;
+    width: min(560px, calc(100% - 86px));
+    z-index: 1002;
+    min-height: 30px;
+    padding: 6px 10px 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(209, 213, 219, 0.9);
+    background: rgba(248, 250, 252, 0.92);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+    font-size: 0.84rem;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+#map-status.is-hidden {
+    display: none;
+}
+
+#map-status-text {
+    flex: 1;
+    color: #334155;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#map-status-close {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #475569;
+    line-height: 1;
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 0;
+    pointer-events: auto;
+}
+
+#map-status-close:hover {
+    background: rgba(148, 163, 184, 0.18);
+    color: #1e293b;
+}
+
+#map-status-close:focus-visible {
+    outline: 2px solid #0f172a;
+    outline-offset: 1px;
 }
 
 /* 하단 네비게이션 */
@@ -752,6 +801,21 @@ body.theme-city-owned .theme-city-only { display: block; }
         left: auto;
         width: min(72vw, 300px);
         max-height: min(44vh, 340px);
+    }
+
+    #map-status {
+        top: 8px;
+        left: 8px;
+        width: calc(100% - 16px);
+        min-height: 28px;
+        padding: 5px 8px 5px 10px;
+        font-size: 0.8rem;
+    }
+
+    #map-status-close {
+        width: 24px;
+        height: 24px;
+        flex-basis: 24px;
     }
 
 }
