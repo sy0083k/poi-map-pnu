@@ -182,10 +182,6 @@ def count_all_lands(conn: sqlite3.Connection) -> int:
     return land_repository.count_all_lands(conn)
 
 
-def count_all_lands_for_theme(conn: sqlite3.Connection, *, theme: ThemeType) -> int:
-    return land_repository.count_all_lands(conn, table_name=_table_name_for_theme(theme))
-
-
 def fetch_distinct_pnu(conn: sqlite3.Connection) -> Sequence[str]:
     return land_repository.fetch_distinct_pnu(conn)
 

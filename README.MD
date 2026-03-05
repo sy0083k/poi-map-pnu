@@ -85,6 +85,7 @@ uvicorn app.main:app --reload
 | 애플리케이션 셸 | Application Shell | 지도/사이드바/패널을 포함하는 메인 레이아웃 컨테이너 | `#app-shell` |
 | 유틸리티 사이드바 | Utility Sidebar (Filter & Result Panel) | 필터 입력, 검색 결과 목록, 네비게이션(이전/다음) 제공 | `#sidebar`, `#filter-section`, `#list-container` |
 | 지도 캔버스 | Primary Map Canvas | OpenLayers 기반 필지 시각화 및 사용자 상호작용 처리 | `#map` |
+| 지도 상태바 | Map Status Overlay | 하이라이트 준비/강조 건수/검증 메시지를 지도 상단 1줄로 표시하고 `X` 버튼으로 임시 닫기 지원 | `#map-status`, `#map-status-close` |
 | 상세 정보 패널 | Detail Information Panel | 선택 필지의 동적 속성/값 표시 | `#land-info-panel`, `#land-info-content` |
 | 사이드바 토글 핸들 | Sidebar Toggle Handle | 데스크톱에서 사이드바 접기/펼치기 제어 | `#sidebar-handle` |
 | 토스트 알림 | Transient Toast | 짧은 상태/피드백 메시지 표시 | `#ui-toast` |

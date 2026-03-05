@@ -91,7 +91,6 @@
                 <button id="btn-download-all" class="btn-secondary" type="button">검색 결과 다운로드</button>
             </div>
         </div>
-        <div id="map-status" aria-live="polite"></div>
         <div id="list-container">
             <p style="padding: 20px; color: #999;">데이터 로딩 중...</p>
         </div>
@@ -102,7 +101,12 @@
         </div>
     </div>
 
-    <div id="map"></div>
+    <div id="map">
+        <div id="map-status" class="is-hidden" role="status" aria-live="polite">
+            <span id="map-status-text"></span>
+            <button id="map-status-close" type="button" aria-label="상태 메시지 닫기">✕</button>
+        </div>
+    </div>
 
     <aside id="land-info-panel" class="is-hidden" aria-live="polite" aria-label="선택 토지 상세 정보">
         <header class="land-info-header">

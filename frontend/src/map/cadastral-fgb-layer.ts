@@ -7,10 +7,6 @@ type FlatGeobufModule = {
   ) => AsyncIterable<Record<string, unknown>>;
 };
 
-type BuildResult = {
-  base: LandFeatureCollection;
-};
-
 let flatgeobufModulePromise: Promise<FlatGeobufModule> | null = null;
 const FLATGEOBUF_MODULE_URLS = [
   "https://esm.sh/flatgeobuf@4.3.1/geojson?bundle",
@@ -46,50 +42,6 @@ async function getFlatGeobufModule(): Promise<FlatGeobufModule> {
     })();
   }
   return flatgeobufModulePromise;
-}
-
-export async function loadCadastralByBbox(
-  params: {
-    fgbUrl: string;
-    pnuField: string;
-    bbox: [number, number, number, number];
-    signal?: AbortSignal;
-  }
-): Promise<BuildResult> {
-  const { fgbUrl, pnuField, bbox, signal } = params;
-  const flatgeobuf = await getFlatGeobufModule();
-  const features: LandFeature[] = [];
-  const rect = {
-    minX: bbox[0],
-    minY: bbox[1],
-    maxX: bbox[2],
-    maxY: bbox[3]
-  };
-
-  for await (const feature of flatgeobuf.deserialize(fgbUrl, rect)) {
-    if (signal?.aborted) {
-      break;
-    }
-    const properties = (feature.properties ?? {}) as Record<string, unknown>;
-    const geometry = feature.geometry as unknown;
-    const pnuRaw =
-      properties[pnuField] ??
-      properties[pnuField.toLowerCase()] ??
-      properties[pnuField.toUpperCase()] ??
-      properties.JIBUN ??
-      properties.jibun;
-    const pnu = normalizePnu(pnuRaw);
-    const mapped: LandFeature = {
-      type: "Feature",
-      geometry,
-      properties: { pnu }
-    };
-    features.push(mapped);
-  }
-
-  return {
-    base: { type: "FeatureCollection", features }
-  };
 }
 
 export async function loadUploadedHighlights(
