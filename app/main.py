@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import cast
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -147,9 +147,30 @@ app.include_router(map_router.router, prefix="/api", tags=["Map"])
 app.include_router(map_v1_router.router, prefix="/api/v1", tags=["MapV1"])
 
 
+def _render_map_page(request: Request, *, initial_theme: str) -> HTMLResponse:
+    return cast(
+        HTMLResponse,
+        templates.TemplateResponse(
+            request,
+            "index.html",
+            {"active_page": "map", "initial_theme": initial_theme},
+        ),
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request) -> HTMLResponse:
-    return cast(HTMLResponse, templates.TemplateResponse(request, "index.html", {"active_page": "map"}))
+async def read_root(request: Request) -> Response:
+    return RedirectResponse(url="/siyu", status_code=307)
+
+
+@app.get("/gukgongyu", response_class=HTMLResponse, include_in_schema=False)
+async def read_national_public_theme(request: Request) -> HTMLResponse:
+    return _render_map_page(request, initial_theme="national_public")
+
+
+@app.get("/siyu", response_class=HTMLResponse, include_in_schema=False)
+async def read_city_owned_theme(request: Request) -> HTMLResponse:
+    return _render_map_page(request, initial_theme="city_owned")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

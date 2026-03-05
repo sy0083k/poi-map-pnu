@@ -85,8 +85,12 @@ class AppSmokeTests(unittest.TestCase):
             async def run_flow() -> None:
                 transport = httpx.ASGITransport(app=app_main.app, client=("127.0.0.1", 50000))
                 async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-                    root = await client.get("/")
-                    self.assertEqual(root.status_code, 200)
+                    root = await client.get("/", follow_redirects=False)
+                    self.assertEqual(root.status_code, 307)
+                    self.assertEqual(root.headers.get("location"), "/siyu")
+
+                    root_followed = await client.get("/", follow_redirects=True)
+                    self.assertEqual(root_followed.status_code, 200)
 
                     cfg = await client.get("/api/config")
                     self.assertEqual(cfg.status_code, 200)
