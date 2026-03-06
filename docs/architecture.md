@@ -37,7 +37,6 @@
 - `POST /login` (`POST /admin/login` alias)
 - `GET /logout`
 - `GET /admin`
-- `POST /admin/upload`
 - `POST /admin/upload/city`
 - `POST /admin/settings`
 - `POST /admin/password`
@@ -49,7 +48,7 @@
 1. 클라이언트가 `/api/config`로 지도 설정을 조회한다.
 2. 테마별 목록 소스를 결정한다.
    - `/siyu(city_owned)`: `/api/lands/list?theme=city_owned`로 목록을 조회한다.
-   - `/file2map(national_public)`: 기본은 `/api/lands/list?theme=national_public`이며, 사용자가 사이드바 상단에서 업로드한 엑셀 파일이 있으면 브라우저 로컬 저장소(IndexedDB) 복원 데이터를 우선 사용한다.
+   - `/file2map(national_public)`: 최초 진입 시 목록을 비워 두며, 사용자가 사이드바 상단에서 업로드한 엑셀 파일(또는 IndexedDB 복원본)이 있을 때만 목록을 표시한다.
    - 목록 항목에는 고정 필드 외에 업로드 원본 컬럼을 보존한 `sourceFields` 배열이 포함된다.
 3. 클라이언트는 목록 PNU만 대상으로 FlatGeobuf에서 1회 매칭해 하이라이트를 구성한다.
    - 매칭 파싱은 Web Worker에서 수행해 메인 스레드 블로킹을 줄인다.
@@ -75,7 +74,7 @@
     - `주제도` 메뉴는 `시유지` 하위 항목을 제공한다.
     - 헤더에서 `주제도` 오른쪽에 탑레벨 `파일→지도` 메뉴를 두고, `http://127.0.0.1:8000/file2map`(내부 경로 `/file2map`)로 이동한다.
     - 주제도 경로는 `파일→지도=/file2map`, `시유지=/siyu`로 매핑되며 URL 직접 진입/새로고침 시 해당 테마로 초기화된다.
-    - 데이터 저장은 `국·공유재산(poi)` / `시유재산(poi_city)` 테이블로 분리되며, 조회 API `theme` 쿼리로 레이어별 데이터를 선택한다.
+    - 서버 데이터 저장은 `시유재산(poi_city)` 단일 테이블을 사용한다.
     - `/siyu` 유틸리티 사이드바는 주소/재산용도/지목/면적/재산관리관 필터를 지원한다.
     - `/file2map` 유틸리티 사이드바는 최상단 파일 업로드 UI + 주소/지목/면적 필터를 지원한다(`재산관리관`, `재산용도` UI 비노출).
     - `/siyu`에서 재산관리관 조건 검색의 고유값이 2개 이상이면 검색을 중단하고 상태 영역(`#map-status`)에 다중 검출 목록을 표시한다.

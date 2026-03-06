@@ -49,22 +49,6 @@ async def admin_root(request: Request) -> Response:
     )
 
 
-@router.post("/upload", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
-async def upload_excel(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    csrf_token: str = Form(default=""),
-    file: UploadFile = File(...),  # noqa: B008
-):
-    return upload_service.handle_excel_upload(
-        request=request,
-        background_tasks=background_tasks,
-        csrf_token=csrf_token,
-        file=file,
-        theme="national_public",
-    )
-
-
 @router.post("/upload/city", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
 async def upload_city_excel(
     request: Request,

@@ -31,9 +31,9 @@
 - `/file2map` 필터: 사이드바 최상단 로컬 엑셀 업로드 UI + `지역명·주소/지목/면적` 조건 지원(`재산관리관`, `재산용도` UI 비노출)
 - 지도 상태 영역: `#map-status`는 필터/목록 사이가 아니라 지도 캔버스 상단 1줄 오버레이로 표시되며, 데스크톱에서는 줌 UI 비가림을 피하도록 폭이 제한되고 `X` 버튼으로 임시 닫기 지원
 - 다중 검출 정책: `/siyu`의 `재산관리관` 검색 결과 고유값이 2개 이상이면 검색을 중단하고 상태 영역(지도 캔버스 상단 1줄 오버레이)에 검출값 안내를 표시
-- 관리자 업로드: `국·공유재산(/admin/upload)` / `시유지(/admin/upload/city)` 분리 운영
-- 데이터 초기 동등화: `python scripts/clone_city_data_to_national.py`로 `poi_city -> poi` 1회 복제 지원(`--dry-run` 가능)
-- 지도 목록 조회: `/api/lands`, `/api/lands/list`는 `theme` 쿼리(`national_public` 기본, `city_owned`) 지원
+- 관리자 업로드: `시유지(/admin/upload/city)` 단일 운영
+- 레거시 정리: `python scripts/remove_legacy_national_table.py`로 구 테이블(`poi`) 제거 가능(`--dry-run` 지원)
+- 지도 목록 조회: `/api/lands`, `/api/lands/list`는 `theme` 쿼리 `city_owned`만 지원(미지정 시 기본 `city_owned`)
 - 검색 결과 다운로드: `/siyu`는 `/api/lands/export` 서버 다운로드, `/file2map` 로컬 업로드 모드는 브라우저 Excel 생성 다운로드
 - 헤더 메뉴 정렬: 데스크톱에서 `시작/배경지도/주제도` 시작 x좌표를 사이드바 끝점 고정 오프셋으로 배치
 - 헤더 메뉴 구분자: `시작 | 배경지도 | 주제도` 사이 짧은 세로 바 표시

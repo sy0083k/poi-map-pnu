@@ -15,13 +15,11 @@ from app.validators import land_validators
 
 logger = logging.getLogger(__name__)
 logger.addFilter(RequestIdFilter())
-ThemeType = Literal["national_public", "city_owned"]
+ThemeType = Literal["city_owned"]
 
 
-def _table_name_for_theme(theme: ThemeType) -> str:
-    if theme == "city_owned":
-        return land_repository.CITY_TABLE_NAME
-    return land_repository.TABLE_NAME
+def _table_name_for_theme(_theme: ThemeType) -> str:
+    return land_repository.CITY_TABLE_NAME
 
 
 def handle_excel_upload(
@@ -29,7 +27,7 @@ def handle_excel_upload(
     background_tasks: BackgroundTasks,
     csrf_token: str,
     file: UploadFile,
-    theme: ThemeType = "national_public",
+    theme: ThemeType = "city_owned",
 ) -> JSONResponse | dict:
     config = request.app.state.config
     request_id = getattr(request.state, "request_id", "-")

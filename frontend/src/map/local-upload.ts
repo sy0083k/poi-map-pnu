@@ -47,6 +47,10 @@ type SetupFile2MapUploadOptions = {
   onCleared: () => void;
 };
 
+export type SetupFile2MapUploadResult = {
+  hasRestoredUpload: boolean;
+};
+
 function normalizePnu(raw: unknown): string {
   return String(raw ?? "").replace(/\D/g, "");
 }
@@ -214,12 +218,13 @@ function buildSummary(fileName: string, items: LandListItem[], savedAt: number):
   };
 }
 
-export async function setupFile2MapUpload(options: SetupFile2MapUploadOptions): Promise<void> {
+export async function setupFile2MapUpload(options: SetupFile2MapUploadOptions): Promise<SetupFile2MapUploadResult> {
   const { fileInput, uploadButton, clearButton, onStatusMessage, onApplied, onCleared } = options;
 
   if (!fileInput || !uploadButton || !clearButton) {
-    return;
+    return { hasRestoredUpload: false };
   }
+  let hasRestoredUpload = false;
 
   fileInput.addEventListener("change", () => {
     const file = fileInput.files?.[0];
@@ -236,6 +241,7 @@ export async function setupFile2MapUpload(options: SetupFile2MapUploadOptions): 
       uploadButton.title = `선택 파일: ${persisted.fileName}`;
       onStatusMessage("저장된 업로드 파일을 복원했습니다.", "#166534");
       onApplied({ result: { items: persisted.items, summary }, source: "restored" });
+      hasRestoredUpload = true;
     }
   } catch {
     onStatusMessage("저장된 업로드 복원에 실패했습니다.", "#b45309");
@@ -285,4 +291,6 @@ export async function setupFile2MapUpload(options: SetupFile2MapUploadOptions): 
       onCleared();
     })();
   });
+
+  return { hasRestoredUpload };
 }

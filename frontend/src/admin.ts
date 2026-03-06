@@ -8,22 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const csrfInput = requireElement("csrfToken", HTMLInputElement);
-  const uploadNationalButton = document.getElementById("uploadBtnNational");
   const uploadCityButton = document.getElementById("uploadBtnCity");
   const settingsForm = document.getElementById("settingsForm");
   const refreshStatsButton = document.getElementById("refreshStatsBtn");
-
-  if (uploadNationalButton && csrfInput) {
-    uploadNationalButton.addEventListener("click", () => {
-      void handleThemeUpload(csrfInput.value, {
-        fileInputId: "excelFileNational",
-        statusId: "statusNational",
-        endpoint: "/admin/upload",
-        emptyFileMessage: "국·공유재산 파일을 선택해주세요.",
-        loadingMessage: "국·공유재산 파일 업로드 중..."
-      });
-    });
-  }
 
   if (uploadCityButton && csrfInput) {
     uploadCityButton.addEventListener("click", () => {

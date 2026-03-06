@@ -253,6 +253,19 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       void prepareUploadedHighlights(overrideItems);
       return;
     }
+    if (theme === "national_public") {
+      deps.state.setOriginalItems([]);
+      deps.state.setCurrentItems([]);
+      deps.listPanel.clear();
+      deps.mapView.clearInfoPanel();
+      updateNavigation();
+      uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
+      if (config) {
+        deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
+      }
+      deps.setMapStatus("표시할 파일을 적용하면 목록이 표시됩니다.", "#1f2937");
+      return;
+    }
     try {
       deps.listPanel.setStatus(`${themeLabel} 목록을 불러오는 중입니다...`);
       const items = await loadAllLandListItems(theme);

@@ -22,7 +22,7 @@ def _make_request(app: FastAPI, *, csrf_token: str) -> Request:
     scope = {
         "type": "http",
         "method": "POST",
-        "path": "/admin/upload",
+        "path": "/admin/upload/city",
         "headers": [],
         "client": ("127.0.0.1", 50000),
         "server": ("testserver", 80),
@@ -122,15 +122,8 @@ def test_upload_service_success_city_theme(
             limit=10,
             table_name=table_name_for_theme("city_owned"),
         )
-        national_rows = land_repository.fetch_lands_page_without_geom(
-            conn,
-            after_id=None,
-            limit=10,
-            table_name=table_name_for_theme("national_public"),
-        )
     assert len(city_rows) == 1
     assert city_rows[0]["address"] == "city-addr"
-    assert len(national_rows) == 0
 
 
 def test_upload_service_rejects_bad_extension(build_app: Any, db_path: Any) -> None:

@@ -107,7 +107,6 @@ uvicorn app.main:app --reload
 ## 🔐 관리자 사용 흐름
 1. `/admin/login`에서 로그인
 2. `/admin`에서 엑셀 업로드
-   - 국·공유재산용: `/admin/upload`
    - 시유지용: `/admin/upload/city`
    - 필수 컬럼: `고유번호`, `소재지`, `지목`, `실면적`, `재산관리관`
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
@@ -122,6 +121,7 @@ uvicorn app.main:app --reload
    - `시유지(/siyu)` 유틸리티 사이드바는 `재산용도` 콤보(`전체/행정재산/일반재산`) + `지목` + `재산관리관` + 면적 복합 검색을 지원한다.
    - `시유지(/siyu)`에서 `재산관리관` 검색 결과의 고유값이 2개 이상이면 검색이 중단되고 상태 영역(`#map-status`)에 검출 목록이 표시된다.
    - `파일→지도(/file2map)` 유틸리티 사이드바 최상단에는 사용자 엑셀 업로드 UI가 표시된다.
+   - 신규 브라우저에서 `/file2map` 최초 진입 시 목록은 비어 있으며, 파일 적용 전까지 토지 목록을 표시하지 않는다.
    - `/file2map`에서는 업로드 파일이 지도/목록 데이터 소스를 대체하며 브라우저 IndexedDB에 저장되어 새로고침 시 복원된다.
    - `/file2map` 업로드 복원/검증/적용/초기화 메시지는 업로드 패널이 아니라 지도 상단 상태 영역(`#map-status`)에 표시된다.
    - `/file2map`에서는 `재산관리관`, `재산용도` 필터 UI를 노출하지 않고 `지역명·주소/지목/면적` 필터만 사용한다.
@@ -151,7 +151,7 @@ uvicorn app.main:app --reload
 - `GET /api/cadastral/fgb`
 - `GET /api/lands`
 - `GET /api/lands/list`
-  - `theme` 쿼리 지원: `national_public`(기본), `city_owned`
+  - `theme` 쿼리 지원: `city_owned` (미지정 시 기본 `city_owned`, `national_public`은 400)
 - `POST /api/lands/export`
   - 요청 본문: `theme`, `landIds[]`
   - 응답: 검색 결과 토지의 원본 업로드 컬럼 전체 속성 Excel(`.xlsx`)
@@ -169,7 +169,6 @@ uvicorn app.main:app --reload
 - `POST /login` (`POST /admin/login` alias 지원)
 - `GET /logout`
 - `GET /admin`
-- `POST /admin/upload`
 - `POST /admin/upload/city`
 - `POST /admin/settings`
 - `POST /admin/password`

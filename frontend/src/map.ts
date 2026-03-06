@@ -305,7 +305,7 @@ async function bootstrap(): Promise<void> {
     replaceThemeHistory(initialTheme);
     state.setOriginalItems([]);
 
-    await setupFile2MapUpload({
+    const uploadSetup = await setupFile2MapUpload({
       fileInput: file2mapUploadInput,
       uploadButton: file2mapUploadButton,
       clearButton: file2mapUploadClearButton,
@@ -331,7 +331,10 @@ async function bootstrap(): Promise<void> {
       }
     });
 
-    await workflow.applyFilters(false);
+    if (initialTheme === "national_public" && !uploadSetup.hasRestoredUpload) {
+      listPanel.clear();
+      setMapStatus("표시할 파일을 적용하면 목록이 표시됩니다.", "#1f2937");
+    }
     await workflow.loadThemeData(state.getCurrentTheme());
 
     syncDesktopToMobileInputs();
