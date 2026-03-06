@@ -162,6 +162,17 @@ async function bootstrap(): Promise<void> {
     document.body.classList.toggle("file2map-mode", theme === "national_public");
   };
 
+  const closePhotoPanelUi = (): void => {
+    document.body.classList.remove("photo-panel-open");
+    document.body.style.removeProperty("--photo-panel-runtime-height");
+    document.body.style.removeProperty("--photo-panel-runtime-bottom-offset");
+    const photoPanel = document.getElementById("photo-info-panel");
+    if (photoPanel instanceof HTMLElement) {
+      photoPanel.classList.add("is-hidden");
+      photoPanel.setAttribute("aria-expanded", "false");
+    }
+  };
+
   const clearFile2MapSpecificFilters = (): void => {
     if (propertyManagerSearchInput) {
       propertyManagerSearchInput.value = "";
@@ -221,6 +232,7 @@ async function bootstrap(): Promise<void> {
         clearFile2MapSpecificFilters();
       }
       syncThemeMenuActiveState(theme);
+      closePhotoPanelUi();
       mapView.clearInfoPanel();
       pushThemeHistory(theme);
       void workflow.loadThemeData(theme);
@@ -285,6 +297,7 @@ async function bootstrap(): Promise<void> {
       clearFile2MapSpecificFilters();
     }
     syncThemeMenuActiveState(nextTheme);
+    closePhotoPanelUi();
     mapView.clearInfoPanel();
     void workflow.loadThemeData(nextTheme);
   });
@@ -295,7 +308,8 @@ async function bootstrap(): Promise<void> {
     const config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
     workflow.setConfig(config);
     mapView.init(config);
-    if (getThemeFromPathname(window.location.pathname) === "national_public") {
+    const hasPhotoPanel = document.getElementById("photo-info-panel") instanceof HTMLElement;
+    if (hasPhotoPanel) {
       await bootstrapPersistedPhotoOverlay({
         mapView,
         setMapStatus,
