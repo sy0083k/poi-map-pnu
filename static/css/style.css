@@ -15,7 +15,8 @@ body {
     --filter-label-gap: 6px;
 }
 
-body.photo2map-mode {
+body.photo2map-mode,
+body.file2map-mode.photo-panel-open {
     --panel-gap: 12px;
     --land-panel-top-offset: 20px;
     --photo-panel-bottom-offset: 20px;
@@ -757,7 +758,8 @@ body.file2map-mode #mobile-property-manager-group {
     overflow: hidden;
 }
 
-body.photo2map-mode #land-info-panel {
+body.photo2map-mode #land-info-panel,
+body.file2map-mode.photo-panel-open #land-info-panel {
     max-height: clamp(220px, var(--land-panel-max-safe), 560px);
 }
 
@@ -1025,7 +1027,8 @@ body.photo2map-mode #land-info-panel {
     body {
         --sidebar-width: 320px;
     }
-    body.photo2map-mode {
+    body.photo2map-mode,
+    body.file2map-mode.photo-panel-open {
         --land-panel-top-offset: 12px;
         --photo-panel-bottom-offset: 12px;
         --photo-panel-safe-height: 340px;
@@ -1064,7 +1067,8 @@ body.photo2map-mode #land-info-panel {
         overflow: hidden;
     }
 
-    body.photo2map-mode {
+    body.photo2map-mode,
+    body.file2map-mode.photo-panel-open {
         --land-panel-top-offset: 12px;
         --photo-panel-bottom-offset: calc(50vh + 12px);
         --photo-panel-safe-height: 340px;
@@ -1303,7 +1307,8 @@ body.photo2map-mode #land-info-panel {
 
 /* 소형 모바일 */
 @media (max-width: 480px) {
-    body.photo2map-mode {
+    body.photo2map-mode,
+    body.file2map-mode.photo-panel-open {
         --photo-panel-safe-height: 300px;
         --photo-panel-bottom-offset: calc(50vh + 12px);
     }

@@ -75,6 +75,7 @@ function createPhotoPanel() {
   };
 
   const hidePanel = (): void => {
+    document.body.classList.remove("photo-panel-open");
     panel.classList.add("is-hidden");
     panel.setAttribute("aria-expanded", "false");
   };
@@ -143,6 +144,7 @@ function createPhotoPanel() {
       if (panelCaption instanceof HTMLElement) {
         panelCaption.textContent = `${item.fileName} (${item.relativePath})`;
       }
+      document.body.classList.add("photo-panel-open");
       panel.classList.remove("is-hidden");
     },
     clear(): void {
