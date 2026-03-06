@@ -231,7 +231,27 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "overlapGuard.close()" in photo_overlay_ts
     assert "wheel" in photo_lightbox_zoom_ts
     assert "pointerdown" in photo_lightbox_zoom_ts
+    assert "const PAN_FACTOR = 2.4;" in photo_lightbox_zoom_ts
+    assert "const PAN_CLAMP_OVERSCROLL_PX = 96;" in photo_lightbox_zoom_ts
+    assert "const PAN_SCALE_GAIN = 0.4;" in photo_lightbox_zoom_ts
+    assert "const PAN_SHIFT_MULTIPLIER = 1.8;" in photo_lightbox_zoom_ts
+    assert "const AUTO_PAN_EDGE_PX = 48;" in photo_lightbox_zoom_ts
+    assert "const AUTO_PAN_MAX_PX_PER_FRAME = 22;" in photo_lightbox_zoom_ts
+    assert "const SCALE_EPSILON = 0.001;" in photo_lightbox_zoom_ts
+    assert "scaleFactor = 1 + (scale - 1) * PAN_SCALE_GAIN;" in photo_lightbox_zoom_ts
+    assert "const overscroll = mode === \"soft\" ? PAN_CLAMP_OVERSCROLL_PX : 0;" in photo_lightbox_zoom_ts
+    assert "if (scale > SCALE_MIN + SCALE_EPSILON) {" in photo_lightbox_zoom_ts
+    assert "translateX = 0;" in photo_lightbox_zoom_ts
+    assert "translateY = 0;" in photo_lightbox_zoom_ts
+    assert "clampEasing = true;" in photo_lightbox_zoom_ts
+    assert "window.setTimeout(() => {" in photo_lightbox_zoom_ts
+    assert "requestAnimationFrame(stepAutoPan)" in photo_lightbox_zoom_ts
+    assert "computeEdgeVelocity(" in photo_lightbox_zoom_ts
+    assert "event.key === \"Shift\"" in photo_lightbox_zoom_ts
     assert "transform = `translate3d(" in photo_lightbox_zoom_ts
+    assert "const onViewportResize = (): void => {" in photo_lightbox_zoom_ts
+    assert "window.addEventListener(\"resize\", onViewportResize);" in photo_lightbox_zoom_ts
+    assert "new ResizeObserver(() => {" in photo_lightbox_zoom_ts
     assert "ResizeObserver" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-height" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-bottom-offset" in panel_overlap_guard_ts
@@ -250,6 +270,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "photo-info-panel" in index_template
     assert "photo-lightbox" in index_template
     assert "photo-lightbox-body" in index_template
+    assert "photo-lightbox-viewport" in index_template
     assert "photo-lightbox-image" in index_template
     assert "land-info-panel" in index_template
     assert "land-info-content" in index_template
@@ -269,6 +290,11 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert ".photo-lightbox {" in css_text
     assert ".photo-lightbox-image.is-zoomable {" in css_text
     assert ".photo-lightbox-image.is-dragging {" in css_text
+    assert ".photo-lightbox-viewport {" in css_text
+    assert ".photo-lightbox-viewport.is-zoomable" in css_text
+    assert ".photo-lightbox-viewport.is-clamp-easing .photo-lightbox-image {" in css_text
+    assert "image-rendering: auto;" in css_text
+    assert "will-change: transform;" not in css_text
     assert "img-src 'self' data: blob:" in main_py
     assert "loadPersistedFile2MapUpload" in local_upload_ts
     assert "loadUploadedHighlights" in cadastral_layer_ts

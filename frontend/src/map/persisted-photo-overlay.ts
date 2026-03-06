@@ -44,7 +44,7 @@ function createPhotoPanel() {
   const lightbox = document.getElementById("photo-lightbox");
   const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
   const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
-  const lightboxBody = document.getElementById("photo-lightbox-body");
+  const lightboxViewport = document.getElementById("photo-lightbox-viewport");
   const lightboxCaption = document.getElementById("photo-lightbox-caption");
 
   if (
@@ -52,7 +52,7 @@ function createPhotoPanel() {
     !(panelImage instanceof HTMLImageElement) ||
     !(lightbox instanceof HTMLElement) ||
     !(lightboxImage instanceof HTMLImageElement) ||
-    !(lightboxBody instanceof HTMLElement)
+    !(lightboxViewport instanceof HTMLElement)
   ) {
     return null;
   }
@@ -64,7 +64,7 @@ function createPhotoPanel() {
     photoPanel: panel
   });
   const lightboxZoom = createPhotoLightboxZoomController({
-    viewport: lightboxBody,
+    viewport: lightboxViewport,
     image: lightboxImage
   });
   lightboxZoom.setEnabled(false);
