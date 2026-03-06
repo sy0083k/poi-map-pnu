@@ -14,6 +14,7 @@ body {
     --filter-row-gap: 10px;
     --filter-label-gap: 6px;
     --viewport-safe-height: 100vh;
+    --map-overlay-right-offset: 20px;
 }
 
 body.photo2map-mode,
@@ -631,7 +632,7 @@ body.file2map-mode #mobile-property-manager-group {
 
 #map-legend {
     position: absolute;
-    right: 16px;
+    right: var(--map-overlay-right-offset);
     bottom: 16px;
     z-index: 1001;
     width: min(220px, calc(100% - 32px));
@@ -865,7 +866,7 @@ body.photo-panel-open #map-legend {
 #land-info-panel {
     position: absolute;
     top: 20px;
-    right: 20px;
+    right: var(--map-overlay-right-offset);
     z-index: 1000;
     width: clamp(260px, 28vw, 380px);
     max-height: min(62vh, 560px);
@@ -1059,6 +1060,7 @@ body.photo-panel-open #land-info-panel {
 @media (max-width: 1024px) {
     body {
         --sidebar-width: 320px;
+        --map-overlay-right-offset: 12px;
     }
     body.photo2map-mode,
     body.photo-panel-open {
@@ -1068,7 +1070,6 @@ body.photo-panel-open #land-info-panel {
     }
     #land-info-panel {
         top: 12px;
-        right: 12px;
         width: clamp(240px, 34vw, 340px);
         max-height: 56vh;
     }
@@ -1223,7 +1224,6 @@ body.photo-panel-open #land-info-panel {
 
     #land-info-panel {
         top: 12px;
-        right: 12px;
         left: auto;
         width: min(72vw, 300px);
         max-height: min(44vh, 340px);
@@ -1252,7 +1252,7 @@ body.photo-panel-open #land-info-panel {
     }
 
     #map-legend {
-        right: 12px;
+        right: var(--map-overlay-right-offset);
         bottom: calc(50vh + 12px);
         width: min(180px, calc(100% - 24px));
         padding: 8px 10px;

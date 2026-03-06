@@ -143,6 +143,8 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert "--filter-control-height: var(--filter-input-height);" in css_text
     assert "--filter-col-gap: 8px;" in css_text
     assert "--filter-row-gap: 10px;" in css_text
+    assert "--map-overlay-right-offset: 20px;" in css_text
+    assert "--map-overlay-right-offset: 12px;" in css_text
     assert ".filter-control {" in css_text
     assert "height: var(--filter-control-height);" in css_text
     assert ".filter-control:focus-visible {" in css_text
@@ -151,14 +153,14 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert "body.file2map-mode #file2map-upload-panel" in css_text
     assert "body.file2map-mode #desktop-property-usage-group" in css_text
     assert "#map-legend {" in css_text
-    assert "right: 16px;" in css_text
+    assert "right: var(--map-overlay-right-offset);" in css_text
     assert ".map-legend-swatch-road {" in css_text
     assert ".map-legend-swatch-accounting {" in css_text
+    assert "#land-info-panel {" in css_text
     assert "body.photo-panel-open #map-legend {" in css_text
     assert ".map-legend-close {" in css_text
     assert ".map-legend-close:focus-visible {" in css_text
     assert "bottom: calc(50vh + 12px);" in css_text
-    assert "right: 12px;" in css_text
     assert "#photo-load-btn {" in css_text
     assert "#photo-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }" in css_text
     assert ".sidebar-empty-message {" in css_text
