@@ -227,6 +227,7 @@ async function bootstrap(): Promise<void> {
     menuThemeTrigger,
     onThemeSelected: (theme) => {
       state.setCurrentTheme(theme);
+      mapView.setTheme(theme);
       applyThemeUiState(theme);
       if (theme === "national_public") {
         clearFile2MapSpecificFilters();
@@ -292,6 +293,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
     state.setCurrentTheme(nextTheme);
+    mapView.setTheme(nextTheme);
     applyThemeUiState(nextTheme);
     if (nextTheme === "national_public") {
       clearFile2MapSpecificFilters();
@@ -325,6 +327,7 @@ async function bootstrap(): Promise<void> {
       "national_public";
 
     state.setCurrentTheme(initialTheme);
+    mapView.setTheme(initialTheme);
     applyThemeUiState(initialTheme);
     if (initialTheme === "national_public") {
       clearFile2MapSpecificFilters();

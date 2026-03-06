@@ -181,11 +181,30 @@ def test_lands_list_client_sends_theme_query() -> None:
 
 def test_select_highlight_is_flushed_before_fit_animation() -> None:
     map_view_ts = Path("frontend/src/map/map-view.ts").read_text(encoding="utf-8")
+    map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     assert "renderFeatureLayers();" in map_view_ts
     assert "map.renderSync();" in map_view_ts
     assert "window.requestAnimationFrame(() => {" in map_view_ts
     assert 'White: "white"' in map_view_ts
     assert "White: 18" in map_view_ts
+    assert 'stroke: new Stroke({ color: "#ff7f00", width: 3 })' in map_view_ts
+    assert 'fill: new Fill({ color: "rgba(255, 127, 0, 0.2)" })' in map_view_ts
+    assert 'stroke: new Stroke({ color: "#377eb8", width: 3 })' in map_view_ts
+    assert 'fill: new Fill({ color: "rgba(55, 126, 184, 0.2)" })' in map_view_ts
+    assert 'stroke: new Stroke({ color: "#4daf4a", width: 3 })' in map_view_ts
+    assert 'fill: new Fill({ color: "rgba(77, 175, 74, 0.2)" })' in map_view_ts
+    assert 'stroke: new Stroke({ color: "#e41a1c", width: 3 })' in map_view_ts
+    assert 'fill: new Fill({ color: "rgba(228, 26, 28, 0.2)" })' in map_view_ts
+    assert 'stroke: new Stroke({ color: "#984ea3", width: 3 })' in map_view_ts
+    assert 'fill: new Fill({ color: "rgba(152, 78, 163, 0.2)" })' in map_view_ts
+    assert 'if (manager === "도로과") {' in map_view_ts
+    assert 'if (manager === "건설과") {' in map_view_ts
+    assert 'if (manager === "산림공원과") {' in map_view_ts
+    assert 'if (manager === "회계과") {' in map_view_ts
+    assert "return fallbackFeatureStyle;" in map_view_ts
+    assert "mapView.setTheme(theme);" in map_ts
+    assert "mapView.setTheme(nextTheme);" in map_ts
+    assert "mapView.setTheme(initialTheme);" in map_ts
 
 
 def test_photo2map_contract_for_local_exif_markers() -> None:
