@@ -213,6 +213,10 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "land-info-content" in index_template
     assert "aria-modal=\"true\"" in index_template
     assert "bottom: 20px;" in css_text
+    assert "--land-panel-max-safe: calc(" in css_text
+    assert "body.photo2map-mode #land-info-panel" in css_text
+    assert "max-height: clamp(220px, var(--land-panel-max-safe), 560px);" in css_text
+    assert "--photo-panel-bottom-offset: calc(50vh + 12px);" in css_text
     assert ".photo-lightbox {" in css_text
     assert "img-src 'self' data: blob:" in main_py
     assert "loadPersistedFile2MapUpload" in local_upload_ts

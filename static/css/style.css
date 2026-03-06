@@ -15,6 +15,16 @@ body {
     --filter-label-gap: 6px;
 }
 
+body.photo2map-mode {
+    --panel-gap: 12px;
+    --land-panel-top-offset: 20px;
+    --photo-panel-bottom-offset: 20px;
+    --photo-panel-safe-height: 360px;
+    --land-panel-max-safe: calc(
+        100vh - var(--topbar-height) - var(--land-panel-top-offset) - var(--photo-panel-bottom-offset) - var(--photo-panel-safe-height) - var(--panel-gap)
+    );
+}
+
 #app-topbar {
     height: var(--topbar-height);
     display: flex;
@@ -726,6 +736,10 @@ body.file2map-mode #mobile-property-manager-group {
     overflow: hidden;
 }
 
+body.photo2map-mode #land-info-panel {
+    max-height: clamp(220px, var(--land-panel-max-safe), 560px);
+}
+
 .land-info-header {
     padding: 10px 12px;
     border-bottom: 1px solid #e5e7eb;
@@ -990,6 +1004,11 @@ body.file2map-mode #mobile-property-manager-group {
     body {
         --sidebar-width: 320px;
     }
+    body.photo2map-mode {
+        --land-panel-top-offset: 12px;
+        --photo-panel-bottom-offset: 12px;
+        --photo-panel-safe-height: 340px;
+    }
     #land-info-panel {
         top: 12px;
         right: 12px;
@@ -1022,6 +1041,12 @@ body.file2map-mode #mobile-property-manager-group {
     body {
         flex-direction: column !important;
         overflow: hidden;
+    }
+
+    body.photo2map-mode {
+        --land-panel-top-offset: 12px;
+        --photo-panel-bottom-offset: calc(50vh + 12px);
+        --photo-panel-safe-height: 340px;
     }
 
     #app-topbar {
@@ -1257,6 +1282,10 @@ body.file2map-mode #mobile-property-manager-group {
 
 /* 소형 모바일 */
 @media (max-width: 480px) {
+    body.photo2map-mode {
+        --photo-panel-safe-height: 300px;
+        --photo-panel-bottom-offset: calc(50vh + 12px);
+    }
     #filter-section { padding: 12px; }
     #land-info-panel {
         width: min(76vw, 280px);
