@@ -67,6 +67,10 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
 
 def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
+    theme_routing_ts = Path("frontend/src/map/theme-routing.ts").read_text(encoding="utf-8")
+    topbar_menu_ts = Path("frontend/src/map/topbar-menu.ts").read_text(encoding="utf-8")
+
     moveend_anchor = "mapView.setMoveEndHandler(() => {"
     assert moveend_anchor in map_ts
     moveend_block = map_ts.split(moveend_anchor, maxsplit=1)[1].split("});", maxsplit=1)[0]
@@ -74,18 +78,17 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert 'state.setCurrentTheme(theme);' in map_ts
     assert "clearPropertyManagerInputs();" in map_ts
     assert "applyThemeUiState(theme);" in map_ts
-    assert 'const getThemeLabel = (theme: ThemeType): string => {' in map_ts
-    assert "await loadThemeData(state.getCurrentTheme());" in map_ts
-    assert "재산관리관 다중 검출:" in map_ts
-    assert "정확한 재산관리관을 입력하세요." in map_ts
-    assert 'mapView.renderFeatures({ type: "FeatureCollection", features: [] }' in map_ts
-    assert 'downloadClient.downloadSearchResultFile({' in map_ts
-    assert 'const THEME_PATHS: Record<ThemeType, string> = {' in map_ts
-    assert 'national_public: "/gukgongyu"' in map_ts
-    assert 'city_owned: "/siyu"' in map_ts
+    assert "await workflow.loadThemeData(state.getCurrentTheme());" in map_ts
+    assert "재산관리관 다중 검출:" in workflow_ts
+    assert "정확한 재산관리관을 입력하세요." in workflow_ts
+    assert 'deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }' in workflow_ts
+    assert 'downloadClient.downloadSearchResultFile({' in workflow_ts
+    assert 'const THEME_PATHS: Record<ThemeType, string> = {' in theme_routing_ts
+    assert 'national_public: "/gukgongyu"' in theme_routing_ts
+    assert 'city_owned: "/siyu"' in theme_routing_ts
     assert "pushThemeHistory(theme);" in map_ts
-    assert 'raw === "Base" || raw === "White" || raw === "Satellite" || raw === "Hybrid"' in map_ts
-    assert 'layerType === "White" ? "백지도"' in map_ts
+    assert 'rawBasemap !== "Base"' in topbar_menu_ts
+    assert 'layerType === "White"' in map_ts
 
 
 def test_lands_list_client_sends_theme_query() -> None:

@@ -20,7 +20,7 @@ from app.db.connection import db_connection
 from app.exceptions import http_exception_handler, unhandled_exception_handler
 from app.logging_utils import RequestIdFilter, configure_logging
 from app.rate_limit import SlidingWindowRateLimiter
-from app.repositories import poi_repository
+from app.repositories import event_repository, job_repository, land_repository, web_visit_repository
 from app.routers import admin, auth, map_router, map_v1_router
 from app.services import health_service
 from app.utils import vite_assets
@@ -39,7 +39,12 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     with db_connection() as conn:
-        poi_repository.init_db(conn)
+        land_repository.init_land_schema(conn)
+        land_repository.init_land_schema(conn, table_name=land_repository.CITY_TABLE_NAME)
+        job_repository.init_job_schema(conn)
+        event_repository.init_event_schema(conn)
+        web_visit_repository.init_web_visit_schema(conn)
+        conn.commit()
     yield
 
 

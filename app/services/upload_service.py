@@ -10,12 +10,18 @@ from fastapi.responses import JSONResponse
 from app.db.connection import db_connection
 from app.dependencies import validate_csrf_token
 from app.logging_utils import RequestIdFilter
-from app.repositories import poi_repository
+from app.repositories import land_repository
 from app.validators import land_validators
 
 logger = logging.getLogger(__name__)
 logger.addFilter(RequestIdFilter())
 ThemeType = Literal["national_public", "city_owned"]
+
+
+def _table_name_for_theme(theme: ThemeType) -> str:
+    if theme == "city_owned":
+        return land_repository.CITY_TABLE_NAME
+    return land_repository.TABLE_NAME
 
 
 def handle_excel_upload(
@@ -104,18 +110,19 @@ def handle_excel_upload(
             )
 
         with db_connection() as conn:
-            poi_repository.delete_all_for_theme(conn, theme=theme)
+            table_name = _table_name_for_theme(theme)
+            land_repository.delete_all(conn, table_name=table_name)
 
             for row in normalized_rows:
-                poi_repository.insert_land_for_theme(
+                land_repository.insert_land(
                     conn,
-                    theme=theme,
                     pnu=row["pnu"],
                     address=row["address"],
                     land_type=row["land_type"],
                     area=row["area"],
                     property_manager=row["property_manager"],
                     source_fields_json=json.dumps(row["source_fields"], ensure_ascii=False),
+                    table_name=table_name,
                 )
 
             conn.commit()
