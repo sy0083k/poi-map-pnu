@@ -12,6 +12,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         map: resolve(__dirname, "src/map.ts"),
+        photoMap: resolve(__dirname, "src/photo-map.ts"),
         admin: resolve(__dirname, "src/admin.ts"),
         login: resolve(__dirname, "src/login.ts")
       }

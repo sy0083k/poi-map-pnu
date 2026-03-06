@@ -170,6 +170,18 @@ async def read_national_public_theme(request: Request) -> HTMLResponse:
     return _render_map_page(request, initial_theme="national_public")
 
 
+@app.get("/photo2map", response_class=HTMLResponse, include_in_schema=False)
+async def read_photo_map_page(request: Request) -> HTMLResponse:
+    return cast(
+        HTMLResponse,
+        templates.TemplateResponse(
+            request,
+            "photo2map.html",
+            {"active_page": "map"},
+        ),
+    )
+
+
 @app.get("/siyu", response_class=HTMLResponse, include_in_schema=False)
 async def read_city_owned_theme(request: Request) -> HTMLResponse:
     return _render_map_page(request, initial_theme="city_owned")

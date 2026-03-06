@@ -8,7 +8,7 @@ body {
     --topbar-height: 56px;
     --sidebar-width: 350px;
     --topbar-menu-anchor-x: var(--sidebar-width);
-    --filter-input-height: 40px;
+    --filter-input-height: 33px;
     --filter-control-height: var(--filter-input-height);
     --filter-col-gap: 8px;
     --filter-row-gap: 10px;
@@ -355,11 +355,23 @@ body.file2map-mode #file2map-upload-panel {
 body.file2map-mode .file2map-upload-divider {
     display: block;
 }
+body.photo2map-mode #photo-upload-panel {
+    display: block;
+}
+body.photo2map-mode .file2map-upload-divider {
+    display: block;
+}
 body.file2map-mode #desktop-property-usage-group,
 body.file2map-mode #desktop-property-manager-group,
 body.file2map-mode #mobile-property-usage-group,
 body.file2map-mode #mobile-property-manager-group {
     display: none;
+}
+.photo-summary {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.86rem;
+    line-height: 1.45;
 }
 .filter-group label {
     display: block;
@@ -479,6 +491,44 @@ body.file2map-mode #mobile-property-manager-group {
 .list-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
 .list-item:hover { background: #f1f4f6; }
 .list-item.selected { background: #e3f2fd; border-left: 4px solid #3498db; }
+.photo-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.photo-list-item {
+    border-bottom: 1px solid #eef2f7;
+}
+.photo-list-btn {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 10px 12px;
+    cursor: pointer;
+    display: grid;
+    gap: 3px;
+}
+.photo-list-btn:hover {
+    background: #f4f7fb;
+}
+.photo-list-btn.is-active {
+    background: #e7f0fb;
+    border-left: 4px solid #3b8fc0;
+    padding-left: 8px;
+}
+.photo-list-name {
+    color: #0f172a;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.photo-list-path {
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    word-break: break-all;
+}
 #map-status {
     position: absolute;
     top: 12px;
@@ -761,12 +811,98 @@ body.file2map-mode #mobile-property-manager-group {
     display: none;
 }
 
+.photo-info-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: clamp(250px, 26vw, 360px);
+    max-height: min(68vh, 560px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.16);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.photo-info-panel.is-hidden {
+    display: none;
+}
+
+.photo-info-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.photo-info-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #111827;
+}
+
+.photo-info-close {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 1rem;
+    line-height: 1;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.photo-info-close:hover {
+    background: #eef2f7;
+    color: #111827;
+}
+
+.photo-info-close:focus-visible {
+    outline: 2px solid #111827;
+    outline-offset: 1px;
+}
+
+.photo-info-body {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+}
+
+.photo-info-image {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+}
+
+.photo-info-caption {
+    color: #334155;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    word-break: break-all;
+}
+
 /* 태블릿 대응 */
 @media (max-width: 1024px) {
     body {
         --sidebar-width: 320px;
     }
     #land-info-panel {
+        top: 12px;
+        right: 12px;
+        width: clamp(240px, 34vw, 340px);
+        max-height: 56vh;
+    }
+    .photo-info-panel {
         top: 12px;
         right: 12px;
         width: clamp(240px, 34vw, 340px);
@@ -915,6 +1051,13 @@ body.file2map-mode #mobile-property-manager-group {
         width: min(72vw, 300px);
         max-height: min(44vh, 340px);
     }
+    .photo-info-panel {
+        top: 12px;
+        right: 12px;
+        left: auto;
+        width: min(72vw, 300px);
+        max-height: min(44vh, 340px);
+    }
 
     #map-status {
         top: 8px;
@@ -1009,6 +1152,10 @@ body.file2map-mode #mobile-property-manager-group {
 @media (max-width: 480px) {
     #filter-section { padding: 12px; }
     #land-info-panel {
+        width: min(76vw, 280px);
+        max-height: min(40vh, 300px);
+    }
+    .photo-info-panel {
         width: min(76vw, 280px);
         max-height: min(40vh, 300px);
     }

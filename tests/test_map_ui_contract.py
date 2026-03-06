@@ -17,8 +17,11 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert 'class="topbar-separator"' in res.text
     assert "시유지" in res.text
     assert "파일→지도" in res.text
+    assert "사진→지도" in res.text
     assert 'id="menu-file-map"' in res.text
+    assert 'id="menu-photo-map"' in res.text
     assert 'href="/file2map"' in res.text
+    assert 'href="/photo2map"' in res.text
     assert "공유지(시+도)" not in res.text
     assert "국·공유지" not in res.text
     assert ">백지도<" in res.text
@@ -70,10 +73,21 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
 @pytest.mark.anyio
 async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClient) -> None:
     national = await async_client.get("/file2map")
+    photo = await async_client.get("/photo2map")
     city = await async_client.get("/siyu")
     assert national.status_code == 200
+    assert photo.status_code == 200
     assert city.status_code == 200
     assert 'data-initial-theme="national_public"' in national.text
+    assert 'id="photo-folder-input"' in photo.text
+    assert 'id="photo-load-btn"' in photo.text
+    assert 'id="photo-clear-btn"' in photo.text
+    assert 'id="photo-list"' in photo.text
+    assert 'id="photo-prev-btn"' in photo.text
+    assert 'id="photo-next-btn"' in photo.text
+    assert 'id="photo-info-panel"' in photo.text
+    assert 'id="photo-info-image"' in photo.text
+    assert "EXIF 사진 폴더 선택" in photo.text
     assert 'data-initial-theme="city_owned"' in city.text
     assert 'class="file2map-mode"' in national.text
     assert 'id="file2map-upload-panel"' in national.text
@@ -102,7 +116,7 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert ".compact-filter-row {" in css_text
     assert "display: grid;" in css_text
     assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in css_text
-    assert "--filter-input-height: 40px;" in css_text
+    assert "--filter-input-height: 33px;" in css_text
     assert "--filter-control-height: var(--filter-input-height);" in css_text
     assert "--filter-col-gap: 8px;" in css_text
     assert "--filter-row-gap: 10px;" in css_text
@@ -138,8 +152,7 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert 'national_public: "/file2map"' in theme_routing_ts
     assert 'city_owned: "/siyu"' in theme_routing_ts
     assert "pushThemeHistory(theme);" in map_ts
-    assert 'document.getElementById("menu-file-map")' in topbar_menu_ts
-    assert 'fileMapLink.classList.toggle("is-active", theme === "national_public")' in topbar_menu_ts
+    assert 'fileMapLink.classList.toggle("is-active", theme === "national_public")' not in topbar_menu_ts
     assert 'item.dataset.linkTheme === theme' not in topbar_menu_ts
     assert 'document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link]")' not in topbar_menu_ts
     assert "window.location.assign(target);" not in topbar_menu_ts
@@ -160,3 +173,20 @@ def test_select_highlight_is_flushed_before_fit_animation() -> None:
     assert "window.requestAnimationFrame(() => {" in map_view_ts
     assert 'White: "white"' in map_view_ts
     assert "White: 18" in map_view_ts
+
+
+def test_photo2map_contract_for_local_exif_markers() -> None:
+    photo_map_ts = Path("frontend/src/photo-map.ts").read_text(encoding="utf-8")
+    exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
+    assert "parseJpegExifGps" in photo_map_ts
+    assert "selectPhoto" in photo_map_ts
+    assert "window.open(" not in photo_map_ts
+    assert 'id="photo-folder-input"' not in photo_map_ts
+    assert "webkitdirectory" in Path("templates/photo2map.html").read_text(encoding="utf-8")
+    assert "URL.createObjectURL(selected.file)" in photo_map_ts
+    assert "photo_marker_id" in photo_map_ts
+    assert "photo-prev-btn" in Path("templates/photo2map.html").read_text(encoding="utf-8")
+    assert "photo-next-btn" in Path("templates/photo2map.html").read_text(encoding="utf-8")
+    assert "photo-info-panel" in Path("templates/photo2map.html").read_text(encoding="utf-8")
+    assert "TAG_GPS_LAT" in exif_parser_ts
+    assert "TAG_GPS_LON" in exif_parser_ts
