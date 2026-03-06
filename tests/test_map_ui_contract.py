@@ -26,9 +26,30 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert ">검색 결과 다운로드<" in res.text
     assert ">전체 목록 다운로드<" not in res.text
     assert res.text.count(">재산관리관 (예: 회계과)<") >= 2
+    assert res.text.count(">재산용도<") >= 2
+    assert res.text.count(">지목<") >= 2
     assert "재산관리관 검색" not in res.text
     assert 'id="property-manager-search"' in res.text
     assert 'id="mobile-property-manager-search"' in res.text
+    assert 'id="property-usage-search"' in res.text
+    assert 'id="mobile-property-usage-search"' in res.text
+    assert 'id="land-type-search"' in res.text
+    assert 'id="mobile-land-type-search"' in res.text
+    assert res.text.count('class="filter-control"') >= 12
+    assert res.text.count('class="inline-filter-row compact-filter-row"') >= 2
+    assert "padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" not in res.text
+    assert '<option value="행정재산">행정재산</option>' in res.text
+    assert '<option value="일반재산">일반재산</option>' in res.text
+    desktop_region_idx = res.text.index('id="region-search"')
+    desktop_usage_idx = res.text.index('id="property-usage-search"')
+    desktop_land_type_idx = res.text.index('id="land-type-search"')
+    desktop_min_area_idx = res.text.index('id="min-area"')
+    assert desktop_region_idx < desktop_usage_idx < desktop_land_type_idx < desktop_min_area_idx
+    mobile_region_idx = res.text.index('id="mobile-region-search"')
+    mobile_usage_idx = res.text.index('id="mobile-property-usage-search"')
+    mobile_land_type_idx = res.text.index('id="mobile-land-type-search"')
+    mobile_min_area_idx = res.text.index('id="mobile-min-area"')
+    assert mobile_region_idx < mobile_usage_idx < mobile_land_type_idx < mobile_min_area_idx
     map_idx = res.text.index('id="map"')
     status_idx = res.text.index('id="map-status"')
     status_text_idx = res.text.index('id="map-status-text"')
@@ -63,6 +84,12 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert "#sidebar-handle[aria-expanded=\"false\"]::after" in css_text
     assert ".theme-city-only { display: none; }" in css_text
     assert "body.theme-city-owned .theme-city-only { display: block; }" in css_text
+    assert ".compact-filter-row {" in css_text
+    assert "display: grid;" in css_text
+    assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in css_text
+    assert "--filter-input-height: 40px;" in css_text
+    assert ".filter-control {" in css_text
+    assert "height: var(--filter-input-height);" in css_text
 
 
 def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:

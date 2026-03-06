@@ -5,6 +5,8 @@ type FilterElements = {
   minAreaInput: HTMLInputElement | null;
   maxAreaInput: HTMLInputElement | null;
   propertyManagerInput: HTMLInputElement | null;
+  propertyUsageInput: HTMLSelectElement | null;
+  landTypeInput: HTMLInputElement | null;
 };
 
 export type FilterValues = {
@@ -13,10 +15,19 @@ export type FilterValues = {
   rawMinAreaInput: string;
   rawMaxAreaInput: string;
   rawPropertyManagerInput: string;
+  rawPropertyUsageInput: string;
+  rawLandTypeInput: string;
   minArea: number;
   maxArea: number;
   propertyManagerTerm: string;
+  propertyUsageTerm: string;
+  landTypeTerm: string;
 };
+
+function sourceFieldValueByLabel(item: LandListItem, label: string): string {
+  const match = item.sourceFields.find((field) => field.label.trim() === label);
+  return (match?.value || "").trim();
+}
 
 export function createFilters(elements: FilterElements) {
   const getValues = (): FilterValues => {
@@ -25,7 +36,11 @@ export function createFilters(elements: FilterElements) {
     const rawMinAreaInput = elements.minAreaInput?.value ?? "";
     const rawMaxAreaInput = elements.maxAreaInput?.value ?? "";
     const rawPropertyManagerInput = elements.propertyManagerInput?.value ?? "";
+    const rawPropertyUsageInput = elements.propertyUsageInput?.value ?? "";
+    const rawLandTypeInput = elements.landTypeInput?.value ?? "";
     const propertyManagerTerm = rawPropertyManagerInput.trim();
+    const propertyUsageTerm = rawPropertyUsageInput.trim();
+    const landTypeTerm = rawLandTypeInput.trim();
 
     return {
       rawSearchTerm,
@@ -33,9 +48,13 @@ export function createFilters(elements: FilterElements) {
       rawMinAreaInput,
       rawMaxAreaInput,
       rawPropertyManagerInput,
+      rawPropertyUsageInput,
+      rawLandTypeInput,
       minArea: Number.parseFloat(rawMinAreaInput || "") || 0,
       maxArea: Number.parseFloat(rawMaxAreaInput || "") || Number.POSITIVE_INFINITY,
-      propertyManagerTerm
+      propertyManagerTerm,
+      propertyUsageTerm,
+      landTypeTerm
     };
   };
 
@@ -44,12 +63,16 @@ export function createFilters(elements: FilterElements) {
       const address = item.address || "";
       const area = item.area || 0;
       const propertyManager = item.property_manager || "";
+      const propertyUsage = sourceFieldValueByLabel(item, "재산용도");
+      const landType = item.land_type || "";
 
       const matchRegion = values.searchTerm === "" || address.includes(values.searchTerm);
       const matchArea = area >= values.minArea && area <= values.maxArea;
       const matchPropertyManager =
         values.propertyManagerTerm === "" || propertyManager.includes(values.propertyManagerTerm);
-      return matchRegion && matchArea && matchPropertyManager;
+      const matchPropertyUsage = values.propertyUsageTerm === "" || propertyUsage === values.propertyUsageTerm;
+      const matchLandType = values.landTypeTerm === "" || landType.includes(values.landTypeTerm);
+      return matchRegion && matchArea && matchPropertyManager && matchPropertyUsage && matchLandType;
     });
   };
 
@@ -66,10 +89,16 @@ export function createFilters(elements: FilterElements) {
     if (elements.propertyManagerInput) {
       elements.propertyManagerInput.value = "";
     }
+    if (elements.propertyUsageInput) {
+      elements.propertyUsageInput.value = "";
+    }
+    if (elements.landTypeInput) {
+      elements.landTypeInput.value = "";
+    }
   };
 
   const attachEnter = (onEnter: () => void): void => {
-    const attach = (input: HTMLInputElement | null): void => {
+    const attach = (input: HTMLInputElement | HTMLSelectElement | null): void => {
       if (!input) {
         return;
       }
@@ -85,6 +114,8 @@ export function createFilters(elements: FilterElements) {
     attach(elements.minAreaInput);
     attach(elements.maxAreaInput);
     attach(elements.propertyManagerInput);
+    attach(elements.propertyUsageInput);
+    attach(elements.landTypeInput);
   };
 
   return {

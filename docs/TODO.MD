@@ -78,3 +78,5 @@
 - 2026-03-06 | reviewer: team | 프런트 오케스트레이션 분해(`map.ts` -> `map/land-workflow.ts`, `map/topbar-menu.ts`, `map/layout-controls.ts`, `map/feedback.ts`) 및 `admin.ts` 모듈 분리를 반영 | 다음 액션: `land-workflow.ts`/`admin/stats.ts` 추가 분해와 점진 로딩 전략 설계 계속
 - 2026-03-06 | reviewer: team | `poi_repository` 축소 1단계로 테스트 호출부를 `land/event/web_visit/job` 도메인 repository 직접 사용으로 전환하고, `poi_repository`에 deprecation shim 경고를 추가 | 다음 액션: Step 2에서 `poi_repository.py` 완전 제거 및 참조 0건 CI 규칙 유지
 - 2026-03-06 | reviewer: team | 하이라이트 초기 지연 대응으로 FlatGeobuf 파싱을 Web Worker로 이동하고, IndexedDB 캐시 및 `/api/cadastral/fgb` ETag를 도입 | 다음 액션: 초기 표시 시간/Long Task 관측값 수집 후 서버 서브셋 API 필요성 재평가
+- 2026-03-06 | reviewer: team | 유틸리티 사이드바 필터에 `재산용도`, `지목` 입력을 추가해 두 테마 공통 복합 검색을 확장 | 다음 액션: 재산용도 표기(원본 컬럼 라벨) 표준화 및 자동완성 UX 도입 여부 검토
+- 2026-03-06 | reviewer: team | 유틸리티 사이드바에서 `재산용도`를 콤보(`행정재산/일반재산`)로 전환하고 `재산용도/지목`를 `지역명·주소` 바로 아래 1줄 배치로 조정 | 다음 액션: 재산용도 값 표준화 미준수 데이터(오탈자/공백) 정제 정책 수립
