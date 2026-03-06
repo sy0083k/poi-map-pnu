@@ -51,6 +51,11 @@ export type SetupFile2MapUploadResult = {
   hasRestoredUpload: boolean;
 };
 
+export type PersistedFile2MapUpload = {
+  items: LandListItem[];
+  summary: LocalUploadSummary;
+};
+
 function normalizePnu(raw: unknown): string {
   return String(raw ?? "").replace(/\D/g, "");
 }
@@ -197,6 +202,17 @@ async function loadFromIndexedDb(): Promise<StoredUploadPayload | null> {
     };
     req.onerror = () => reject(req.error);
   });
+}
+
+export async function loadPersistedFile2MapUpload(): Promise<PersistedFile2MapUpload | null> {
+  const persisted = await loadFromIndexedDb();
+  if (!persisted || !Array.isArray(persisted.items)) {
+    return null;
+  }
+  return {
+    items: persisted.items,
+    summary: buildSummary(persisted.fileName, persisted.items, persisted.savedAt)
+  };
 }
 
 async function clearIndexedDb(): Promise<void> {

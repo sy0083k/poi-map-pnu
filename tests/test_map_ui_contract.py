@@ -88,6 +88,8 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert 'id="photo-next-btn"' in photo.text
     assert 'id="photo-info-panel"' in photo.text
     assert 'id="photo-info-image"' in photo.text
+    assert 'id="land-info-panel"' in photo.text
+    assert 'id="land-info-content"' in photo.text
     assert "EXIF 사진 폴더 선택" in photo.text
     assert 'data-initial-theme="city_owned"' in city.text
     assert 'class="file2map-mode"' in national.text
@@ -180,6 +182,8 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
+    local_upload_ts = Path("frontend/src/map/local-upload.ts").read_text(encoding="utf-8")
+    cadastral_layer_ts = Path("frontend/src/map/cadastral-fgb-layer.ts").read_text(encoding="utf-8")
     main_py = Path("app/main.py").read_text(encoding="utf-8")
     css_text = Path("static/css/style.css").read_text(encoding="utf-8")
     index_template = Path("templates/index.html").read_text(encoding="utf-8")
@@ -197,15 +201,22 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "event.key === \"Escape\"" in photo_mode_ts
     assert "event.target === lightbox" in photo_mode_ts
     assert "photo_marker_id" in photo_mode_ts
+    assert "loadPersistedFile2MapUpload" in photo_mode_ts
+    assert "loadUploadedHighlights" in photo_mode_ts
+    assert "land-info-panel" in photo_mode_ts
     assert "photo-prev-btn" in index_template
     assert "photo-next-btn" in index_template
     assert "photo-info-panel" in index_template
     assert "photo-lightbox" in index_template
     assert "photo-lightbox-image" in index_template
+    assert "land-info-panel" in index_template
+    assert "land-info-content" in index_template
     assert "aria-modal=\"true\"" in index_template
     assert "bottom: 20px;" in css_text
     assert "body.photo2map-mode #sidebar" in css_text
     assert ".photo-lightbox {" in css_text
     assert "img-src 'self' data: blob:" in main_py
+    assert "loadPersistedFile2MapUpload" in local_upload_ts
+    assert "loadUploadedHighlights" in cadastral_layer_ts
     assert "TAG_GPS_LAT" in exif_parser_ts
     assert "TAG_GPS_LON" in exif_parser_ts

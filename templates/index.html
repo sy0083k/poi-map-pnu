@@ -250,7 +250,6 @@
         {% endif %}
     </div>
 
-    {% if map_mode != "photo" %}
     <aside id="land-info-panel" class="is-hidden" aria-live="polite" aria-label="선택 토지 상세 정보">
         <header class="land-info-header">
             <h3>상세 정보</h3>
@@ -260,7 +259,6 @@
             <div class="land-info-empty">토지를 선택하면 상세 정보가 표시됩니다.</div>
         </div>
     </aside>
-    {% endif %}
     </div>
 
     {% set assets = vite_assets('src/map.ts') %}

@@ -41,6 +41,8 @@
 - `/file2map`에서 `검색 결과 다운로드`가 서버 API(`/api/lands/export`)가 아니라 클라이언트 Excel 생성 방식으로 동작하는지 점검
 - `/photo2map`에서 폴더 선택(`webkitdirectory`) 후 JPEG GPS EXIF가 있는 사진만 마커가 생성되는지 점검
 - `/photo2map` 진입 시 공통 지도 셸(`index.html`)에서 `photo` 모드로 초기화되는지(`data-map-mode="photo"`) 점검
+- `/file2map`에서 업로드 후 `/photo2map` 진입 시 업로드 토지 하이라이트가 함께 표시되는지 점검
+- `/photo2map`에서 토지 클릭 시 우상단 상세 정보 패널(`land-info-panel`)이 열리고 `source_fields`가 렌더되는지 점검
 - `/photo2map`에서 목록/이전/다음 네비게이션으로 마커 선택이 이동하는지 점검
 - `/photo2map` 마커 또는 목록 선택 시 지도 우하단 미리보기 패널 이미지가 갱신되는지 점검
 - 데스크톱 `/photo2map`에서 유틸리티 사이드바가 지도 우측에 배치되는지 점검

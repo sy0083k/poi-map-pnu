@@ -1,9 +1,12 @@
 import Feature from "ol/Feature";
+import GeoJSON from "ol/format/GeoJSON";
+import type Geometry from "ol/geom/Geometry";
 import Point from "ol/geom/Point";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OlMap from "ol/Map";
 import View from "ol/View";
+import { getCenter } from "ol/extent";
 import { fromLonLat } from "ol/proj";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
@@ -13,10 +16,12 @@ import Stroke from "ol/style/Stroke";
 import Style from "ol/style/Style";
 
 import { fetchJson } from "../http";
-import { createFeedback } from "./feedback";
 import { parseJpegExifGps } from "../photo/exif-gps";
+import { loadUploadedHighlights } from "./cadastral-fgb-layer";
+import { createFeedback } from "./feedback";
+import { loadPersistedFile2MapUpload } from "./local-upload";
 
-import type { MapConfig } from "./types";
+import type { LandFeatureCollection, LandListItem, LandSourceField, MapConfig } from "./types";
 
 type PhotoMarkerItem = {
   id: number;
@@ -52,6 +57,16 @@ const selectedMarkerStyle = new Style({
   })
 });
 
+const landFeatureStyle = new Style({
+  stroke: new Stroke({ color: "#ff3333", width: 3 }),
+  fill: new Fill({ color: "rgba(255, 51, 51, 0.2)" })
+});
+
+const selectedLandFeatureStyle = new Style({
+  stroke: new Stroke({ color: "#ffd400", width: 4 }),
+  fill: new Fill({ color: "rgba(255, 212, 0, 0.18)" })
+});
+
 function isJpeg(file: File): boolean {
   const type = (file.type || "").toLowerCase();
   if (type === "image/jpeg" || type === "image/jpg") {
@@ -80,6 +95,27 @@ function updateSummary(element: HTMLElement | null, summary: PhotoImportSummary)
     `미지원 ${summary.skippedUnsupported}개, 파싱 오류 ${summary.parseErrors}개`;
 }
 
+function normalizeInline(value: string): string {
+  return value.replace(/[\r\n\t]+/g, " ").trim();
+}
+
+function stringifyValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value).trim();
+}
+
+function buildLandFallbackRows(item: LandListItem): LandSourceField[] {
+  return [
+    { key: "pnu", label: "PNU", value: stringifyValue(item.pnu) },
+    { key: "address", label: "주소", value: stringifyValue(item.address) },
+    { key: "area", label: "면적", value: `${item.area}㎡` },
+    { key: "land_type", label: "지목", value: stringifyValue(item.land_type) },
+    { key: "property_manager", label: "재산관리관", value: stringifyValue(item.property_manager) }
+  ].filter((row) => row.value !== "");
+}
+
 export async function bootstrapPhotoMode(): Promise<void> {
   const folderInput = document.getElementById("photo-folder-input") as HTMLInputElement | null;
   const loadButton = document.getElementById("photo-load-btn") as HTMLButtonElement | null;
@@ -102,6 +138,9 @@ export async function bootstrapPhotoMode(): Promise<void> {
   const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
   const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
   const lightboxCaption = document.getElementById("photo-lightbox-caption");
+  const landInfoPanel = document.getElementById("land-info-panel");
+  const landInfoContent = document.getElementById("land-info-content");
+  const landInfoCloseButton = document.getElementById("land-info-close") as HTMLButtonElement | null;
 
   if (
     !(folderInput instanceof HTMLInputElement) ||
@@ -135,13 +174,26 @@ export async function bootstrapPhotoMode(): Promise<void> {
     zIndex: 0
   });
 
-  const markerSource = new VectorSource();
+  const landSource = new VectorSource<Feature<Geometry>>();
+  const landLayer = new VectorLayer({
+    source: landSource,
+    style: landFeatureStyle,
+    zIndex: 9
+  });
+  const selectedLandSource = new VectorSource<Feature<Geometry>>();
+  const selectedLandLayer = new VectorLayer({
+    source: selectedLandSource,
+    style: selectedLandFeatureStyle,
+    zIndex: 10
+  });
+
+  const markerSource = new VectorSource<Feature<Point>>();
   const markerLayer = new VectorLayer({
     source: markerSource,
     style: markerStyle,
     zIndex: 11
   });
-  const selectedMarkerSource = new VectorSource();
+  const selectedMarkerSource = new VectorSource<Feature<Point>>();
   const selectedMarkerLayer = new VectorLayer({
     source: selectedMarkerSource,
     style: selectedMarkerStyle,
@@ -150,7 +202,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
   const map = new OlMap({
     target: "map",
-    layers: [baseLayer, markerLayer, selectedMarkerLayer],
+    layers: [baseLayer, landLayer, selectedLandLayer, markerLayer, selectedMarkerLayer],
     view: new View({
       center: fromLonLat(config.center),
       zoom: config.zoom,
@@ -166,6 +218,8 @@ export async function bootstrapPhotoMode(): Promise<void> {
   let lastFocusBeforeLightbox: HTMLElement | null = null;
   const markerItemsById = new globalThis.Map<number, PhotoMarkerItem>();
   const featureByMarkerId = new globalThis.Map<number, Feature<Point>>();
+  const landItemsByIndex = new globalThis.Map<number, LandListItem>();
+  const landFeatureByIndex = new globalThis.Map<number, Feature<Geometry>>();
 
   const clearPanelObjectUrl = (): void => {
     if (!currentObjectUrl) {
@@ -173,6 +227,52 @@ export async function bootstrapPhotoMode(): Promise<void> {
     }
     URL.revokeObjectURL(currentObjectUrl);
     currentObjectUrl = null;
+  };
+
+  const renderLandInfoRows = (rows: LandSourceField[]): void => {
+    if (!(landInfoContent instanceof HTMLElement)) {
+      return;
+    }
+    landInfoContent.replaceChildren();
+    if (rows.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "land-info-empty";
+      empty.textContent = "표시할 상세 정보가 없습니다.";
+      landInfoContent.appendChild(empty);
+      return;
+    }
+    rows.forEach((row) => {
+      const keyCell = document.createElement("div");
+      keyCell.className = "land-info-key";
+      keyCell.textContent = normalizeInline(row.label);
+
+      const valueCell = document.createElement("div");
+      valueCell.className = "land-info-val";
+      valueCell.textContent = normalizeInline(row.value);
+
+      landInfoContent.append(keyCell, valueCell);
+    });
+  };
+
+  const hideLandInfoPanel = (): void => {
+    if (!(landInfoPanel instanceof HTMLElement)) {
+      return;
+    }
+    landInfoPanel.classList.add("is-hidden");
+    landInfoPanel.classList.remove("has-selection");
+  };
+
+  const showLandInfoPanel = (): void => {
+    if (!(landInfoPanel instanceof HTMLElement)) {
+      return;
+    }
+    landInfoPanel.classList.remove("is-hidden");
+    landInfoPanel.classList.add("has-selection");
+  };
+
+  const clearSelectedLand = (): void => {
+    selectedLandSource.clear();
+    hideLandInfoPanel();
   };
 
   const updateNavigation = (): void => {
@@ -282,6 +382,31 @@ export async function bootstrapPhotoMode(): Promise<void> {
     updateNavigation();
   };
 
+  const selectLandByIndex = (index: number, shouldMoveMap: boolean): void => {
+    const landItem = landItemsByIndex.get(index);
+    const landFeature = landFeatureByIndex.get(index);
+    if (!landItem || !landFeature) {
+      return;
+    }
+
+    selectedLandSource.clear();
+    selectedLandSource.addFeature(landFeature.clone());
+
+    const rows = landItem.sourceFields.length > 0 ? landItem.sourceFields : buildLandFallbackRows(landItem);
+    renderLandInfoRows(rows);
+    showLandInfoPanel();
+
+    if (shouldMoveMap) {
+      const geometry = landFeature.getGeometry();
+      if (geometry) {
+        map.getView().animate({
+          center: getCenter(geometry.getExtent()),
+          duration: 250
+        });
+      }
+    }
+  };
+
   const selectPhoto = (
     index: number,
     options: { shouldMoveMap: boolean; source: "marker" | "list" | "nav" }
@@ -323,25 +448,127 @@ export async function bootstrapPhotoMode(): Promise<void> {
     }
   };
 
+  const loadFile2MapLandHighlights = async (): Promise<void> => {
+    try {
+      const persisted = await loadPersistedFile2MapUpload();
+      if (!persisted || persisted.items.length === 0) {
+        return;
+      }
+
+      const items = persisted.items;
+      const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu)));
+      setMapStatus(`업로드 토지 하이라이트를 준비하는 중입니다... (${uploadedPnus.length}건)`, "#1d4ed8");
+
+      const loaded = await loadUploadedHighlights({
+        fgbUrl: config.cadastralFgbUrl,
+        pnuField: config.cadastralPnuField,
+        cadastralCrs: config.cadastralCrs,
+        uploadedPnus,
+        theme: "national_public",
+        onProgress: (progress) => {
+          if (progress.done) {
+            return;
+          }
+          setMapStatus(
+            `업로드 토지 하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`,
+            "#166534"
+          );
+        }
+      });
+
+      const geometryByPnu = new Map<string, unknown>();
+      loaded.features.forEach((feature) => {
+        const pnu = String(feature.properties.pnu || "").replace(/\D/g, "");
+        if (pnu) {
+          geometryByPnu.set(pnu, feature.geometry);
+        }
+      });
+
+      const listLinkedFeatures: LandFeatureCollection = {
+        type: "FeatureCollection",
+        features: items.flatMap((item, index) => {
+          const geometry = geometryByPnu.get(item.pnu);
+          if (!geometry) {
+            return [];
+          }
+          return [
+            {
+              type: "Feature" as const,
+              geometry,
+              properties: {
+                list_index: index,
+                id: item.id,
+                pnu: item.pnu,
+                address: item.address,
+                land_type: item.land_type,
+                area: item.area,
+                property_manager: item.property_manager,
+                source_fields: item.sourceFields
+              }
+            }
+          ];
+        })
+      };
+
+      const features = new GeoJSON().readFeatures(listLinkedFeatures, {
+        dataProjection: config.cadastralCrs,
+        featureProjection: "EPSG:3857"
+      }) as Feature<Geometry>[];
+
+      landSource.clear();
+      landItemsByIndex.clear();
+      landFeatureByIndex.clear();
+      features.forEach((feature, fallbackIndex) => {
+        const props = feature.getProperties() as { list_index?: unknown };
+        const index = typeof props.list_index === "number" ? props.list_index : fallbackIndex;
+        feature.setId(index);
+        landFeatureByIndex.set(index, feature);
+        const landItem = items[index];
+        if (landItem) {
+          landItemsByIndex.set(index, landItem);
+        }
+      });
+      landSource.addFeatures(features);
+
+      if (features.length > 0) {
+        setMapStatus(`업로드 토지 하이라이트 ${features.length}건을 표시했습니다.`, "#166534");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "업로드 토지 하이라이트를 불러오지 못했습니다.";
+      setMapStatus(`업로드 토지 하이라이트 로드 실패: ${message}`, "#b45309");
+    }
+  };
+
   map.on("singleclick", (evt) => {
-    const feature = map.forEachFeatureAtPixel(evt.pixel, (item) => item as Feature<Point> | null);
+    const feature = map.forEachFeatureAtPixel(evt.pixel, (item) => item as Feature<Geometry> | null);
     if (!(feature instanceof Feature)) {
+      clearSelectedLand();
       return;
     }
+
     const markerIdRaw = feature.get("photo_marker_id");
     const markerId = typeof markerIdRaw === "number" ? markerIdRaw : Number(markerIdRaw);
-    if (!Number.isFinite(markerId)) {
+    if (Number.isFinite(markerId)) {
+      const marker = markerItemsById.get(markerId);
+      if (!marker) {
+        return;
+      }
+      const targetIndex = photoItems.findIndex((item) => item.id === marker.id);
+      if (targetIndex < 0) {
+        return;
+      }
+      selectPhoto(targetIndex, { shouldMoveMap: false, source: "marker" });
       return;
     }
-    const marker = markerItemsById.get(markerId);
-    if (!marker) {
+
+    const landIndexRaw = feature.get("list_index");
+    const landIndex = typeof landIndexRaw === "number" ? landIndexRaw : Number(landIndexRaw);
+    if (Number.isFinite(landIndex)) {
+      selectLandByIndex(landIndex, false);
       return;
     }
-    const targetIndex = photoItems.findIndex((item) => item.id === marker.id);
-    if (targetIndex < 0) {
-      return;
-    }
-    selectPhoto(targetIndex, { shouldMoveMap: false, source: "marker" });
+
+    clearSelectedLand();
   });
 
   const clearMarkers = (): void => {
@@ -403,6 +630,10 @@ export async function bootstrapPhotoMode(): Promise<void> {
     if (event.target === lightbox) {
       hideLightbox();
     }
+  });
+
+  landInfoCloseButton?.addEventListener("click", () => {
+    clearSelectedLand();
   });
 
   document.addEventListener("keydown", (event) => {
@@ -529,4 +760,5 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
   renderList();
   updateNavigation();
+  void loadFile2MapLandHighlights();
 }
