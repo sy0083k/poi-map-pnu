@@ -9,6 +9,10 @@ body {
     --sidebar-width: 350px;
     --topbar-menu-anchor-x: var(--sidebar-width);
     --filter-input-height: 35px;
+    --filter-control-height: var(--filter-input-height);
+    --filter-col-gap: 8px;
+    --filter-row-gap: 10px;
+    --filter-label-gap: 6px;
 }
 
 #app-topbar {
@@ -315,8 +319,15 @@ body {
     transition: width 0.22s ease, min-width 0.22s ease, transform 0.22s ease, opacity 0.22s ease;
 }
 #filter-section { flex-shrink: 0; padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
-.filter-group { margin-bottom: 12px; }
-.filter-group label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; color: #555; }
+.filter-group { margin-bottom: var(--filter-row-gap); }
+.filter-group label {
+    display: block;
+    font-size: 0.85em;
+    font-weight: 700;
+    margin-bottom: var(--filter-label-gap);
+    line-height: 1.25;
+    color: #4b5563;
+}
 .theme-city-only { display: none; }
 body.theme-city-owned .theme-city-only { display: block; }
 .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; padding: 10px; background: #ebf5fb; border-radius: 4px; border: 1px solid #d4e6f1; }
@@ -324,23 +335,46 @@ body.theme-city-owned .theme-city-only { display: block; }
 .checkbox-group label { display: inline; font-size: 0.9em; color: #2980b9; cursor: pointer; font-weight: bold; margin-bottom: 0; }
 .filter-control {
     width: 100%;
-    height: var(--filter-input-height);
+    height: var(--filter-control-height);
     padding: 0 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 0.85em;
+    line-height: 1.2;
 }
-.area-input-container { display: flex; align-items: center; gap: 5px; }
-.area-input-container input { width: 45%; }
-.inline-filter-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 12px; }
+.filter-control:focus-visible {
+    outline: 2px solid #5fa8d3;
+    outline-offset: 1px;
+}
+.area-input-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
+    column-gap: var(--filter-col-gap);
+    align-items: center;
+}
+.area-input-container input { width: 100%; }
+.area-input-container span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-weight: 700;
+    line-height: 1;
+}
+.inline-filter-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--filter-col-gap);
+    margin-bottom: var(--filter-row-gap);
+}
 .inline-filter-row .filter-group { flex: 1; margin-bottom: 0; }
 .compact-filter-row {
     width: 100%;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: end;
-    gap: 6px;
+    gap: var(--filter-col-gap);
 }
 .compact-filter-row .filter-group {
     min-width: 0;
@@ -920,5 +954,19 @@ body.theme-city-owned .theme-city-only { display: block; }
     #land-info-panel {
         width: min(76vw, 280px);
         max-height: min(40vh, 300px);
+    }
+}
+
+@media (max-width: 360px) {
+    .compact-filter-row {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: var(--filter-row-gap);
+    }
+    .area-input-container {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 6px;
+    }
+    .area-input-container span {
+        display: none;
     }
 }

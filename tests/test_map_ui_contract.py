@@ -88,8 +88,14 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert "display: grid;" in css_text
     assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in css_text
     assert "--filter-input-height: 40px;" in css_text
+    assert "--filter-control-height: var(--filter-input-height);" in css_text
+    assert "--filter-col-gap: 8px;" in css_text
+    assert "--filter-row-gap: 10px;" in css_text
     assert ".filter-control {" in css_text
-    assert "height: var(--filter-input-height);" in css_text
+    assert "height: var(--filter-control-height);" in css_text
+    assert ".filter-control:focus-visible {" in css_text
+    assert ".area-input-container {" in css_text
+    assert "grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);" in css_text
 
 
 def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
