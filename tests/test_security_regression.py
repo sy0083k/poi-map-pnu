@@ -38,11 +38,11 @@ async def test_internal_network_rejected(app_env: dict[str, str]) -> None:
 
 
 @pytest.mark.anyio
-async def test_upload_requires_authentication(async_client: httpx.AsyncClient) -> None:
+async def test_legacy_upload_endpoint_is_removed(async_client: httpx.AsyncClient) -> None:
     file_bytes = io.BytesIO(b"not-an-excel")
     files = {"file": ("test.xlsx", file_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
     res = await async_client.post("/admin/upload", data={"csrf_token": "x"}, files=files)
-    assert res.status_code == 401
+    assert res.status_code == 404
 
 
 @pytest.mark.anyio

@@ -34,14 +34,15 @@
 - `/file2map`에서 유틸리티 사이드바 최상단 파일 업로드 UI(파일 선택/적용/초기화/요약)가 표시되는지 점검
 - `/file2map`에서 유틸리티 사이드바 최상단 파일 업로드 UI(파일 선택/적용/초기화)가 표시되는지 점검
 - `/file2map`에서 `재산관리관`, `재산용도` 필터 UI가 비노출인지 점검
+- 신규 브라우저(IndexedDB 비어 있음)에서 `/file2map` 최초 진입 시 목록이 비어 있는지 점검
 - `/file2map`에서 업로드 성공 시 지도/목록이 업로드 데이터로 대체되고, 새로고침 시 IndexedDB 복원 데이터가 재적용되는지 점검
 - `/file2map`에서 업로드 복원/검증/적용/초기화 메시지가 업로드 패널이 아니라 `#map-status`에 표시되는지 점검
 - `/file2map`에서 `검색 결과 다운로드`가 서버 API(`/api/lands/export`)가 아니라 클라이언트 Excel 생성 방식으로 동작하는지 점검
 - 데스크톱에서 `#map-status`가 지도 좌상단 줌(확대/축소) UI를 가리지 않는지 점검
 - `#map-status`의 `X` 버튼으로 상태창을 닫은 뒤, 다음 상태 갱신 시 자동으로 다시 표시되는지 점검
-- 관리자 업로드에서 `국·공유재산(/admin/upload)`/`시유지(/admin/upload/city)` 각각 업로드 및 성공 메시지 점검
-- `/file2map` 초기 동등화가 필요할 때 `python scripts/clone_city_data_to_national.py --dry-run`으로 사전 건수 확인 후 복제를 실행했는지 점검
-- `/api/lands`, `/api/lands/list` 호출 시 `theme=national_public|city_owned` 응답 분리 여부 점검
+- 관리자 업로드에서 `시유지(/admin/upload/city)` 업로드 및 성공 메시지 점검
+- 구 테이블 정리가 필요할 때 `python scripts/remove_legacy_national_table.py --dry-run`으로 존재 여부를 확인하고 삭제 실행 여부를 점검
+- `/api/lands`, `/api/lands/list` 호출 시 `theme=city_owned` 정상 응답, `theme=national_public` 400 응답 여부 점검
 - 상단 헤더 메뉴 사이 짧은 구분 바 표시 여부 점검
 - 데스크톱에서 상단 헤더 메뉴의 시작 x좌표가 사이드바 끝점 고정 오프셋(`--topbar-menu-anchor-x`)으로 유지되는지 점검
 - `시작` 클릭 시 새 창이 아닌 같은 창 `/readme`로 전환되고 글로벌 헤더가 유지되는지 점검

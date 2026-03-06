@@ -47,18 +47,10 @@ def test_login_post_internal_network_guard() -> None:
     assert "check_internal_network" in _dependency_names(deps)
 
 
-def test_admin_upload_requires_internal_and_authentication() -> None:
+def test_admin_upload_endpoint_is_removed() -> None:
     module = _read_module_ast("app/routers/admin.py")
     funcs = [node for node in module.body if isinstance(node, ast.AsyncFunctionDef)]
-    upload_func = next(func for func in funcs if func.name == "upload_excel")
-    decorator = _find_route_decorator_call(upload_func, "/upload")
-    assert decorator is not None
-
-    deps = _dependencies_kwarg(decorator)
-    assert deps is not None
-    dependency_names = _dependency_names(deps)
-    assert "check_internal_network" in dependency_names
-    assert "require_authenticated" in dependency_names
+    assert all(_find_route_decorator_call(func, "/upload") is None for func in funcs)
 
 
 def test_admin_city_upload_requires_internal_and_authentication() -> None:

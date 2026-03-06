@@ -15,7 +15,6 @@ MAX_EXPORT_IDS = 10000
 EVENT_LIMIT_PER_MINUTE = 60
 WEB_EVENT_LIMIT_PER_MINUTE = 120
 RATE_LIMIT_WINDOW_SECONDS = 60
-THEME_NATIONAL_PUBLIC: Final[Literal["national_public"]] = "national_public"
 THEME_CITY_OWNED: Final[Literal["city_owned"]] = "city_owned"
 
 
@@ -28,15 +27,13 @@ def _parse_cursor(raw_cursor: str | None) -> int | None:
     return cursor
 
 
-def _parse_theme(raw_theme: str | None) -> Literal["national_public", "city_owned"]:
+def _parse_theme(raw_theme: str | None) -> Literal["city_owned"]:
     if raw_theme is None or raw_theme.strip() == "":
-        return THEME_NATIONAL_PUBLIC
+        return THEME_CITY_OWNED
     theme = raw_theme.strip()
-    if theme == THEME_NATIONAL_PUBLIC:
-        return THEME_NATIONAL_PUBLIC
     if theme == THEME_CITY_OWNED:
         return THEME_CITY_OWNED
-    raise ValueError("theme must be one of: national_public, city_owned")
+    raise ValueError("theme must be city_owned")
 
 
 def _parse_land_ids(raw_ids: Any) -> list[int]:

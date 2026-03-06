@@ -4,7 +4,7 @@ from typing import Iterable, Literal, Sequence
 
 from app.repositories import event_repository, job_repository, land_repository, web_visit_repository
 
-ThemeType = Literal["national_public", "city_owned"]
+ThemeType = Literal["city_owned"]
 
 warnings.warn(
     "app.repositories.poi_repository is deprecated. "
@@ -26,7 +26,7 @@ def init_db(conn: sqlite3.Connection) -> None:
 def _table_name_for_theme(theme: ThemeType) -> str:
     if theme == "city_owned":
         return land_repository.CITY_TABLE_NAME
-    return land_repository.TABLE_NAME
+    return land_repository.CITY_TABLE_NAME
 
 
 def fetch_lands_with_geom(conn: sqlite3.Connection) -> Sequence[sqlite3.Row]:

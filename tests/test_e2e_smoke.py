@@ -75,7 +75,7 @@ def test_login_upload_and_lands_flow() -> None:
                         )
                     }
                     upload = await client.post(
-                        "/admin/upload",
+                        "/admin/upload/city",
                         data={"csrf_token": csrf2},
                         files=files,
                         timeout=10.0,

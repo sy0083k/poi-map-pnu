@@ -39,7 +39,6 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     with db_connection() as conn:
-        land_repository.init_land_schema(conn)
         land_repository.init_land_schema(conn, table_name=land_repository.CITY_TABLE_NAME)
         job_repository.init_job_schema(conn)
         event_repository.init_event_schema(conn)

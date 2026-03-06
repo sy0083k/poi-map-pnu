@@ -96,18 +96,7 @@ async def test_lands_list_includes_dynamic_source_fields(async_client: httpx.Asy
 async def test_lands_list_supports_theme_query(async_client: httpx.AsyncClient, db_path: object) -> None:
     with db_connection(row_factory=True) as conn:
         init_test_db(conn)
-        land_repository.delete_all(conn, table_name=table_name_for_theme("national_public"))
         land_repository.delete_all(conn, table_name=table_name_for_theme("city_owned"))
-        land_repository.insert_land(
-            conn,
-            pnu="1111012345678901234",
-            address="national-addr",
-            land_type="답",
-            area=10.0,
-            property_manager="국공유",
-            source_fields_json="[]",
-            table_name=table_name_for_theme("national_public"),
-        )
         land_repository.insert_land(
             conn,
             pnu="2222012345678901234",
@@ -120,17 +109,23 @@ async def test_lands_list_supports_theme_query(async_client: httpx.AsyncClient, 
         )
         conn.commit()
 
-    national = await async_client.get("/api/lands/list?limit=10&theme=national_public")
     city = await async_client.get("/api/lands/list?limit=10&theme=city_owned")
-    assert national.status_code == 200
+    default_theme = await async_client.get("/api/lands/list?limit=10")
     assert city.status_code == 200
-    assert national.json()["items"][0]["address"] == "national-addr"
+    assert default_theme.status_code == 200
     assert city.json()["items"][0]["address"] == "city-addr"
+    assert default_theme.json()["items"][0]["address"] == "city-addr"
 
 
 @pytest.mark.anyio
 async def test_lands_theme_query_rejects_invalid_value(async_client: httpx.AsyncClient) -> None:
     res = await async_client.get("/api/lands?theme=invalid")
+    assert res.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_lands_theme_query_rejects_national_public(async_client: httpx.AsyncClient) -> None:
+    res = await async_client.get("/api/lands?theme=national_public")
     assert res.status_code == 400
 
 
@@ -213,27 +208,27 @@ async def test_lands_export_returns_filtered_source_fields_excel(
 async def test_lands_export_v1_alias_matches(async_client: httpx.AsyncClient, db_path: object) -> None:
     with db_connection(row_factory=True) as conn:
         init_test_db(conn)
-        land_repository.delete_all(conn, table_name=table_name_for_theme("national_public"))
+        land_repository.delete_all(conn, table_name=table_name_for_theme("city_owned"))
         land_repository.insert_land(
             conn,
-            pnu="1111012345678901234",
-            address="national-addr",
-            land_type="답",
-            area=10.0,
-            property_manager="국공유",
-            source_fields_json='[{"key":"고유번호","label":"고유번호","value":"1111012345678901234"}]',
-            table_name=table_name_for_theme("national_public"),
+            pnu="2222012345678901234",
+            address="city-addr",
+            land_type="전",
+            area=20.0,
+            property_manager="시유지",
+            source_fields_json='[{"key":"고유번호","label":"고유번호","value":"2222012345678901234"}]',
+            table_name=table_name_for_theme("city_owned"),
         )
         conn.commit()
         rows = land_repository.fetch_lands_page_without_geom(
             conn,
             after_id=None,
             limit=10,
-            table_name=table_name_for_theme("national_public"),
+            table_name=table_name_for_theme("city_owned"),
         )
         only_id = int(rows[0]["id"])
 
-    payload = {"theme": "national_public", "landIds": [only_id]}
+    payload = {"theme": "city_owned", "landIds": [only_id]}
     v0 = await async_client.post("/api/lands/export", json=payload)
     v1 = await async_client.post("/api/v1/lands/export", json=payload)
     assert v0.status_code == 200

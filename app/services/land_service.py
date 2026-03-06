@@ -19,17 +19,15 @@ PUBLIC_LAND_FIELDS = {
     "property_manager",
     "geom_status",
 }
-ThemeType = Literal["national_public", "city_owned"]
+ThemeType = Literal["city_owned"]
 EXPORT_REQUIRED_COLUMNS = ["고유번호", "소재지", "지목", "실면적", "재산관리관"]
 
 
-def _table_name_for_theme(theme: ThemeType) -> str:
-    if theme == "city_owned":
-        return land_repository.CITY_TABLE_NAME
-    return land_repository.TABLE_NAME
+def _table_name_for_theme(_theme: ThemeType) -> str:
+    return land_repository.CITY_TABLE_NAME
 
 
-def get_public_land_features(*, theme: ThemeType = "national_public") -> GeoJSONFeatureCollection:
+def get_public_land_features(*, theme: ThemeType = "city_owned") -> GeoJSONFeatureCollection:
     with db_connection(row_factory=True) as conn:
         rows = land_repository.fetch_lands_with_geom(conn, table_name=_table_name_for_theme(theme))
 
@@ -47,7 +45,7 @@ def get_public_land_features(*, theme: ThemeType = "national_public") -> GeoJSON
 
 
 def get_public_land_features_page(
-    *, cursor: int | None, limit: int, theme: ThemeType = "national_public"
+    *, cursor: int | None, limit: int, theme: ThemeType = "city_owned"
 ) -> dict[str, Any]:
     with db_connection(row_factory=True) as conn:
         rows = land_repository.fetch_lands_with_geom_page(
@@ -79,7 +77,7 @@ def get_public_land_features_page(
 
 
 def get_public_land_list_page(
-    *, cursor: int | None, limit: int, theme: ThemeType = "national_public"
+    *, cursor: int | None, limit: int, theme: ThemeType = "city_owned"
 ) -> dict[str, Any]:
     with db_connection(row_factory=True) as conn:
         rows = land_repository.fetch_lands_page_without_geom(

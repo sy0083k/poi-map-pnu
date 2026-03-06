@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Iterable, Sequence
 
-TABLE_NAME = "poi"
+TABLE_NAME = "poi_city"
 CITY_TABLE_NAME = "poi_city"
 CACHE_TABLE_NAME = "cadastral_polygon_cache"
 

@@ -64,6 +64,13 @@ export function createListPanel(elements: ListPanelElements) {
     });
   };
 
+  const clear = (): void => {
+    if (!elements.listContainer) {
+      return;
+    }
+    elements.listContainer.replaceChildren();
+  };
+
   const setSelected = (index: number): void => {
     document.querySelectorAll(".list-item").forEach((item, idx) => {
       item.classList.toggle("selected", idx === index);
@@ -137,6 +144,7 @@ export function createListPanel(elements: ListPanelElements) {
 
   return {
     bindNavigation,
+    clear,
     initBottomSheet,
     render,
     scrollTo,
