@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Iterator
 
 from fastapi import HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
+
+STREAMING_THRESHOLD_BYTES = 8 * 1024 * 1024
 
 
 def build_fgb_file_response(
@@ -24,23 +27,45 @@ def build_fgb_file_response(
 
     if range_header:
         start, end = _parse_range_header(range_header=range_header, file_size=file_size)
-        payload = _read_range(file_path=file_path, start=start, end=end)
+        content_length = (end - start) + 1
+        if content_length <= STREAMING_THRESHOLD_BYTES:
+            payload = _read_range(file_path=file_path, start=start, end=end)
+            headers = {
+                **common_headers,
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Content-Length": str(len(payload)),
+            }
+            return Response(
+                content=payload,
+                media_type="application/x-flatgeobuf",
+                status_code=206,
+                headers=headers,
+            )
+
         headers = {
             **common_headers,
             "Content-Range": f"bytes {start}-{end}/{file_size}",
-            "Content-Length": str(len(payload)),
+            "Content-Length": str(content_length),
         }
-        return Response(
-            content=payload,
+        return StreamingResponse(
+            _iter_file_range(file_path=file_path, start=start, end=end),
             media_type="application/x-flatgeobuf",
             status_code=206,
             headers=headers,
         )
 
-    payload = file_path.read_bytes()
-    headers = {**common_headers, "Content-Length": str(len(payload))}
-    return Response(
-        content=payload,
+    if file_size <= STREAMING_THRESHOLD_BYTES:
+        payload = file_path.read_bytes()
+        headers = {**common_headers, "Content-Length": str(len(payload))}
+        return Response(
+            content=payload,
+            media_type="application/x-flatgeobuf",
+            headers=headers,
+        )
+
+    headers = {**common_headers, "Content-Length": str(file_size)}
+    return StreamingResponse(
+        _iter_file(file_path=file_path),
         media_type="application/x-flatgeobuf",
         headers=headers,
     )
@@ -57,10 +82,31 @@ def _resolve_fgb_path(*, base_dir: str, configured_path: str) -> Path:
     return Path(base_dir) / raw
 
 
+def _iter_file_range(*, file_path: Path, start: int, end: int, chunk_size: int = 64 * 1024) -> Iterator[bytes]:
+    remaining = (end - start) + 1
+    with file_path.open("rb") as handle:
+        handle.seek(start)
+        while remaining > 0:
+            chunk = handle.read(min(chunk_size, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            yield chunk
+
+
 def _read_range(*, file_path: Path, start: int, end: int) -> bytes:
     with file_path.open("rb") as handle:
         handle.seek(start)
         return handle.read(end - start + 1)
+
+
+def _iter_file(*, file_path: Path, chunk_size: int = 64 * 1024) -> Iterator[bytes]:
+    with file_path.open("rb") as handle:
+        while True:
+            chunk = handle.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
 
 
 def _parse_range_header(*, range_header: str, file_size: int) -> tuple[int, int]:
