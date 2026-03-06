@@ -76,3 +76,4 @@
 - 2026-03-05 | reviewer: team | 글로벌 헤더 `주제도` 하위 메뉴 표기명을 `시유지/공유지(시+도)/국·공유지` 순서로 조정하고 기존 `시유재산/공유재산(시·도)` 표기를 대체 | 다음 액션: 운영 용어집(사용자 안내 문구/매뉴얼) 동기화 점검
 - 2026-03-05 | reviewer: team | `public_download` 기능(`/api/public-download`, `/admin/public-download/*`)과 설정(`PUBLIC_DOWNLOAD_*`)을 코드/문서/테스트에서 제거 | 다음 액션: 운영 환경의 잔존 `data/public_download/` 파일 수동 정리 여부 결정
 - 2026-03-06 | reviewer: team | 프런트 오케스트레이션 분해(`map.ts` -> `map/land-workflow.ts`, `map/topbar-menu.ts`, `map/layout-controls.ts`, `map/feedback.ts`) 및 `admin.ts` 모듈 분리를 반영 | 다음 액션: `land-workflow.ts`/`admin/stats.ts` 추가 분해와 점진 로딩 전략 설계 계속
+- 2026-03-06 | reviewer: team | `poi_repository` 축소 1단계로 테스트 호출부를 `land/event/web_visit/job` 도메인 repository 직접 사용으로 전환하고, `poi_repository`에 deprecation shim 경고를 추가 | 다음 액션: Step 2에서 `poi_repository.py` 완전 제거 및 참조 0건 CI 규칙 유지
