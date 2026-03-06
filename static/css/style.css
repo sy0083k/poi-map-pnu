@@ -1012,7 +1012,9 @@ body.file2map-mode.photo-panel-open #land-info-panel {
     display: grid;
     gap: 8px;
     padding: 12px;
-    overflow: auto;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
 }
 
 .photo-lightbox-image {
@@ -1022,6 +1024,18 @@ body.file2map-mode.photo-panel-open #land-info-panel {
     border-radius: 10px;
     background: #f8fafc;
     border: 1px solid #e5e7eb;
+    transform-origin: center center;
+    will-change: transform;
+    cursor: default;
+    touch-action: none;
+}
+
+.photo-lightbox-image.is-zoomable {
+    cursor: grab;
+}
+
+.photo-lightbox-image.is-dragging {
+    cursor: grabbing;
 }
 
 .photo-lightbox-caption {

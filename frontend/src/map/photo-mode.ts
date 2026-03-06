@@ -21,6 +21,7 @@ import { loadUploadedHighlights } from "./cadastral-fgb-layer";
 import { createFeedback } from "./feedback";
 import { loadPersistedFile2MapUpload } from "./local-upload";
 import { createPanelOverlapGuard } from "./panel-overlap-guard";
+import { createPhotoLightboxZoomController } from "./photo-lightbox-zoom";
 import {
   clearPersistedPhotoMarkers,
   loadPersistedPhotoMarkers,
@@ -143,6 +144,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
   const lightbox = document.getElementById("photo-lightbox");
   const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
   const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
+  const lightboxBody = document.getElementById("photo-lightbox-body");
   const lightboxCaption = document.getElementById("photo-lightbox-caption");
   const landInfoPanel = document.getElementById("land-info-panel");
   const landInfoContent = document.getElementById("land-info-content");
@@ -158,7 +160,8 @@ export async function bootstrapPhotoMode(): Promise<void> {
     !(panel instanceof HTMLElement) ||
     !(panelImage instanceof HTMLImageElement) ||
     !(lightbox instanceof HTMLElement) ||
-    !(lightboxImage instanceof HTMLImageElement)
+    !(lightboxImage instanceof HTMLImageElement) ||
+    !(lightboxBody instanceof HTMLElement)
   ) {
     return;
   }
@@ -226,6 +229,11 @@ export async function bootstrapPhotoMode(): Promise<void> {
     body: document.body,
     photoPanel: panel
   });
+  const lightboxZoom = createPhotoLightboxZoomController({
+    viewport: lightboxBody,
+    image: lightboxImage
+  });
+  lightboxZoom.setEnabled(false);
   const markerItemsById = new globalThis.Map<number, PhotoMarkerItem>();
   const featureByMarkerId = new globalThis.Map<number, Feature<Point>>();
   const landItemsByIndex = new globalThis.Map<number, LandListItem>();
@@ -347,6 +355,8 @@ export async function bootstrapPhotoMode(): Promise<void> {
   const hideLightbox = (): void => {
     lightbox.classList.add("is-hidden");
     panel.setAttribute("aria-expanded", "false");
+    lightboxZoom.setEnabled(false);
+    lightboxZoom.reset();
     lightboxImage.removeAttribute("src");
     if (lastFocusBeforeLightbox) {
       lastFocusBeforeLightbox.focus();
@@ -374,6 +384,8 @@ export async function bootstrapPhotoMode(): Promise<void> {
     updateLightboxFromSelection();
     lightbox.classList.remove("is-hidden");
     panel.setAttribute("aria-expanded", "true");
+    lightboxZoom.setEnabled(true);
+    lightboxZoom.reset();
     lightboxCloseButton?.focus();
   };
 
@@ -804,6 +816,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
   window.addEventListener("beforeunload", () => {
     clearPanelObjectUrl();
+    lightboxZoom.destroy();
     overlapGuard.destroy();
   });
 

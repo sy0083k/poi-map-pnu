@@ -191,6 +191,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
     photo_overlay_ts = Path("frontend/src/map/persisted-photo-overlay.ts").read_text(encoding="utf-8")
+    photo_lightbox_zoom_ts = Path("frontend/src/map/photo-lightbox-zoom.ts").read_text(encoding="utf-8")
     photo_persistence_ts = Path("frontend/src/map/photo-persistence.ts").read_text(encoding="utf-8")
     panel_overlap_guard_ts = Path("frontend/src/map/panel-overlap-guard.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
@@ -217,13 +218,20 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert 'button.classList.add("selected");' in photo_mode_ts
     assert "showLightbox" in photo_mode_ts
     assert "createPanelOverlapGuard" in photo_mode_ts
+    assert "createPhotoLightboxZoomController" in photo_mode_ts
+    assert "lightboxZoom.setEnabled(true);" in photo_mode_ts
+    assert "lightboxZoom.reset();" in photo_mode_ts
     assert "overlapGuard.open()" in photo_mode_ts
     assert "overlapGuard.close()" in photo_mode_ts
     assert "loadPersistedPhotoMarkers" in photo_overlay_ts
     assert "photo_marker_id" in photo_overlay_ts
     assert "createPanelOverlapGuard" in photo_overlay_ts
+    assert "createPhotoLightboxZoomController" in photo_overlay_ts
     assert "overlapGuard.open()" in photo_overlay_ts
     assert "overlapGuard.close()" in photo_overlay_ts
+    assert "wheel" in photo_lightbox_zoom_ts
+    assert "pointerdown" in photo_lightbox_zoom_ts
+    assert "transform = `translate3d(" in photo_lightbox_zoom_ts
     assert "ResizeObserver" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-height" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-bottom-offset" in panel_overlap_guard_ts
@@ -241,6 +249,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "sidebar-nav-footer" in index_template
     assert "photo-info-panel" in index_template
     assert "photo-lightbox" in index_template
+    assert "photo-lightbox-body" in index_template
     assert "photo-lightbox-image" in index_template
     assert "land-info-panel" in index_template
     assert "land-info-content" in index_template
@@ -258,6 +267,8 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert ".photo-list-item {" in css_text
     assert "border-bottom: 1px solid #eee;" in css_text
     assert ".photo-lightbox {" in css_text
+    assert ".photo-lightbox-image.is-zoomable {" in css_text
+    assert ".photo-lightbox-image.is-dragging {" in css_text
     assert "img-src 'self' data: blob:" in main_py
     assert "loadPersistedFile2MapUpload" in local_upload_ts
     assert "loadUploadedHighlights" in cadastral_layer_ts

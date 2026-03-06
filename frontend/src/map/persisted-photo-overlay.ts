@@ -11,6 +11,7 @@ import Style from "ol/style/Style";
 
 import { loadPersistedPhotoMarkers } from "./photo-persistence";
 import { createPanelOverlapGuard } from "./panel-overlap-guard";
+import { createPhotoLightboxZoomController } from "./photo-lightbox-zoom";
 import type { MapView } from "./map-view";
 
 type PersistedPhotoOverlayDeps = {
@@ -43,13 +44,15 @@ function createPhotoPanel() {
   const lightbox = document.getElementById("photo-lightbox");
   const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
   const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
+  const lightboxBody = document.getElementById("photo-lightbox-body");
   const lightboxCaption = document.getElementById("photo-lightbox-caption");
 
   if (
     !(panel instanceof HTMLElement) ||
     !(panelImage instanceof HTMLImageElement) ||
     !(lightbox instanceof HTMLElement) ||
-    !(lightboxImage instanceof HTMLImageElement)
+    !(lightboxImage instanceof HTMLImageElement) ||
+    !(lightboxBody instanceof HTMLElement)
   ) {
     return null;
   }
@@ -60,6 +63,11 @@ function createPhotoPanel() {
     body: document.body,
     photoPanel: panel
   });
+  const lightboxZoom = createPhotoLightboxZoomController({
+    viewport: lightboxBody,
+    image: lightboxImage
+  });
+  lightboxZoom.setEnabled(false);
 
   const clearObjectUrl = (): void => {
     if (!objectUrl) {
@@ -72,6 +80,8 @@ function createPhotoPanel() {
   const hideLightbox = (): void => {
     lightbox.classList.add("is-hidden");
     panel.setAttribute("aria-expanded", "false");
+    lightboxZoom.setEnabled(false);
+    lightboxZoom.reset();
     lightboxImage.removeAttribute("src");
     if (lastFocusBeforeLightbox) {
       lastFocusBeforeLightbox.focus();
@@ -96,6 +106,8 @@ function createPhotoPanel() {
     }
     lightbox.classList.remove("is-hidden");
     panel.setAttribute("aria-expanded", "true");
+    lightboxZoom.setEnabled(true);
+    lightboxZoom.reset();
     lightboxCloseButton?.focus();
   };
 
@@ -142,6 +154,7 @@ function createPhotoPanel() {
 
   window.addEventListener("beforeunload", () => {
     clearObjectUrl();
+    lightboxZoom.destroy();
     overlapGuard.destroy();
   });
 
