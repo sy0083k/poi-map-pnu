@@ -6,13 +6,18 @@
     <title>{{ request.app.state.config.APP_NAME }}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 </head>
-<body data-initial-theme="{{ initial_theme|default('national_public') }}" class="{{ 'file2map-mode' if initial_theme == 'national_public' else '' }}">
+<body
+    data-initial-theme="{{ initial_theme|default('national_public') }}"
+    data-map-mode="{{ map_mode|default('land') }}"
+    class="{{ 'photo2map-mode' if map_mode == 'photo' else ('file2map-mode' if initial_theme == 'national_public' else '') }}"
+>
     {% include "partials/topbar.html" %}
 
     <div id="ui-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <div id="app-shell">
     <button id="sidebar-handle" type="button" aria-expanded="true" aria-controls="sidebar" aria-label="사이드 메뉴 접기/펼치기"></button>
+    {% if map_mode != "photo" %}
     <button id="mobile-search-fab" class="mobile-icon-btn" type="button" aria-label="검색 열기">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <circle cx="10.5" cy="10.5" r="5.5"></circle>
@@ -20,7 +25,9 @@
         </svg>
         <span class="sr-only">검색 열기</span>
     </button>
+    {% endif %}
 
+    {% if map_mode != "photo" %}
     <div id="mobile-search-overlay" aria-hidden="true">
         <div class="mobile-search-sheet">
             <div class="mobile-search-header">
@@ -81,8 +88,45 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <div id="sidebar">
+        {% if map_mode == "photo" %}
+        <div id="filter-section">
+            <section id="photo-upload-panel" class="file2map-upload-panel" aria-label="사진 폴더 선택">
+                <h3 class="file2map-upload-title">EXIF 사진 폴더 선택</h3>
+                <div class="file2map-upload-controls">
+                    <input
+                        id="photo-folder-input"
+                        type="file"
+                        class="filter-control"
+                        accept="image/jpeg,image/jpg"
+                        webkitdirectory
+                        directory
+                        multiple
+                    >
+                    <div class="action-cluster file2map-upload-actions" role="group" aria-label="사진 처리 작업">
+                        <button id="photo-load-btn" type="button">마커 생성</button>
+                        <button id="photo-clear-btn" type="button" class="btn-secondary">마커 초기화</button>
+                    </div>
+                </div>
+            </section>
+            <div class="file2map-upload-divider" aria-hidden="true"></div>
+            <p id="photo-summary" class="photo-summary">폴더를 선택한 뒤 마커 생성을 눌러주세요.</p>
+        </div>
+        <div id="list-container">
+            <p id="photo-list-empty" style="padding: 20px; color: #4b5563; line-height: 1.5;">
+                지원 형식: JPEG(.jpg, .jpeg)<br>
+                GPS 정보가 있는 사진만 마커로 표시됩니다.
+            </p>
+            <ul id="photo-list" class="photo-list" aria-label="사진 목록"></ul>
+        </div>
+        <div id="nav-footer">
+            <button class="nav-btn" id="photo-prev-btn" type="button" disabled>◀ 이전</button>
+            <span id="nav-info">0 / 0</span>
+            <button class="nav-btn" id="photo-next-btn" type="button" disabled>다음 ▶</button>
+        </div>
+        {% else %}
         <div class="mobile-handle"></div>
         <div id="filter-section">
             <section id="file2map-upload-panel" class="file2map-upload-panel" aria-label="파일 업로드">
@@ -163,6 +207,7 @@
             <span id="nav-info">0 / 0</span>
             <button class="nav-btn" id="next-btn" disabled>다음 ▶</button>
         </div>
+        {% endif %}
     </div>
 
     <div id="map">
@@ -170,8 +215,42 @@
             <span id="map-status-text"></span>
             <button id="map-status-close" type="button" aria-label="상태 메시지 닫기">✕</button>
         </div>
+        {% if map_mode == "photo" %}
+        <aside
+            id="photo-info-panel"
+            class="photo-info-panel is-hidden"
+            aria-live="polite"
+            aria-label="선택 사진 정보"
+            role="button"
+            tabindex="0"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+        >
+            <header class="photo-info-header">
+                <h3>선택 사진</h3>
+                <button id="photo-info-close" class="photo-info-close" type="button" aria-label="사진 패널 닫기">✕</button>
+            </header>
+            <div class="photo-info-body">
+                <img id="photo-info-image" class="photo-info-image" alt="선택된 사진 미리보기">
+                <div id="photo-info-caption" class="photo-info-caption">마커 또는 목록에서 사진을 선택하세요.</div>
+            </div>
+        </aside>
+        <div id="photo-lightbox" class="photo-lightbox is-hidden" role="dialog" aria-modal="true" aria-label="선택 사진 크게 보기">
+            <div id="photo-lightbox-surface" class="photo-lightbox-surface">
+                <header class="photo-lightbox-header">
+                    <h3>사진 크게 보기</h3>
+                    <button id="photo-lightbox-close" class="photo-lightbox-close" type="button" aria-label="사진 크게 보기 닫기">✕</button>
+                </header>
+                <div class="photo-lightbox-body">
+                    <img id="photo-lightbox-image" class="photo-lightbox-image" alt="선택된 사진 원본 크기 보기">
+                    <div id="photo-lightbox-caption" class="photo-lightbox-caption">마커 또는 목록에서 사진을 선택하세요.</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
+    {% if map_mode != "photo" %}
     <aside id="land-info-panel" class="is-hidden" aria-live="polite" aria-label="선택 토지 상세 정보">
         <header class="land-info-header">
             <h3>상세 정보</h3>
@@ -181,6 +260,7 @@
             <div class="land-info-empty">토지를 선택하면 상세 정보가 표시됩니다.</div>
         </div>
     </aside>
+    {% endif %}
     </div>
 
     {% set assets = vite_assets('src/map.ts') %}

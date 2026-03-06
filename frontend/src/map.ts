@@ -13,6 +13,7 @@ import { createSessionTracker } from "./map/session-tracker";
 import { createMapState } from "./map/state";
 import { createTelemetry } from "./map/telemetry";
 import { setupTopbarMenus } from "./map/topbar-menu";
+import { bootstrapPhotoMode } from "./map/photo-mode";
 import {
   asThemeType,
   getThemeFromPathname,
@@ -24,6 +25,11 @@ import {
 import type { BaseType, MapConfig } from "./map/types";
 
 async function bootstrap(): Promise<void> {
+  if (document.body.dataset.mapMode === "photo") {
+    await bootstrapPhotoMode();
+    return;
+  }
+
   const regionSearchInput = document.getElementById("region-search") as HTMLInputElement | null;
   const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
   const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;

@@ -79,6 +79,7 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert photo.status_code == 200
     assert city.status_code == 200
     assert 'data-initial-theme="national_public"' in national.text
+    assert 'data-map-mode="photo"' in photo.text
     assert 'id="photo-folder-input"' in photo.text
     assert 'id="photo-load-btn"' in photo.text
     assert 'id="photo-clear-btn"' in photo.text
@@ -176,30 +177,34 @@ def test_select_highlight_is_flushed_before_fit_animation() -> None:
 
 
 def test_photo2map_contract_for_local_exif_markers() -> None:
-    photo_map_ts = Path("frontend/src/photo-map.ts").read_text(encoding="utf-8")
+    map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
     main_py = Path("app/main.py").read_text(encoding="utf-8")
     css_text = Path("static/css/style.css").read_text(encoding="utf-8")
-    photo_template = Path("templates/photo2map.html").read_text(encoding="utf-8")
-    assert "parseJpegExifGps" in photo_map_ts
-    assert "selectPhoto" in photo_map_ts
-    assert "window.open(" not in photo_map_ts
-    assert 'id="photo-folder-input"' not in photo_map_ts
-    assert "webkitdirectory" in photo_template
-    assert "URL.createObjectURL(selected.file)" in photo_map_ts
-    assert "currentIndex < 0" in photo_map_ts
-    assert "selectPhoto(0, { shouldMoveMap: true, source: \"nav\" });" in photo_map_ts
-    assert "showLightbox" in photo_map_ts
-    assert "event.key === \"Escape\"" in photo_map_ts
-    assert "event.target === lightbox" in photo_map_ts
-    assert "photo_marker_id" in photo_map_ts
-    assert "photo-prev-btn" in photo_template
-    assert "photo-next-btn" in photo_template
-    assert "photo-info-panel" in photo_template
-    assert "photo-lightbox" in photo_template
-    assert "photo-lightbox-image" in photo_template
-    assert "aria-modal=\"true\"" in photo_template
+    index_template = Path("templates/index.html").read_text(encoding="utf-8")
+    assert "bootstrapPhotoMode" in map_ts
+    assert "data-map-mode" in index_template
+    assert "parseJpegExifGps" in photo_mode_ts
+    assert "selectPhoto" in photo_mode_ts
+    assert "window.open(" not in photo_mode_ts
+    assert 'id="photo-folder-input"' not in photo_mode_ts
+    assert "webkitdirectory" in index_template
+    assert "URL.createObjectURL(selected.file)" in photo_mode_ts
+    assert "currentIndex < 0" in photo_mode_ts
+    assert "selectPhoto(0, { shouldMoveMap: true, source: \"nav\" });" in photo_mode_ts
+    assert "showLightbox" in photo_mode_ts
+    assert "event.key === \"Escape\"" in photo_mode_ts
+    assert "event.target === lightbox" in photo_mode_ts
+    assert "photo_marker_id" in photo_mode_ts
+    assert "photo-prev-btn" in index_template
+    assert "photo-next-btn" in index_template
+    assert "photo-info-panel" in index_template
+    assert "photo-lightbox" in index_template
+    assert "photo-lightbox-image" in index_template
+    assert "aria-modal=\"true\"" in index_template
     assert "bottom: 20px;" in css_text
+    assert "body.photo2map-mode #sidebar" in css_text
     assert ".photo-lightbox {" in css_text
     assert "img-src 'self' data: blob:" in main_py
     assert "TAG_GPS_LAT" in exif_parser_ts
