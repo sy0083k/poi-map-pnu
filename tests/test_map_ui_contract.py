@@ -60,8 +60,17 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     status_idx = res.text.index('id="map-status"')
     status_text_idx = res.text.index('id="map-status-text"')
     status_close_idx = res.text.index('id="map-status-close"')
+    legend_idx = res.text.index('id="map-legend"')
     info_panel_idx = res.text.index('id="land-info-panel"')
-    assert map_idx < status_idx < status_text_idx < status_close_idx < info_panel_idx
+    assert map_idx < status_idx < status_text_idx < status_close_idx < legend_idx < info_panel_idx
+    assert ">범례<" in res.text
+    assert 'id="map-legend-close"' in res.text
+    assert 'aria-label="범례 닫기"' in res.text
+    assert ">도로과<" in res.text
+    assert ">건설과<" in res.text
+    assert ">산림공원과<" in res.text
+    assert ">회계과<" in res.text
+    assert ">기타<" in res.text
     assert 'data-theme="city_owned"' in res.text
     assert 'data-menu-link="/gukgongyu"' not in res.text
     assert 'data-link-theme="national_public"' not in res.text
@@ -96,13 +105,17 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert 'id="land-info-content"' in photo.text
     assert "EXIF 사진 폴더 선택" in photo.text
     assert 'data-initial-theme="city_owned"' in city.text
+    assert 'id="map-legend"' in city.text
+    assert 'id="map-legend" class="is-hidden"' not in city.text
     assert 'id="photo-info-panel"' in city.text
     assert 'class="file2map-mode"' in national.text
+    assert 'id="map-legend" class="is-hidden"' in national.text
     assert 'id="file2map-upload-panel"' in national.text
     assert 'id="file2map-upload-input"' in national.text
     assert 'id="file2map-upload-btn"' in national.text
     assert 'id="file2map-upload-clear-btn"' in national.text
     assert 'id="photo-info-panel"' in national.text
+    assert 'id="map-legend"' not in photo.text
     assert 'id="photo-lightbox"' not in national.text
     assert 'id="file2map-upload-summary"' not in national.text
     assert 'id="file2map-upload-status"' not in national.text
@@ -137,6 +150,15 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert "grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);" in css_text
     assert "body.file2map-mode #file2map-upload-panel" in css_text
     assert "body.file2map-mode #desktop-property-usage-group" in css_text
+    assert "#map-legend {" in css_text
+    assert "right: 16px;" in css_text
+    assert ".map-legend-swatch-road {" in css_text
+    assert ".map-legend-swatch-accounting {" in css_text
+    assert "body.photo-panel-open #map-legend {" in css_text
+    assert ".map-legend-close {" in css_text
+    assert ".map-legend-close:focus-visible {" in css_text
+    assert "bottom: calc(50vh + 12px);" in css_text
+    assert "right: 12px;" in css_text
     assert "#photo-load-btn {" in css_text
     assert "#photo-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }" in css_text
     assert ".sidebar-empty-message {" in css_text
@@ -155,6 +177,13 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert 'state.setCurrentTheme(theme);' in map_ts
     assert "clearPropertyManagerInputs();" not in map_ts
     assert "applyThemeUiState(theme);" in map_ts
+    assert "applyLegendUiState(theme);" in map_ts
+    assert "const mapLegendCloseButton = document.getElementById(\"map-legend-close\");" in map_ts
+    assert "let isLegendDismissedByUser = false;" in map_ts
+    assert "if (previousTheme !== \"city_owned\" && theme === \"city_owned\") {" in map_ts
+    assert "isLegendDismissedByUser = false;" in map_ts
+    assert "mapLegendCloseButton?.addEventListener(\"click\", () => {" in map_ts
+    assert "isLegendDismissedByUser = true;" in map_ts
     assert "await workflow.loadThemeData(state.getCurrentTheme());" in map_ts
     assert "재산관리관 다중 검출:" in workflow_ts
     assert "정확한 재산관리관을 입력하세요." in workflow_ts
@@ -171,6 +200,8 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert "window.location.assign(target);" not in topbar_menu_ts
     assert 'rawBasemap !== "Base"' in topbar_menu_ts
     assert 'layerType === "White"' in map_ts
+    assert "applyLegendUiState(nextTheme);" in map_ts
+    assert "applyLegendUiState(initialTheme);" in map_ts
 
 
 def test_lands_list_client_sends_theme_query() -> None:

@@ -215,6 +215,36 @@
             <span id="map-status-text"></span>
             <button id="map-status-close" type="button" aria-label="상태 메시지 닫기">✕</button>
         </div>
+        {% if map_mode != "photo" %}
+        <aside id="map-legend" class="{{ '' if initial_theme == 'city_owned' else 'is-hidden' }}" aria-label="비선택 피처 범례">
+            <header class="map-legend-header">
+                <h3 class="map-legend-title">범례</h3>
+                <button id="map-legend-close" class="map-legend-close" type="button" aria-label="범례 닫기">✕</button>
+            </header>
+            <ul class="map-legend-list">
+                <li class="map-legend-item">
+                    <span class="map-legend-swatch map-legend-swatch-road" aria-hidden="true"></span>
+                    <span>도로과</span>
+                </li>
+                <li class="map-legend-item">
+                    <span class="map-legend-swatch map-legend-swatch-construction" aria-hidden="true"></span>
+                    <span>건설과</span>
+                </li>
+                <li class="map-legend-item">
+                    <span class="map-legend-swatch map-legend-swatch-forest-park" aria-hidden="true"></span>
+                    <span>산림공원과</span>
+                </li>
+                <li class="map-legend-item">
+                    <span class="map-legend-swatch map-legend-swatch-accounting" aria-hidden="true"></span>
+                    <span>회계과</span>
+                </li>
+                <li class="map-legend-item">
+                    <span class="map-legend-swatch map-legend-swatch-fallback" aria-hidden="true"></span>
+                    <span>기타</span>
+                </li>
+            </ul>
+        </aside>
+        {% endif %}
         {% if map_mode == "photo" or initial_theme == "national_public" or initial_theme == "city_owned" %}
         <aside
             id="photo-info-panel"
