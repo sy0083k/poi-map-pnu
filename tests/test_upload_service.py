@@ -8,7 +8,9 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 
+from app.repositories import land_repository
 from app.services import upload_service
+from tests.helpers import init_test_db, table_name_for_theme
 
 
 class DummyExcelFile:
@@ -50,10 +52,9 @@ def test_upload_service_success(
 ) -> None:
     app = build_app()
     from app.db.connection import db_connection
-    from app.repositories import poi_repository
 
     with db_connection() as conn:
-        poi_repository.init_db(conn)
+        init_test_db(conn)
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(
         "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -85,10 +86,9 @@ def test_upload_service_success_city_theme(
 ) -> None:
     app = build_app()
     from app.db.connection import db_connection
-    from app.repositories import poi_repository
 
     with db_connection() as conn:
-        poi_repository.init_db(conn)
+        init_test_db(conn)
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(
         "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -116,11 +116,17 @@ def test_upload_service_success_city_theme(
     assert result["success"] is True
 
     with db_connection(row_factory=True) as conn:
-        city_rows = poi_repository.fetch_lands_page_without_geom_for_theme(
-            conn, after_id=None, limit=10, theme="city_owned"
+        city_rows = land_repository.fetch_lands_page_without_geom(
+            conn,
+            after_id=None,
+            limit=10,
+            table_name=table_name_for_theme("city_owned"),
         )
-        national_rows = poi_repository.fetch_lands_page_without_geom_for_theme(
-            conn, after_id=None, limit=10, theme="national_public"
+        national_rows = land_repository.fetch_lands_page_without_geom(
+            conn,
+            after_id=None,
+            limit=10,
+            table_name=table_name_for_theme("national_public"),
         )
     assert len(city_rows) == 1
     assert city_rows[0]["address"] == "city-addr"
@@ -197,10 +203,9 @@ def test_upload_service_sheet_name_fallback(
 ) -> None:
     app = build_app()
     from app.db.connection import db_connection
-    from app.repositories import poi_repository
 
     with db_connection() as conn:
-        poi_repository.init_db(conn)
+        init_test_db(conn)
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(
         "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -251,10 +256,9 @@ def test_upload_service_selects_excel_engine_by_extension(
 ) -> None:
     app = build_app()
     from app.db.connection import db_connection
-    from app.repositories import poi_repository
 
     with db_connection() as conn:
-        poi_repository.init_db(conn)
+        init_test_db(conn)
 
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(filename, b"dummy", content_type)

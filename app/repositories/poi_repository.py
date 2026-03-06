@@ -1,9 +1,17 @@
 import sqlite3
+import warnings
 from typing import Iterable, Literal, Sequence
 
 from app.repositories import event_repository, job_repository, land_repository, web_visit_repository
 
 ThemeType = Literal["national_public", "city_owned"]
+
+warnings.warn(
+    "app.repositories.poi_repository is deprecated. "
+    "Use domain repositories (land_repository/event_repository/web_visit_repository/job_repository) directly.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 def init_db(conn: sqlite3.Connection) -> None:

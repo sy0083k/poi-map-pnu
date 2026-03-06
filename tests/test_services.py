@@ -1,13 +1,14 @@
 from app.db.connection import db_connection
-from app.repositories import poi_repository
+from app.repositories import land_repository
 from app.services import land_service
+from tests.helpers import init_test_db
 
 
 def test_land_service_returns_geojson(db_path: object) -> None:
     with db_connection() as conn:
-        poi_repository.init_db(conn)
-        poi_repository.delete_all(conn)
-        poi_repository.insert_land(
+        init_test_db(conn)
+        land_repository.delete_all(conn)
+        land_repository.insert_land(
             conn,
             address="addr",
             land_type="type",
@@ -18,9 +19,9 @@ def test_land_service_returns_geojson(db_path: object) -> None:
         )
         conn.commit()
 
-        missing = poi_repository.fetch_missing_geom(conn)
+        missing = land_repository.fetch_missing_geom(conn)
         item_id, _ = missing[0]
-        poi_repository.update_geom(conn, item_id, '{"type":"Point","coordinates":[1,2]}')
+        land_repository.update_geom(conn, item_id, '{"type":"Point","coordinates":[1,2]}')
         conn.commit()
 
     payload = land_service.get_public_land_features()
