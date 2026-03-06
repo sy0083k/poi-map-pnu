@@ -11,7 +11,6 @@ import Style from "ol/style/Style";
 
 import { loadPersistedPhotoMarkers } from "./photo-persistence";
 import { createPanelOverlapGuard } from "./panel-overlap-guard";
-import { createPhotoLightboxZoomController } from "./photo-lightbox-zoom";
 import type { MapView } from "./map-view";
 
 type PersistedPhotoOverlayDeps = {
@@ -36,38 +35,21 @@ const selectedMarkerStyle = new Style({
   })
 });
 
-function createPhotoPanel() {
+function createPhotoPanel(showToast: (message: string) => void) {
   const panel = document.getElementById("photo-info-panel");
   const panelCloseButton = document.getElementById("photo-info-close") as HTMLButtonElement | null;
   const panelImage = document.getElementById("photo-info-image") as HTMLImageElement | null;
   const panelCaption = document.getElementById("photo-info-caption");
-  const lightbox = document.getElementById("photo-lightbox");
-  const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
-  const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
-  const lightboxViewport = document.getElementById("photo-lightbox-viewport");
-  const lightboxCaption = document.getElementById("photo-lightbox-caption");
 
-  if (
-    !(panel instanceof HTMLElement) ||
-    !(panelImage instanceof HTMLImageElement) ||
-    !(lightbox instanceof HTMLElement) ||
-    !(lightboxImage instanceof HTMLImageElement) ||
-    !(lightboxViewport instanceof HTMLElement)
-  ) {
+  if (!(panel instanceof HTMLElement) || !(panelImage instanceof HTMLImageElement)) {
     return null;
   }
 
   let objectUrl: string | null = null;
-  let lastFocusBeforeLightbox: HTMLElement | null = null;
   const overlapGuard = createPanelOverlapGuard({
     body: document.body,
     photoPanel: panel
   });
-  const lightboxZoom = createPhotoLightboxZoomController({
-    viewport: lightboxViewport,
-    image: lightboxImage
-  });
-  lightboxZoom.setEnabled(false);
 
   const clearObjectUrl = (): void => {
     if (!objectUrl) {
@@ -77,46 +59,25 @@ function createPhotoPanel() {
     objectUrl = null;
   };
 
-  const hideLightbox = (): void => {
-    lightbox.classList.add("is-hidden");
-    panel.setAttribute("aria-expanded", "false");
-    lightboxZoom.setEnabled(false);
-    lightboxZoom.reset();
-    lightboxImage.removeAttribute("src");
-    if (lastFocusBeforeLightbox) {
-      lastFocusBeforeLightbox.focus();
-    }
-    lastFocusBeforeLightbox = null;
-  };
-
   const hidePanel = (): void => {
     overlapGuard.close();
     panel.classList.add("is-hidden");
     panel.setAttribute("aria-expanded", "false");
   };
 
-  const showLightbox = (): void => {
+  const openSelectedPhotoInNewWindow = (): void => {
     if (!objectUrl) {
       return;
     }
-    lastFocusBeforeLightbox = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    lightboxImage.src = objectUrl;
-    if (lightboxCaption instanceof HTMLElement && panelCaption instanceof HTMLElement) {
-      lightboxCaption.textContent = panelCaption.textContent || "";
+    const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      showToast("팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해주세요.");
+      return;
     }
-    lightbox.classList.remove("is-hidden");
     panel.setAttribute("aria-expanded", "true");
-    lightboxZoom.setEnabled(true);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        lightboxZoom.reset();
-      });
-    });
-    lightboxCloseButton?.focus();
   };
 
   panelCloseButton?.addEventListener("click", () => {
-    hideLightbox();
     hidePanel();
   });
 
@@ -125,7 +86,7 @@ function createPhotoPanel() {
     if (target instanceof Element && target.closest("#photo-info-close")) {
       return;
     }
-    showLightbox();
+    openSelectedPhotoInNewWindow();
   });
 
   panel.addEventListener("keydown", (event) => {
@@ -133,32 +94,15 @@ function createPhotoPanel() {
       return;
     }
     event.preventDefault();
-    showLightbox();
-  });
-
-  lightboxCloseButton?.addEventListener("click", () => {
-    hideLightbox();
+    openSelectedPhotoInNewWindow();
   });
 
   panelImage.addEventListener("load", () => {
     overlapGuard.refresh();
   });
 
-  lightbox.addEventListener("click", (event) => {
-    if (event.target === lightbox) {
-      hideLightbox();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !lightbox.classList.contains("is-hidden")) {
-      hideLightbox();
-    }
-  });
-
   window.addEventListener("beforeunload", () => {
     clearObjectUrl();
-    lightboxZoom.destroy();
     overlapGuard.destroy();
   });
 
@@ -180,7 +124,6 @@ function createPhotoPanel() {
       if (panelCaption instanceof HTMLElement) {
         panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
       }
-      hideLightbox();
       hidePanel();
     }
   };
@@ -191,7 +134,7 @@ export async function bootstrapPersistedPhotoOverlay(deps: PersistedPhotoOverlay
   if (!map) {
     return;
   }
-  const panel = createPhotoPanel();
+  const panel = createPhotoPanel(deps.showToast);
   if (!panel) {
     return;
   }
