@@ -56,7 +56,16 @@
                 <span id="map-status-text"></span>
                 <button id="map-status-close" type="button" aria-label="상태 메시지 닫기">✕</button>
             </div>
-            <aside id="photo-info-panel" class="photo-info-panel is-hidden" aria-live="polite" aria-label="선택 사진 정보">
+            <aside
+                id="photo-info-panel"
+                class="photo-info-panel is-hidden"
+                aria-live="polite"
+                aria-label="선택 사진 정보"
+                role="button"
+                tabindex="0"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+            >
                 <header class="photo-info-header">
                     <h3>선택 사진</h3>
                     <button id="photo-info-close" class="photo-info-close" type="button" aria-label="사진 패널 닫기">✕</button>
@@ -66,6 +75,18 @@
                     <div id="photo-info-caption" class="photo-info-caption">마커 또는 목록에서 사진을 선택하세요.</div>
                 </div>
             </aside>
+            <div id="photo-lightbox" class="photo-lightbox is-hidden" role="dialog" aria-modal="true" aria-label="선택 사진 크게 보기">
+                <div id="photo-lightbox-surface" class="photo-lightbox-surface">
+                    <header class="photo-lightbox-header">
+                        <h3>사진 크게 보기</h3>
+                        <button id="photo-lightbox-close" class="photo-lightbox-close" type="button" aria-label="사진 크게 보기 닫기">✕</button>
+                    </header>
+                    <div class="photo-lightbox-body">
+                        <img id="photo-lightbox-image" class="photo-lightbox-image" alt="선택된 사진 원본 크기 보기">
+                        <div id="photo-lightbox-caption" class="photo-lightbox-caption">마커 또는 목록에서 사진을 선택하세요.</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
