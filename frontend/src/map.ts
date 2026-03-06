@@ -145,15 +145,6 @@ async function bootstrap(): Promise<void> {
     landTypeSearchInput.value = mobileLandTypeSearchInput.value;
   };
 
-  const clearPropertyManagerInputs = (): void => {
-    if (propertyManagerSearchInput) {
-      propertyManagerSearchInput.value = "";
-    }
-    if (mobilePropertyManagerSearchInput) {
-      mobilePropertyManagerSearchInput.value = "";
-    }
-  };
-
   const applyThemeUiState = (theme: "national_public" | "city_owned"): void => {
     document.body.classList.toggle("theme-city-owned", theme === "city_owned");
     document.body.classList.toggle("theme-national-public", theme === "national_public");
@@ -197,10 +188,6 @@ async function bootstrap(): Promise<void> {
     menuBasemapTrigger,
     menuThemeTrigger,
     onThemeSelected: (theme) => {
-      const previousTheme = state.getCurrentTheme();
-      if (previousTheme === "city_owned" && theme !== "city_owned") {
-        clearPropertyManagerInputs();
-      }
       state.setCurrentTheme(theme);
       applyThemeUiState(theme);
       syncThemeMenuActiveState(theme);
@@ -261,11 +248,6 @@ async function bootstrap(): Promise<void> {
     const nextTheme = getThemeFromPathname(window.location.pathname);
     if (!nextTheme || nextTheme === state.getCurrentTheme()) {
       return;
-    }
-
-    const previousTheme = state.getCurrentTheme();
-    if (previousTheme === "city_owned" && nextTheme !== "city_owned") {
-      clearPropertyManagerInputs();
     }
     state.setCurrentTheme(nextTheme);
     applyThemeUiState(nextTheme);
