@@ -14,6 +14,7 @@ import { createMapState } from "./map/state";
 import { createTelemetry } from "./map/telemetry";
 import { setupTopbarMenus } from "./map/topbar-menu";
 import { bootstrapPhotoMode } from "./map/photo-mode";
+import { bootstrapPersistedPhotoOverlay } from "./map/persisted-photo-overlay";
 import {
   asThemeType,
   getThemeFromPathname,
@@ -294,6 +295,13 @@ async function bootstrap(): Promise<void> {
     const config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
     workflow.setConfig(config);
     mapView.init(config);
+    if (getThemeFromPathname(window.location.pathname) === "national_public") {
+      await bootstrapPersistedPhotoOverlay({
+        mapView,
+        setMapStatus,
+        showToast
+      });
+    }
 
     layoutControls.applySidebarCollapsed(readInitialSidebarCollapsed(), false);
 

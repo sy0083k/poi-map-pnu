@@ -433,6 +433,8 @@ export function createMapView(elements: MapViewElements) {
     map?.updateSize();
   };
 
+  const getMap = (): Map | null => map;
+
   elements.infoPanelCloseButton?.addEventListener("click", () => {
     dismissInfoPanel();
   });
@@ -445,6 +447,7 @@ export function createMapView(elements: MapViewElements) {
     fitToFeatures,
     init,
     getCurrentExtent,
+    getMap,
     getCurrentZoom,
     renderFeatures,
     resize,

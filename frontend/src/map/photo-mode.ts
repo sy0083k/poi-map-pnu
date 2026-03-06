@@ -20,6 +20,11 @@ import { parseJpegExifGps } from "../photo/exif-gps";
 import { loadUploadedHighlights } from "./cadastral-fgb-layer";
 import { createFeedback } from "./feedback";
 import { loadPersistedFile2MapUpload } from "./local-upload";
+import {
+  clearPersistedPhotoMarkers,
+  loadPersistedPhotoMarkers,
+  savePersistedPhotoMarkers
+} from "./photo-persistence";
 
 import type { LandFeatureCollection, LandListItem, LandSourceField, MapConfig } from "./types";
 
@@ -580,6 +585,61 @@ export async function bootstrapPhotoMode(): Promise<void> {
     clearSelection();
   };
 
+  const applyPhotoItems = (
+    nextMarkerItems: PhotoMarkerItem[],
+    options: { shouldFitMap: boolean; statusMessage?: string; toastMessage?: string }
+  ): void => {
+    clearMarkers();
+
+    const features: Feature<Point>[] = nextMarkerItems.map((item) => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([item.lon, item.lat]))
+      }) as Feature<Point>;
+      feature.set("photo_marker_id", item.id);
+      feature.set("photo_file_name", item.fileName);
+      feature.set("photo_relative_path", item.relativePath);
+      return feature;
+    });
+
+    markerSource.addFeatures(features);
+    nextMarkerItems.forEach((item, index) => {
+      markerItemsById.set(item.id, item);
+      const feature = features[index];
+      if (feature) {
+        featureByMarkerId.set(item.id, feature);
+      }
+    });
+    photoItems = nextMarkerItems;
+
+    if (options.shouldFitMap && features.length > 0) {
+      map.getView().fit(markerSource.getExtent(), {
+        padding: [80, 80, 80, 80],
+        duration: 350,
+        maxZoom: 18
+      });
+    }
+
+    renderList();
+    updateNavigation();
+    clearPanelObjectUrl();
+    panelImage.removeAttribute("src");
+    lightboxImage.removeAttribute("src");
+    if (panelCaption instanceof HTMLElement) {
+      panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
+    }
+    if (lightboxCaption instanceof HTMLElement) {
+      lightboxCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
+    }
+    hideLightbox();
+    hidePanel();
+    if (options.statusMessage) {
+      setMapStatus(options.statusMessage, "#166534");
+    }
+    if (options.toastMessage) {
+      showToast(options.toastMessage);
+    }
+  };
+
   prevButton.addEventListener("click", () => {
     if (currentIndex <= 0) {
       return;
@@ -648,6 +708,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
     if (summaryElement instanceof HTMLElement) {
       summaryElement.textContent = "폴더를 선택한 뒤 마커 생성을 눌러주세요.";
     }
+    void clearPersistedPhotoMarkers();
     setMapStatus("사진 마커를 초기화했습니다.", "#1f2937");
   });
 
@@ -701,52 +762,27 @@ export async function bootstrapPhotoMode(): Promise<void> {
         }
       }
 
-      clearMarkers();
+      try {
+        await savePersistedPhotoMarkers(
+          nextMarkerItems.map((item) => ({
+            id: item.id,
+            file: item.file,
+            fileName: item.fileName,
+            relativePath: item.relativePath,
+            lat: item.lat,
+            lon: item.lon
+          }))
+        );
+      } catch {
+        setMapStatus("사진 마커 저장소 기록에 실패했습니다. 현재 세션에서만 표시됩니다.", "#b45309");
+      }
 
-      const features: Feature<Point>[] = nextMarkerItems.map((item) => {
-        const feature = new Feature({
-          geometry: new Point(fromLonLat([item.lon, item.lat]))
-        }) as Feature<Point>;
-        feature.set("photo_marker_id", item.id);
-        feature.set("photo_file_name", item.fileName);
-        feature.set("photo_relative_path", item.relativePath);
-        return feature;
+      applyPhotoItems(nextMarkerItems, {
+        shouldFitMap: true,
+        statusMessage: `GPS 마커 ${nextMarkerItems.length}개를 지도에 표시했습니다.`,
+        toastMessage: `GPS 추출 ${nextMarkerItems.length}건`
       });
-
-      markerSource.addFeatures(features);
-      nextMarkerItems.forEach((item, index) => {
-        markerItemsById.set(item.id, item);
-        const feature = features[index];
-        if (feature) {
-          featureByMarkerId.set(item.id, feature);
-        }
-      });
-      photoItems = nextMarkerItems;
-
-      if (features.length > 0) {
-        map.getView().fit(markerSource.getExtent(), {
-          padding: [80, 80, 80, 80],
-          duration: 350,
-          maxZoom: 18
-        });
-      }
-
-      renderList();
-      updateNavigation();
-      clearPanelObjectUrl();
-      panelImage.removeAttribute("src");
-      lightboxImage.removeAttribute("src");
-      if (panelCaption instanceof HTMLElement) {
-        panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
-      }
-      if (lightboxCaption instanceof HTMLElement) {
-        lightboxCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
-      }
-      hideLightbox();
-      hidePanel();
       updateSummary(summaryElement instanceof HTMLElement ? summaryElement : null, summary);
-      setMapStatus(`GPS 마커 ${features.length}개를 지도에 표시했습니다.`, "#166534");
-      showToast(`GPS 추출 ${features.length}건`);
     })();
   });
 
@@ -760,5 +796,27 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
   renderList();
   updateNavigation();
+  try {
+    const persisted = await loadPersistedPhotoMarkers();
+    if (persisted && persisted.items.length > 0) {
+      const restoredItems: PhotoMarkerItem[] = persisted.items.map((item, index) => ({
+        id: item.id || index + 1,
+        file: item.file,
+        fileName: item.fileName,
+        relativePath: item.relativePath,
+        lat: item.lat,
+        lon: item.lon
+      }));
+      applyPhotoItems(restoredItems, {
+        shouldFitMap: false,
+        statusMessage: `저장된 사진 마커 ${restoredItems.length}개를 복원했습니다.`
+      });
+      if (summaryElement instanceof HTMLElement) {
+        summaryElement.textContent = `저장된 사진 ${restoredItems.length}개를 복원했습니다.`;
+      }
+    }
+  } catch {
+    setMapStatus("저장된 사진 마커 복원에 실패했습니다.", "#b45309");
+  }
   void loadFile2MapLandHighlights();
 }

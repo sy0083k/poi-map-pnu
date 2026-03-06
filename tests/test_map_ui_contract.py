@@ -97,6 +97,8 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert 'id="file2map-upload-input"' in national.text
     assert 'id="file2map-upload-btn"' in national.text
     assert 'id="file2map-upload-clear-btn"' in national.text
+    assert 'id="photo-info-panel"' in national.text
+    assert 'id="photo-lightbox"' in national.text
     assert 'id="file2map-upload-summary"' not in national.text
     assert 'id="file2map-upload-status"' not in national.text
     assert 'class="file2map-mode"' not in city.text
@@ -181,6 +183,8 @@ def test_select_highlight_is_flushed_before_fit_animation() -> None:
 def test_photo2map_contract_for_local_exif_markers() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
+    photo_overlay_ts = Path("frontend/src/map/persisted-photo-overlay.ts").read_text(encoding="utf-8")
+    photo_persistence_ts = Path("frontend/src/map/photo-persistence.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
     local_upload_ts = Path("frontend/src/map/local-upload.ts").read_text(encoding="utf-8")
     cadastral_layer_ts = Path("frontend/src/map/cadastral-fgb-layer.ts").read_text(encoding="utf-8")
@@ -188,9 +192,13 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     css_text = Path("static/css/style.css").read_text(encoding="utf-8")
     index_template = Path("templates/index.html").read_text(encoding="utf-8")
     assert "bootstrapPhotoMode" in map_ts
+    assert "bootstrapPersistedPhotoOverlay" in map_ts
     assert "data-map-mode" in index_template
     assert "parseJpegExifGps" in photo_mode_ts
     assert "selectPhoto" in photo_mode_ts
+    assert "savePersistedPhotoMarkers" in photo_mode_ts
+    assert "loadPersistedPhotoMarkers" in photo_mode_ts
+    assert "clearPersistedPhotoMarkers" in photo_mode_ts
     assert "window.open(" not in photo_mode_ts
     assert 'id="photo-folder-input"' not in photo_mode_ts
     assert "webkitdirectory" in index_template
@@ -198,6 +206,9 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "currentIndex < 0" in photo_mode_ts
     assert "selectPhoto(0, { shouldMoveMap: true, source: \"nav\" });" in photo_mode_ts
     assert "showLightbox" in photo_mode_ts
+    assert "loadPersistedPhotoMarkers" in photo_overlay_ts
+    assert "photo_marker_id" in photo_overlay_ts
+    assert 'const STORE_NAME = "photo_markers";' in photo_persistence_ts
     assert "event.key === \"Escape\"" in photo_mode_ts
     assert "event.target === lightbox" in photo_mode_ts
     assert "photo_marker_id" in photo_mode_ts

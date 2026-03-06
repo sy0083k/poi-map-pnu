@@ -215,7 +215,7 @@
             <span id="map-status-text"></span>
             <button id="map-status-close" type="button" aria-label="상태 메시지 닫기">✕</button>
         </div>
-        {% if map_mode == "photo" %}
+        {% if map_mode == "photo" or initial_theme == "national_public" %}
         <aside
             id="photo-info-panel"
             class="photo-info-panel is-hidden"
