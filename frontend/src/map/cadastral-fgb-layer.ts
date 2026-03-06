@@ -1,3 +1,4 @@
+import { fetchWithHeaders } from "../http";
 import type { CadastralCrs, LandFeature, LandFeatureCollection, ThemeType } from "./types";
 
 type WorkerChunkPayload = {
@@ -224,12 +225,13 @@ function throwIfAborted(signal?: AbortSignal): void {
 
 async function getFgbEtag(fgbUrl: string, signal?: AbortSignal): Promise<string> {
   try {
-    const response = await fetch(fgbUrl, {
+    const response = await fetchWithHeaders(fgbUrl, {
       method: "GET",
       headers: {
         Range: "bytes=0-0"
       },
-      signal
+      signal,
+      timeoutMs: 10000
     });
     if (!response.ok && response.status !== 206) {
       return "no-etag";
