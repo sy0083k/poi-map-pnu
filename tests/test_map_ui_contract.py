@@ -96,6 +96,7 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert 'id="land-info-content"' in photo.text
     assert "EXIF 사진 폴더 선택" in photo.text
     assert 'data-initial-theme="city_owned"' in city.text
+    assert 'id="photo-info-panel"' in city.text
     assert 'class="file2map-mode"' in national.text
     assert 'id="file2map-upload-panel"' in national.text
     assert 'id="file2map-upload-input"' in national.text
@@ -252,7 +253,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "--photo-panel-runtime-height: var(--photo-panel-safe-height);" in css_text
     assert "--photo-panel-runtime-bottom-offset: var(--photo-panel-bottom-offset);" in css_text
     assert "body.photo2map-mode #land-info-panel" in css_text
-    assert "body.file2map-mode.photo-panel-open #land-info-panel" in css_text
+    assert "body.photo-panel-open #land-info-panel" in css_text
     assert "var(--photo-panel-runtime-height)" in css_text
     assert "var(--photo-panel-runtime-bottom-offset)" in css_text
     assert "max-height: clamp(220px, var(--land-panel-max-safe), 560px);" in css_text
