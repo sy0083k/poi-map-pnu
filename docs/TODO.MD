@@ -86,3 +86,4 @@
 - 2026-03-06 | reviewer: team | `/file2map` 최초 진입 시 목록 비표시로 전환하고, 서버 `national_public` 경로(`poi`, `/admin/upload`)를 제거해 `poi_city` 단일 데이터 소스로 정리 | 다음 액션: 운영 DB에서 `scripts/remove_legacy_national_table.py` 실행 여부와 백업 정책 확정
 - 2026-03-06 | reviewer: team | `/photo2map` 페이지를 추가해 브라우저 폴더 선택 기반 JPEG EXIF GPS 마커 렌더 및 마커 클릭 로컬 사진 열기 기능을 반영 | 다음 액션: HEIC/PNG EXIF 확장 지원 필요성 및 공용 단말 운영 가이드 보강
 - 2026-03-06 | reviewer: team | `/photo2map` 유틸리티 사이드바에 사진 목록/이전·다음 네비게이션을 추가하고, 새 탭 오픈 대신 지도 우상단 사진 패널 연동으로 전환 | 다음 액션: 선택 상태 복원(새로고침/세션) 및 썸네일 성능 최적화 여부 검토
+- 2026-03-06 | reviewer: team | `/photo2map` 선택 사진 패널을 우하단 미리보기로 재배치하고, 패널 클릭 시 지도 위 대형 모달(ESC/배경/닫기 버튼 닫기) 확대 뷰를 추가 | 다음 액션: 대용량 이미지(고해상도)에서 메모리 사용량/모달 반응성 관측

@@ -178,15 +178,29 @@ def test_select_highlight_is_flushed_before_fit_animation() -> None:
 def test_photo2map_contract_for_local_exif_markers() -> None:
     photo_map_ts = Path("frontend/src/photo-map.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
+    main_py = Path("app/main.py").read_text(encoding="utf-8")
+    css_text = Path("static/css/style.css").read_text(encoding="utf-8")
+    photo_template = Path("templates/photo2map.html").read_text(encoding="utf-8")
     assert "parseJpegExifGps" in photo_map_ts
     assert "selectPhoto" in photo_map_ts
     assert "window.open(" not in photo_map_ts
     assert 'id="photo-folder-input"' not in photo_map_ts
-    assert "webkitdirectory" in Path("templates/photo2map.html").read_text(encoding="utf-8")
+    assert "webkitdirectory" in photo_template
     assert "URL.createObjectURL(selected.file)" in photo_map_ts
+    assert "currentIndex < 0" in photo_map_ts
+    assert "selectPhoto(0, { shouldMoveMap: true, source: \"nav\" });" in photo_map_ts
+    assert "showLightbox" in photo_map_ts
+    assert "event.key === \"Escape\"" in photo_map_ts
+    assert "event.target === lightbox" in photo_map_ts
     assert "photo_marker_id" in photo_map_ts
-    assert "photo-prev-btn" in Path("templates/photo2map.html").read_text(encoding="utf-8")
-    assert "photo-next-btn" in Path("templates/photo2map.html").read_text(encoding="utf-8")
-    assert "photo-info-panel" in Path("templates/photo2map.html").read_text(encoding="utf-8")
+    assert "photo-prev-btn" in photo_template
+    assert "photo-next-btn" in photo_template
+    assert "photo-info-panel" in photo_template
+    assert "photo-lightbox" in photo_template
+    assert "photo-lightbox-image" in photo_template
+    assert "aria-modal=\"true\"" in photo_template
+    assert "bottom: 20px;" in css_text
+    assert ".photo-lightbox {" in css_text
+    assert "img-src 'self' data: blob:" in main_py
     assert "TAG_GPS_LAT" in exif_parser_ts
     assert "TAG_GPS_LON" in exif_parser_ts

@@ -813,7 +813,7 @@ body.file2map-mode #mobile-property-manager-group {
 
 .photo-info-panel {
     position: absolute;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
     z-index: 1000;
     width: clamp(250px, 26vw, 360px);
@@ -825,10 +825,16 @@ body.file2map-mode #mobile-property-manager-group {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .photo-info-panel.is-hidden {
     display: none;
+}
+
+.photo-info-panel:focus-visible {
+    outline: 2px solid #111827;
+    outline-offset: 2px;
 }
 
 .photo-info-header {
@@ -891,6 +897,93 @@ body.file2map-mode #mobile-property-manager-group {
     word-break: break-all;
 }
 
+.photo-lightbox {
+    position: absolute;
+    inset: 0;
+    z-index: 1006;
+    display: grid;
+    place-items: center;
+    background: rgba(15, 23, 42, 0.46);
+    padding: 20px;
+}
+
+.photo-lightbox.is-hidden {
+    display: none;
+}
+
+.photo-lightbox-surface {
+    width: min(900px, calc(100vw - 40px));
+    max-height: min(86vh, 900px);
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    box-shadow: 0 16px 42px rgba(15, 23, 42, 0.4);
+    overflow: hidden;
+}
+
+.photo-lightbox-header {
+    padding: 11px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.photo-lightbox-header h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    color: #111827;
+}
+
+.photo-lightbox-close {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 1rem;
+    line-height: 1;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.photo-lightbox-close:hover {
+    background: #eef2f7;
+    color: #111827;
+}
+
+.photo-lightbox-close:focus-visible {
+    outline: 2px solid #111827;
+    outline-offset: 1px;
+}
+
+.photo-lightbox-body {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    overflow: auto;
+}
+
+.photo-lightbox-image {
+    width: 100%;
+    max-height: min(72vh, 760px);
+    object-fit: contain;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+}
+
+.photo-lightbox-caption {
+    color: #334155;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    word-break: break-all;
+}
+
 /* 태블릿 대응 */
 @media (max-width: 1024px) {
     body {
@@ -903,7 +996,7 @@ body.file2map-mode #mobile-property-manager-group {
         max-height: 56vh;
     }
     .photo-info-panel {
-        top: 12px;
+        bottom: 12px;
         right: 12px;
         width: clamp(240px, 34vw, 340px);
         max-height: 56vh;
@@ -1052,11 +1145,24 @@ body.file2map-mode #mobile-property-manager-group {
         max-height: min(44vh, 340px);
     }
     .photo-info-panel {
-        top: 12px;
+        bottom: calc(50vh + 12px);
         right: 12px;
         left: auto;
         width: min(72vw, 300px);
         max-height: min(44vh, 340px);
+    }
+
+    .photo-lightbox {
+        padding: 12px;
+    }
+
+    .photo-lightbox-surface {
+        width: min(96vw, 920px);
+        max-height: min(90vh, 920px);
+    }
+
+    .photo-lightbox-image {
+        max-height: min(76vh, 820px);
     }
 
     #map-status {
@@ -1158,6 +1264,15 @@ body.file2map-mode #mobile-property-manager-group {
     .photo-info-panel {
         width: min(76vw, 280px);
         max-height: min(40vh, 300px);
+    }
+
+    .photo-lightbox {
+        padding: 8px;
+    }
+
+    .photo-lightbox-surface {
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 16px);
     }
 }
 
