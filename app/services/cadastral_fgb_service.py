@@ -23,6 +23,7 @@ def build_fgb_file_response(
     common_headers = {
         "Accept-Ranges": "bytes",
         "Content-Disposition": f'inline; filename="{file_path.name}"',
+        "ETag": _build_file_etag(file_path),
     }
 
     if range_header:
@@ -136,3 +137,8 @@ def _parse_range_header(*, range_header: str, file_size: int) -> tuple[int, int]
     if start < 0 or end < start or start >= file_size:
         raise HTTPException(status_code=416, detail="요청한 Range가 파일 범위를 벗어났습니다.")
     return start, min(end, file_size - 1)
+
+
+def _build_file_etag(file_path: Path) -> str:
+    stat = file_path.stat()
+    return f'W/"{stat.st_size:x}-{stat.st_mtime_ns:x}"'

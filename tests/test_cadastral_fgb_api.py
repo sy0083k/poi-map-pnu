@@ -23,6 +23,8 @@ async def test_cadastral_fgb_served_with_v1_alias(
     assert v0.status_code == 200
     assert v1.status_code == 200
     assert v0.headers.get("content-type", "").startswith("application/x-flatgeobuf")
+    assert v0.headers.get("etag")
+    assert v0.headers.get("etag") == v1.headers.get("etag")
     assert v0.content == b"fgb"
     assert v1.content == b"fgb"
 
