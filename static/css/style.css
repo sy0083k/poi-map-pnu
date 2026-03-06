@@ -13,6 +13,7 @@ body {
     --filter-col-gap: 8px;
     --filter-row-gap: 10px;
     --filter-label-gap: 6px;
+    --viewport-safe-height: 100vh;
 }
 
 body.photo2map-mode,
@@ -21,9 +22,17 @@ body.file2map-mode.photo-panel-open {
     --land-panel-top-offset: 20px;
     --photo-panel-bottom-offset: 20px;
     --photo-panel-safe-height: 360px;
+    --photo-panel-runtime-height: var(--photo-panel-safe-height);
+    --photo-panel-runtime-bottom-offset: var(--photo-panel-bottom-offset);
     --land-panel-max-safe: calc(
-        100vh - var(--topbar-height) - var(--land-panel-top-offset) - var(--photo-panel-bottom-offset) - var(--photo-panel-safe-height) - var(--panel-gap)
+        var(--viewport-safe-height) - var(--topbar-height) - var(--land-panel-top-offset) - var(--photo-panel-runtime-bottom-offset) - var(--photo-panel-runtime-height) - var(--panel-gap)
     );
+}
+
+@supports (height: 100dvh) {
+    body {
+        --viewport-safe-height: 100dvh;
+    }
 }
 
 #app-topbar {

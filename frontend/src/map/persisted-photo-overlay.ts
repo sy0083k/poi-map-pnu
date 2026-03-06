@@ -10,6 +10,7 @@ import Stroke from "ol/style/Stroke";
 import Style from "ol/style/Style";
 
 import { loadPersistedPhotoMarkers } from "./photo-persistence";
+import { createPanelOverlapGuard } from "./panel-overlap-guard";
 import type { MapView } from "./map-view";
 
 type PersistedPhotoOverlayDeps = {
@@ -55,6 +56,10 @@ function createPhotoPanel() {
 
   let objectUrl: string | null = null;
   let lastFocusBeforeLightbox: HTMLElement | null = null;
+  const overlapGuard = createPanelOverlapGuard({
+    body: document.body,
+    photoPanel: panel
+  });
 
   const clearObjectUrl = (): void => {
     if (!objectUrl) {
@@ -75,7 +80,7 @@ function createPhotoPanel() {
   };
 
   const hidePanel = (): void => {
-    document.body.classList.remove("photo-panel-open");
+    overlapGuard.close();
     panel.classList.add("is-hidden");
     panel.setAttribute("aria-expanded", "false");
   };
@@ -119,6 +124,10 @@ function createPhotoPanel() {
     hideLightbox();
   });
 
+  panelImage.addEventListener("load", () => {
+    overlapGuard.refresh();
+  });
+
   lightbox.addEventListener("click", (event) => {
     if (event.target === lightbox) {
       hideLightbox();
@@ -133,6 +142,7 @@ function createPhotoPanel() {
 
   window.addEventListener("beforeunload", () => {
     clearObjectUrl();
+    overlapGuard.destroy();
   });
 
   return {
@@ -144,8 +154,8 @@ function createPhotoPanel() {
       if (panelCaption instanceof HTMLElement) {
         panelCaption.textContent = `${item.fileName} (${item.relativePath})`;
       }
-      document.body.classList.add("photo-panel-open");
       panel.classList.remove("is-hidden");
+      overlapGuard.open();
     },
     clear(): void {
       clearObjectUrl();
