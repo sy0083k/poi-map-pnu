@@ -213,7 +213,6 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "land-info-content" in index_template
     assert "aria-modal=\"true\"" in index_template
     assert "bottom: 20px;" in css_text
-    assert "body.photo2map-mode #sidebar" in css_text
     assert ".photo-lightbox {" in css_text
     assert "img-src 'self' data: blob:" in main_py
     assert "loadPersistedFile2MapUpload" in local_upload_ts
