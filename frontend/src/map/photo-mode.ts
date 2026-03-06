@@ -144,7 +144,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
   const lightbox = document.getElementById("photo-lightbox");
   const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
   const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
-  const lightboxBody = document.getElementById("photo-lightbox-body");
+  const lightboxViewport = document.getElementById("photo-lightbox-viewport");
   const lightboxCaption = document.getElementById("photo-lightbox-caption");
   const landInfoPanel = document.getElementById("land-info-panel");
   const landInfoContent = document.getElementById("land-info-content");
@@ -161,7 +161,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
     !(panelImage instanceof HTMLImageElement) ||
     !(lightbox instanceof HTMLElement) ||
     !(lightboxImage instanceof HTMLImageElement) ||
-    !(lightboxBody instanceof HTMLElement)
+    !(lightboxViewport instanceof HTMLElement)
   ) {
     return;
   }
@@ -230,7 +230,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
     photoPanel: panel
   });
   const lightboxZoom = createPhotoLightboxZoomController({
-    viewport: lightboxBody,
+    viewport: lightboxViewport,
     image: lightboxImage
   });
   lightboxZoom.setEnabled(false);

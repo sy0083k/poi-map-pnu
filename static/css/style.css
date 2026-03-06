@@ -960,7 +960,7 @@ body.file2map-mode.photo-panel-open #land-info-panel {
 
 .photo-lightbox-surface {
     width: min(900px, calc(100vw - 40px));
-    max-height: min(86vh, 900px);
+    height: min(86vh, 900px);
     display: flex;
     flex-direction: column;
     background: rgba(255, 255, 255, 0.98);
@@ -1009,33 +1009,56 @@ body.file2map-mode.photo-panel-open #land-info-panel {
 }
 
 .photo-lightbox-body {
-    display: grid;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     gap: 8px;
     padding: 12px;
     overflow: hidden;
+}
+
+.photo-lightbox-viewport {
     position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    flex: 1 1 auto;
+    min-height: 0;
     user-select: none;
+    touch-action: none;
+    cursor: default;
 }
 
 .photo-lightbox-image {
-    width: 100%;
-    max-height: min(72vh, 760px);
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
     object-fit: contain;
     border-radius: 10px;
     background: #f8fafc;
     border: 1px solid #e5e7eb;
     transform-origin: center center;
-    will-change: transform;
+    image-rendering: auto;
     cursor: default;
     touch-action: none;
+    transition: transform 0s;
 }
 
+.photo-lightbox-viewport.is-zoomable,
 .photo-lightbox-image.is-zoomable {
     cursor: grab;
 }
 
+.photo-lightbox-viewport.is-dragging,
 .photo-lightbox-image.is-dragging {
     cursor: grabbing;
+}
+
+.photo-lightbox-viewport.is-clamp-easing .photo-lightbox-image {
+    transition: transform 120ms ease-out;
 }
 
 .photo-lightbox-caption {
@@ -1232,11 +1255,7 @@ body.file2map-mode.photo-panel-open #land-info-panel {
 
     .photo-lightbox-surface {
         width: min(96vw, 920px);
-        max-height: min(90vh, 920px);
-    }
-
-    .photo-lightbox-image {
-        max-height: min(76vh, 820px);
+        height: min(90vh, 920px);
     }
 
     #map-status {
@@ -1351,7 +1370,7 @@ body.file2map-mode.photo-panel-open #land-info-panel {
 
     .photo-lightbox-surface {
         width: calc(100vw - 16px);
-        max-height: calc(100vh - 16px);
+        height: calc(100vh - 16px);
     }
 }
 
