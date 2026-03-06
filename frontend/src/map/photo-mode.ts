@@ -329,10 +329,12 @@ export async function bootstrapPhotoMode(): Promise<void> {
   };
 
   const showPanel = (): void => {
+    document.body.classList.add("photo-panel-open");
     panel.classList.remove("is-hidden");
   };
 
   const hidePanel = (): void => {
+    document.body.classList.remove("photo-panel-open");
     panel.classList.add("is-hidden");
     panel.setAttribute("aria-expanded", "false");
   };
