@@ -32,16 +32,38 @@
                 <input
                     type="text"
                     id="mobile-region-search"
+                    class="filter-control"
                     placeholder="읍/면/동 이름을 입력하세요..."
-                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
                 >
+            </div>
+            <div class="inline-filter-row compact-filter-row">
+                <div class="filter-group">
+                    <label>재산용도</label>
+                    <select
+                        id="mobile-property-usage-search"
+                        class="filter-control"
+                    >
+                        <option value="">전체</option>
+                        <option value="행정재산">행정재산</option>
+                        <option value="일반재산">일반재산</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>지목</label>
+                    <input
+                        type="text"
+                        id="mobile-land-type-search"
+                        class="filter-control"
+                        placeholder="지목을 입력하세요..."
+                    >
+                </div>
             </div>
             <div class="filter-group">
                 <label>면적 직접 입력 (㎡)</label>
                 <div class="area-input-container">
-                    <input type="number" id="mobile-min-area" placeholder="최소" min="0">
+                    <input type="number" id="mobile-min-area" class="filter-control" placeholder="최소" min="0">
                     <span>~</span>
-                    <input type="number" id="mobile-max-area" placeholder="최대" min="0">
+                    <input type="number" id="mobile-max-area" class="filter-control" placeholder="최대" min="0">
                 </div>
             </div>
             <div class="filter-group theme-city-only">
@@ -49,8 +71,8 @@
                 <input
                     type="text"
                     id="mobile-property-manager-search"
+                    class="filter-control"
                     placeholder="재산관리관 이름을 입력하세요..."
-                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
                 >
             </div>
             <div class="action-cluster mobile-search-actions" role="group" aria-label="모바일 검색 작업">
@@ -64,16 +86,42 @@
         <div class="mobile-handle"></div>
         <div id="filter-section">
             <div class="filter-group">
-                <label>지역명 검색 (예: 대산읍, 동문동)</label>
-                <input type="text" id="region-search" placeholder="읍/면/동 이름을 입력하세요..." 
-					style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                <label>지역명·주소 검색 (예: 대산읍, 동문동)</label>
+                <input
+                    type="text"
+                    id="region-search"
+                    class="filter-control"
+                    placeholder="읍/면/동 이름 또는 주소를 입력하세요..."
+                >
+            </div>
+            <div class="inline-filter-row compact-filter-row">
+                <div class="filter-group">
+                    <label>재산용도</label>
+                    <select
+                        id="property-usage-search"
+                        class="filter-control"
+                    >
+                        <option value="">전체</option>
+                        <option value="행정재산">행정재산</option>
+                        <option value="일반재산">일반재산</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>지목</label>
+                    <input
+                        type="text"
+                        id="land-type-search"
+                        class="filter-control"
+                        placeholder="지목을 입력하세요..."
+                    >
+                </div>
             </div>
             <div class="filter-group">
                 <label>면적 직접 입력 (㎡)</label>
                 <div class="area-input-container">
-                    <input type="number" id="min-area" placeholder="최소" min="0">
+                    <input type="number" id="min-area" class="filter-control" placeholder="최소" min="0">
                     <span>~</span>
-                    <input type="number" id="max-area" placeholder="최대" min="0">
+                    <input type="number" id="max-area" class="filter-control" placeholder="최대" min="0">
                 </div>
             </div>
             <div class="filter-group theme-city-only">
@@ -81,8 +129,8 @@
                 <input
                     type="text"
                     id="property-manager-search"
-                    placeholder="재산관리관 이름을 입력하세요..."
-                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
+                    class="filter-control"
+                    placeholder="재산관리관을 입력하세요..."
                 >
             </div>
             <button id="btn-search">조건에 맞는 토지 찾기</button>

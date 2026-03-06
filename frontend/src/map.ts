@@ -27,11 +27,15 @@ async function bootstrap(): Promise<void> {
   const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
   const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;
   const propertyManagerSearchInput = document.getElementById("property-manager-search") as HTMLInputElement | null;
+  const propertyUsageSearchInput = document.getElementById("property-usage-search") as HTMLSelectElement | null;
+  const landTypeSearchInput = document.getElementById("land-type-search") as HTMLInputElement | null;
 
   const mobileRegionSearchInput = document.getElementById("mobile-region-search") as HTMLInputElement | null;
   const mobileMinAreaInput = document.getElementById("mobile-min-area") as HTMLInputElement | null;
   const mobileMaxAreaInput = document.getElementById("mobile-max-area") as HTMLInputElement | null;
   const mobilePropertyManagerSearchInput = document.getElementById("mobile-property-manager-search") as HTMLInputElement | null;
+  const mobilePropertyUsageSearchInput = document.getElementById("mobile-property-usage-search") as HTMLSelectElement | null;
+  const mobileLandTypeSearchInput = document.getElementById("mobile-land-type-search") as HTMLInputElement | null;
   const mobileSearchFab = document.getElementById("mobile-search-fab");
   const mobileSearchCloseBtn = document.getElementById("mobile-search-close");
   const mobileSearchBtn = document.getElementById("mobile-btn-search");
@@ -78,7 +82,9 @@ async function bootstrap(): Promise<void> {
     regionSearchInput,
     minAreaInput,
     maxAreaInput,
-    propertyManagerInput: propertyManagerSearchInput
+    propertyManagerInput: propertyManagerSearchInput,
+    propertyUsageInput: propertyUsageSearchInput,
+    landTypeInput: landTypeSearchInput
   });
   const downloadClient = createDownloadClient();
 
@@ -95,10 +101,14 @@ async function bootstrap(): Promise<void> {
       !minAreaInput ||
       !maxAreaInput ||
       !propertyManagerSearchInput ||
+      !propertyUsageSearchInput ||
+      !landTypeSearchInput ||
       !mobileRegionSearchInput ||
       !mobileMinAreaInput ||
       !mobileMaxAreaInput ||
-      !mobilePropertyManagerSearchInput
+      !mobilePropertyManagerSearchInput ||
+      !mobilePropertyUsageSearchInput ||
+      !mobileLandTypeSearchInput
     ) {
       return;
     }
@@ -106,6 +116,8 @@ async function bootstrap(): Promise<void> {
     mobileMinAreaInput.value = minAreaInput.value;
     mobileMaxAreaInput.value = maxAreaInput.value;
     mobilePropertyManagerSearchInput.value = propertyManagerSearchInput.value;
+    mobilePropertyUsageSearchInput.value = propertyUsageSearchInput.value;
+    mobileLandTypeSearchInput.value = landTypeSearchInput.value;
   };
 
   const syncMobileToDesktopInputs = (): void => {
@@ -114,10 +126,14 @@ async function bootstrap(): Promise<void> {
       !minAreaInput ||
       !maxAreaInput ||
       !propertyManagerSearchInput ||
+      !propertyUsageSearchInput ||
+      !landTypeSearchInput ||
       !mobileRegionSearchInput ||
       !mobileMinAreaInput ||
       !mobileMaxAreaInput ||
-      !mobilePropertyManagerSearchInput
+      !mobilePropertyManagerSearchInput ||
+      !mobilePropertyUsageSearchInput ||
+      !mobileLandTypeSearchInput
     ) {
       return;
     }
@@ -125,6 +141,8 @@ async function bootstrap(): Promise<void> {
     minAreaInput.value = mobileMinAreaInput.value;
     maxAreaInput.value = mobileMaxAreaInput.value;
     propertyManagerSearchInput.value = mobilePropertyManagerSearchInput.value;
+    propertyUsageSearchInput.value = mobilePropertyUsageSearchInput.value;
+    landTypeSearchInput.value = mobileLandTypeSearchInput.value;
   };
 
   const clearPropertyManagerInputs = (): void => {
