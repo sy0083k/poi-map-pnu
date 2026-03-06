@@ -149,13 +149,13 @@ app.include_router(map_router.router, prefix="/api", tags=["Map"])
 app.include_router(map_v1_router.router, prefix="/api/v1", tags=["MapV1"])
 
 
-def _render_map_page(request: Request, *, initial_theme: str) -> HTMLResponse:
+def _render_map_page(request: Request, *, initial_theme: str, map_mode: str = "land") -> HTMLResponse:
     return cast(
         HTMLResponse,
         templates.TemplateResponse(
             request,
             "index.html",
-            {"active_page": "map", "initial_theme": initial_theme},
+            {"active_page": "map", "initial_theme": initial_theme, "map_mode": map_mode},
         ),
     )
 
@@ -167,24 +167,17 @@ async def read_root(request: Request) -> Response:
 
 @app.get("/file2map", response_class=HTMLResponse, include_in_schema=False)
 async def read_national_public_theme(request: Request) -> HTMLResponse:
-    return _render_map_page(request, initial_theme="national_public")
+    return _render_map_page(request, initial_theme="national_public", map_mode="land")
 
 
 @app.get("/photo2map", response_class=HTMLResponse, include_in_schema=False)
 async def read_photo_map_page(request: Request) -> HTMLResponse:
-    return cast(
-        HTMLResponse,
-        templates.TemplateResponse(
-            request,
-            "photo2map.html",
-            {"active_page": "map"},
-        ),
-    )
+    return _render_map_page(request, initial_theme="national_public", map_mode="photo")
 
 
 @app.get("/siyu", response_class=HTMLResponse, include_in_schema=False)
 async def read_city_owned_theme(request: Request) -> HTMLResponse:
-    return _render_map_page(request, initial_theme="city_owned")
+    return _render_map_page(request, initial_theme="city_owned", map_mode="land")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

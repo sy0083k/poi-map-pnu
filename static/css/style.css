@@ -318,6 +318,20 @@ body {
     overflow: hidden;
     transition: width 0.22s ease, min-width 0.22s ease, transform 0.22s ease, opacity 0.22s ease;
 }
+
+@media (min-width: 769px) {
+    body.photo2map-mode #map {
+        order: 1;
+    }
+    body.photo2map-mode #sidebar {
+        order: 2;
+        border-right: none;
+        border-left: 1px solid #ccc;
+    }
+    body.photo2map-mode #sidebar-handle {
+        display: none !important;
+    }
+}
 #filter-section { flex-shrink: 0; padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
 .filter-group { margin-bottom: var(--filter-row-gap); }
 .file2map-upload-panel {
