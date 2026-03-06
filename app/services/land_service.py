@@ -7,7 +7,7 @@ import pandas as pd
 from fastapi.responses import Response
 
 from app.db.connection import db_connection
-from app.repositories import poi_repository
+from app.repositories import land_repository
 from app.types import GeoJSONFeature, GeoJSONFeatureCollection
 
 PUBLIC_LAND_FIELDS = {
@@ -23,9 +23,15 @@ ThemeType = Literal["national_public", "city_owned"]
 EXPORT_REQUIRED_COLUMNS = ["고유번호", "소재지", "지목", "실면적", "재산관리관"]
 
 
+def _table_name_for_theme(theme: ThemeType) -> str:
+    if theme == "city_owned":
+        return land_repository.CITY_TABLE_NAME
+    return land_repository.TABLE_NAME
+
+
 def get_public_land_features(*, theme: ThemeType = "national_public") -> GeoJSONFeatureCollection:
     with db_connection(row_factory=True) as conn:
-        rows = poi_repository.fetch_lands_with_geom_for_theme(conn, theme=theme)
+        rows = land_repository.fetch_lands_with_geom(conn, table_name=_table_name_for_theme(theme))
 
     features: list[GeoJSONFeature] = []
     for row in rows:
@@ -44,8 +50,11 @@ def get_public_land_features_page(
     *, cursor: int | None, limit: int, theme: ThemeType = "national_public"
 ) -> dict[str, Any]:
     with db_connection(row_factory=True) as conn:
-        rows = poi_repository.fetch_lands_with_geom_page_for_theme(
-            conn, after_id=cursor, limit=limit, theme=theme
+        rows = land_repository.fetch_lands_with_geom_page(
+            conn,
+            after_id=cursor,
+            limit=limit,
+            table_name=_table_name_for_theme(theme),
         )
 
     features: list[GeoJSONFeature] = []
@@ -73,8 +82,11 @@ def get_public_land_list_page(
     *, cursor: int | None, limit: int, theme: ThemeType = "national_public"
 ) -> dict[str, Any]:
     with db_connection(row_factory=True) as conn:
-        rows = poi_repository.fetch_lands_page_without_geom_for_theme(
-            conn, after_id=cursor, limit=limit, theme=theme
+        rows = land_repository.fetch_lands_page_without_geom(
+            conn,
+            after_id=cursor,
+            limit=limit,
+            table_name=_table_name_for_theme(theme),
         )
 
     items: list[dict[str, Any]] = []
@@ -126,7 +138,11 @@ def _decode_source_fields(raw: Any) -> list[dict[str, str]]:
 
 def build_public_land_export_response(*, land_ids: list[int], theme: ThemeType) -> Response:
     with db_connection(row_factory=True) as conn:
-        rows = poi_repository.fetch_lands_by_ids_for_theme(conn, ids=land_ids, theme=theme)
+        rows = land_repository.fetch_lands_by_ids(
+            conn,
+            ids=land_ids,
+            table_name=_table_name_for_theme(theme),
+        )
 
     rows_by_id = {int(row["id"]): row for row in rows}
     ordered_rows = [rows_by_id[item_id] for item_id in land_ids if item_id in rows_by_id]

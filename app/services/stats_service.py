@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import Request
 
 from app.db.connection import db_connection
-from app.repositories import poi_repository
+from app.repositories import land_repository
 from app.services import map_event_service, raw_query_export_service, web_stats_service
 
 EVENT_TYPE_SEARCH = map_event_service.EVENT_TYPE_SEARCH
@@ -34,7 +34,7 @@ def get_admin_stats(limit: int = 10) -> dict[str, Any]:
 
 def get_land_stats() -> dict[str, int]:
     with db_connection() as conn:
-        total_lands = poi_repository.count_all_lands(conn)
+        total_lands = land_repository.count_all_lands(conn)
     return {
         "totalLands": total_lands,
     }

@@ -53,3 +53,5 @@ export function createDownloadClient() {
     downloadSearchResultFile
   };
 }
+
+export type DownloadClient = ReturnType<typeof createDownloadClient>;
