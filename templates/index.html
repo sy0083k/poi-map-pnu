@@ -94,10 +94,13 @@
                         class="filter-control"
                         accept=".xlsx,.xls"
                     >
-                    <button id="file2map-upload-btn" type="button">파일 적용</button>
-                    <button id="file2map-upload-clear-btn" type="button" class="btn-secondary">업로드 초기화</button>
+                    <div class="action-cluster file2map-upload-actions" role="group" aria-label="업로드 작업">
+                        <button id="file2map-upload-btn" type="button">파일 적용</button>
+                        <button id="file2map-upload-clear-btn" type="button" class="btn-secondary">업로드 초기화</button>
+                    </div>
                 </div>
             </section>
+            <div class="file2map-upload-divider" aria-hidden="true"></div>
             <div class="filter-group">
                 <label>지역명·주소 검색 (예: 대산읍, 동문동)</label>
                 <input

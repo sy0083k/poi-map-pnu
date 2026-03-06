@@ -322,23 +322,37 @@ body {
 .filter-group { margin-bottom: var(--filter-row-gap); }
 .file2map-upload-panel {
     display: none;
-    margin-bottom: 8px;
-    padding: 8px;
-    border: 1px solid #c7d2fe;
-    border-radius: 8px;
-    background: #eef2ff;
+    margin-bottom: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 .file2map-upload-title {
-    margin: 0 0 6px;
-    font-size: 0.86rem;
-    color: #312e81;
+    margin: 0 0 var(--filter-label-gap);
+    font-size: 0.85em;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #4b5563;
 }
 .file2map-upload-controls {
     display: grid;
-    gap: 6px;
+    gap: 8px;
+}
+.file2map-upload-actions {
+    margin-top: 0;
+}
+.file2map-upload-divider {
+    display: none;
+    height: 1px;
+    margin: 12px 0;
+    background: #d8dee5;
 }
 
 body.file2map-mode #file2map-upload-panel {
+    display: block;
+}
+body.file2map-mode .file2map-upload-divider {
     display: block;
 }
 body.file2map-mode #desktop-property-usage-group,
@@ -422,6 +436,23 @@ body.file2map-mode #mobile-property-manager-group {
     box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
 }
 #btn-search:active { transform: translateY(1px); }
+#file2map-upload-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(180deg, #3fa2e6 0%, #2f90d0 100%);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+#file2map-upload-btn:hover {
+    filter: brightness(1.03);
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+}
+#file2map-upload-btn:active { transform: translateY(1px); }
 .action-cluster { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .btn-secondary {
     width: 100%;
@@ -441,6 +472,7 @@ body.file2map-mode #mobile-property-manager-group {
 .btn-secondary:active { transform: translateY(1px); }
 #btn-reset-filters { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
 #btn-download-all { background: linear-gradient(180deg, #4da6d9 0%, #3b8fc0 100%); }
+#file2map-upload-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
 
 /* 리스트 영역 */
 #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
