@@ -533,7 +533,7 @@ body.file2map-mode #mobile-property-manager-group {
     padding: 0;
 }
 .photo-list-item {
-    border-bottom: 0;
+    border-bottom: 1px solid #eee;
 }
 .photo-list-btn {
     width: 100%;
