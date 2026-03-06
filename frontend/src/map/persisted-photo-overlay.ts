@@ -107,7 +107,9 @@ function createPhotoPanel() {
     lightbox.classList.remove("is-hidden");
     panel.setAttribute("aria-expanded", "true");
     lightboxZoom.setEnabled(true);
-    lightboxZoom.reset();
+    window.requestAnimationFrame(() => {
+      lightboxZoom.reset();
+    });
     lightboxCloseButton?.focus();
   };
 

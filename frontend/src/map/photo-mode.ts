@@ -385,7 +385,9 @@ export async function bootstrapPhotoMode(): Promise<void> {
     lightbox.classList.remove("is-hidden");
     panel.setAttribute("aria-expanded", "true");
     lightboxZoom.setEnabled(true);
-    lightboxZoom.reset();
+    window.requestAnimationFrame(() => {
+      lightboxZoom.reset();
+    });
     lightboxCloseButton?.focus();
   };
 
