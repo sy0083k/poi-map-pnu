@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-05
+최종 수정일: 2026-03-06
 
 ## 시스템 개요
 관심 필지 지도는 FastAPI + SQLite + Vite/OpenLayers 기반 애플리케이션이다.
@@ -49,7 +49,10 @@
 1. 클라이언트가 `/api/config`로 지도 설정을 조회한다.
 2. `/api/lands/list?theme=<national_public|city_owned>`로 테마별 업로드 목록(PNU)을 불러온다.
    - 각 항목에는 고정 필드 외에 업로드 원본 컬럼을 보존한 `sourceFields` 배열이 포함된다.
-3. 클라이언트는 목록 PNU만 대상으로 FlatGeobuf에서 1회 매칭해 하이라이트 캐시를 구성한다.
+3. 클라이언트는 목록 PNU만 대상으로 FlatGeobuf에서 1회 매칭해 하이라이트를 구성한다.
+   - 매칭 파싱은 Web Worker에서 수행해 메인 스레드 블로킹을 줄인다.
+   - 결과는 IndexedDB 캐시(`theme + pnuSetHash + fgb ETag`)로 저장해 재방문 시 재스캔을 회피한다.
+   - `/api/cadastral/fgb`는 `ETag` 헤더를 제공해 클라이언트 캐시 무효화 기준으로 사용한다.
 4. 지도 렌더링은 하이라이트 레이어만 사용하며, 비하이라이트 필지(배경 연속지적도)는 표시하지 않는다.
 5. 지도 이동 시에는 하이라이트 캐시를 재사용한다.
 6. 사이드바 `검색 결과 다운로드` 버튼은 현재 검색 결과 목록의 `id` 집합을 `/api/lands/export`로 전송하고, 서버는 테마별 테이블에서 원본 업로드 컬럼(`source_fields_json`)을 복원해 Excel을 생성한다.

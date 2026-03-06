@@ -31,6 +31,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let uploadedHighlightFeatures: LandFeatureCollection = { type: "FeatureCollection", features: [] };
   let uploadedHighlightsRequestSeq = 0;
   let themeLoadRequestSeq = 0;
+  let highlightLoadAbortController: AbortController | null = null;
 
   const updateNavigation = (): void => {
     deps.listPanel.updateNavigation(deps.state.getCurrentIndex(), deps.state.getCurrentItems().length);
@@ -123,6 +124,8 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     if (!config) {
       return;
     }
+    highlightLoadAbortController?.abort();
+
     const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu)));
     if (uploadedPnus.length === 0) {
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
@@ -130,6 +133,8 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     }
     const seq = ++uploadedHighlightsRequestSeq;
     const controller = new AbortController();
+    highlightLoadAbortController = controller;
+    let firstVisibleApplied = false;
     try {
       deps.setMapStatus("업로드 하이라이트를 준비하는 중입니다...");
       const loaded = await loadUploadedHighlights({
@@ -137,7 +142,35 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         pnuField: config.cadastralPnuField,
         cadastralCrs: config.cadastralCrs,
         uploadedPnus,
-        signal: controller.signal
+        theme: deps.state.getCurrentTheme(),
+        signal: controller.signal,
+        onFeatures: (features, progress) => {
+          if (seq !== uploadedHighlightsRequestSeq || features.length === 0) {
+            return;
+          }
+          uploadedHighlightFeatures.features.push(...features);
+          if (!firstVisibleApplied) {
+            firstVisibleApplied = true;
+            void reloadCadastralLayers();
+          }
+          deps.setMapStatus(
+            progress.fromCache
+              ? `하이라이트 캐시 ${progress.matched}건 적용`
+              : `하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`,
+            "#166534"
+          );
+        },
+        onProgress: (progress) => {
+          if (seq !== uploadedHighlightsRequestSeq) {
+            return;
+          }
+          if (!progress.done) {
+            deps.setMapStatus(
+              `하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`,
+              "#166534"
+            );
+          }
+        }
       });
       if (seq !== uploadedHighlightsRequestSeq) {
         return;
@@ -154,6 +187,10 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
           : "업로드 하이라이트 준비에 실패했습니다.";
       console.warn("[cadastral]", message);
       deps.setMapStatus(message, "#b45309");
+    } finally {
+      if (highlightLoadAbortController === controller) {
+        highlightLoadAbortController = null;
+      }
     }
   };
 

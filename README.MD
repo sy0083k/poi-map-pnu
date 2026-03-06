@@ -111,6 +111,7 @@ uvicorn app.main:app --reload
    - 시유지용: `/admin/upload/city`
    - 필수 컬럼: `고유번호`, `소재지`, `지목`, `실면적`, `재산관리관`
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
+   - FlatGeobuf 파싱은 Web Worker에서 수행하고, 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.
    - 상단 헤더에 `시작`, `배경지도`, `주제도` 메뉴가 표시된다.
    - 헤더 메뉴(`시작`, `배경지도`, `주제도`) 사이에는 짧은 세로 구분 바가 표시된다.
    - 데스크톱에서 헤더 메뉴의 시작 x좌표는 사이드바 끝점 고정 오프셋(`--topbar-menu-anchor-x`)을 기준으로 배치된다.
@@ -192,7 +193,7 @@ uvicorn app.main:app --reload
 - 로그인 실패 제한과 이벤트 레이트리밋은 현재 인메모리 구현입니다. 다중 인스턴스 운영 시 인스턴스 간 상태가 공유되지 않으므로 별도 공유 스토어 기반 정책을 고려하세요.
 - API 버전 정책(`/api` vs `/api/v1`)의 운영 절차는 `docs/architecture.md`와 `docs/maintenance.md`를 기준으로 관리하세요.
 - 연속지적도 파일 교체 시 `CADASTRAL_FGB_PATH` 설정과 파일 권한을 확인하고 앱을 재시작하세요.
-- 하이라이트 초기 표시 지연을 줄이려면 클라이언트 full scan(`loadUploadedHighlights`) 경로를 우선 점검하고, 필요 시 서버 서브셋 API/사전 인덱스 전략을 검토하세요.
+- 하이라이트는 Web Worker + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 브라우저 저장소 제한/삭제 여부와 `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
 
 ## ✅ 테스트 및 품질 체크
 루트 저장소의 기본 테스트 수집 대상은 `tests/`입니다.  
