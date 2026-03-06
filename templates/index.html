@@ -92,7 +92,7 @@
 
     <div id="sidebar">
         {% if map_mode == "photo" %}
-        <div id="filter-section">
+        <div id="filter-section" class="sidebar-filter-section">
             <section id="photo-upload-panel" class="file2map-upload-panel" aria-label="사진 폴더 선택">
                 <h3 class="file2map-upload-title">EXIF 사진 폴더 선택</h3>
                 <div class="file2map-upload-controls">
@@ -114,21 +114,21 @@
             <div class="file2map-upload-divider" aria-hidden="true"></div>
             <p id="photo-summary" class="photo-summary">폴더를 선택한 뒤 마커 생성을 눌러주세요.</p>
         </div>
-        <div id="list-container">
-            <p id="photo-list-empty" style="padding: 20px; color: #4b5563; line-height: 1.5;">
+        <div id="list-container" class="sidebar-list-container">
+            <p id="photo-list-empty" class="sidebar-empty-message">
                 지원 형식: JPEG(.jpg, .jpeg)<br>
                 GPS 정보가 있는 사진만 마커로 표시됩니다.
             </p>
             <ul id="photo-list" class="photo-list" aria-label="사진 목록"></ul>
         </div>
-        <div id="nav-footer">
+        <div id="nav-footer" class="sidebar-nav-footer">
             <button class="nav-btn" id="photo-prev-btn" type="button" disabled>◀ 이전</button>
             <span id="nav-info">0 / 0</span>
             <button class="nav-btn" id="photo-next-btn" type="button" disabled>다음 ▶</button>
         </div>
         {% else %}
         <div class="mobile-handle"></div>
-        <div id="filter-section">
+        <div id="filter-section" class="sidebar-filter-section">
             <section id="file2map-upload-panel" class="file2map-upload-panel" aria-label="파일 업로드">
                 <h3 class="file2map-upload-title">표시할 파일 업로드</h3>
                 <div class="file2map-upload-controls">
@@ -199,10 +199,10 @@
                 <button id="btn-download-all" class="btn-secondary" type="button">검색 결과 다운로드</button>
             </div>
         </div>
-        <div id="list-container">
+        <div id="list-container" class="sidebar-list-container">
             <p style="padding: 20px; color: #999;">데이터 로딩 중...</p>
         </div>
-        <div id="nav-footer">
+        <div id="nav-footer" class="sidebar-nav-footer">
             <button class="nav-btn" id="prev-btn" disabled>◀ 이전</button>
             <span id="nav-info">0 / 0</span>
             <button class="nav-btn" id="next-btn" disabled>다음 ▶</button>

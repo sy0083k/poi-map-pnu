@@ -301,9 +301,10 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "photo-list-btn";
+      button.className = "photo-list-btn list-item";
       if (index === currentIndex) {
         button.classList.add("is-active");
+        button.classList.add("selected");
       }
       button.innerHTML = `<span class="photo-list-name">${item.fileName}</span><span class="photo-list-path">${item.relativePath}</span>`;
       button.addEventListener("click", () => {

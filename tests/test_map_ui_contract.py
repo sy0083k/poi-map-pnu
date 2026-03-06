@@ -88,6 +88,10 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert 'id="photo-next-btn"' in photo.text
     assert 'id="photo-info-panel"' in photo.text
     assert 'id="photo-info-image"' in photo.text
+    assert 'class="sidebar-filter-section"' in photo.text
+    assert 'class="sidebar-list-container"' in photo.text
+    assert 'class="sidebar-nav-footer"' in photo.text
+    assert 'class="sidebar-empty-message"' in photo.text
     assert 'id="land-info-panel"' in photo.text
     assert 'id="land-info-content"' in photo.text
     assert "EXIF 사진 폴더 선택" in photo.text
@@ -132,6 +136,9 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert "grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);" in css_text
     assert "body.file2map-mode #file2map-upload-panel" in css_text
     assert "body.file2map-mode #desktop-property-usage-group" in css_text
+    assert "#photo-load-btn {" in css_text
+    assert "#photo-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }" in css_text
+    assert ".sidebar-empty-message {" in css_text
 
 
 def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
@@ -205,6 +212,8 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "URL.createObjectURL(selected.file)" in photo_mode_ts
     assert "currentIndex < 0" in photo_mode_ts
     assert "selectPhoto(0, { shouldMoveMap: true, source: \"nav\" });" in photo_mode_ts
+    assert 'button.className = "photo-list-btn list-item";' in photo_mode_ts
+    assert 'button.classList.add("selected");' in photo_mode_ts
     assert "showLightbox" in photo_mode_ts
     assert "loadPersistedPhotoMarkers" in photo_overlay_ts
     assert "photo_marker_id" in photo_overlay_ts
@@ -217,6 +226,9 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "land-info-panel" in photo_mode_ts
     assert "photo-prev-btn" in index_template
     assert "photo-next-btn" in index_template
+    assert "sidebar-filter-section" in index_template
+    assert "sidebar-list-container" in index_template
+    assert "sidebar-nav-footer" in index_template
     assert "photo-info-panel" in index_template
     assert "photo-lightbox" in index_template
     assert "photo-lightbox-image" in index_template

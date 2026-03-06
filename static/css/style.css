@@ -476,6 +476,23 @@ body.file2map-mode #mobile-property-manager-group {
     box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
 }
 #file2map-upload-btn:active { transform: translateY(1px); }
+#photo-load-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(180deg, #3fa2e6 0%, #2f90d0 100%);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+#photo-load-btn:hover {
+    filter: brightness(1.03);
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+}
+#photo-load-btn:active { transform: translateY(1px); }
 .action-cluster { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .btn-secondary {
     width: 100%;
@@ -496,6 +513,14 @@ body.file2map-mode #mobile-property-manager-group {
 #btn-reset-filters { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
 #btn-download-all { background: linear-gradient(180deg, #4da6d9 0%, #3b8fc0 100%); }
 #file2map-upload-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
+#photo-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
+
+.sidebar-empty-message {
+    padding: 20px;
+    color: #4b5563;
+    line-height: 1.5;
+    margin: 0;
+}
 
 /* 리스트 영역 */
 #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -508,35 +533,31 @@ body.file2map-mode #mobile-property-manager-group {
     padding: 0;
 }
 .photo-list-item {
-    border-bottom: 1px solid #eef2f7;
+    border-bottom: 0;
 }
 .photo-list-btn {
     width: 100%;
     border: none;
     background: transparent;
     text-align: left;
-    padding: 10px 12px;
+    padding: 15px;
     cursor: pointer;
     display: grid;
-    gap: 3px;
+    gap: 4px;
+    transition: background 0.2s;
 }
 .photo-list-btn:hover {
-    background: #f4f7fb;
-}
-.photo-list-btn.is-active {
-    background: #e7f0fb;
-    border-left: 4px solid #3b8fc0;
-    padding-left: 8px;
+    background: #f1f4f6;
 }
 .photo-list-name {
     color: #0f172a;
-    font-size: 0.86rem;
+    font-size: 0.9rem;
     font-weight: 700;
     line-height: 1.2;
 }
 .photo-list-path {
-    color: #64748b;
-    font-size: 0.78rem;
+    color: #4b5563;
+    font-size: 0.8rem;
     line-height: 1.2;
     word-break: break-all;
 }
