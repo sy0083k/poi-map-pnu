@@ -16,7 +16,9 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert 'id="land-info-panel" class="is-hidden"' in res.text
     assert 'class="topbar-separator"' in res.text
     assert "시유지" in res.text
-    assert "파일→주제도" in res.text
+    assert "파일→지도" in res.text
+    assert 'id="menu-file-map"' in res.text
+    assert 'href="/file2map"' in res.text
     assert "공유지(시+도)" not in res.text
     assert "국·공유지" not in res.text
     assert ">백지도<" in res.text
@@ -58,8 +60,8 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     info_panel_idx = res.text.index('id="land-info-panel"')
     assert map_idx < status_idx < status_text_idx < status_close_idx < info_panel_idx
     assert 'data-theme="city_owned"' in res.text
-    assert 'data-menu-link="/gukgongyu"' in res.text
-    assert 'data-link-theme="national_public"' in res.text
+    assert 'data-menu-link="/gukgongyu"' not in res.text
+    assert 'data-link-theme="national_public"' not in res.text
     assert ">관심 필지<" not in res.text
     assert ">행정 경계<" not in res.text
     assert ">개발 예정<" not in res.text
@@ -67,7 +69,7 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
 
 @pytest.mark.anyio
 async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClient) -> None:
-    national = await async_client.get("/gukgongyu")
+    national = await async_client.get("/file2map")
     city = await async_client.get("/siyu")
     assert national.status_code == 200
     assert city.status_code == 200
@@ -75,6 +77,12 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert 'data-initial-theme="city_owned"' in city.text
     assert 'id="property-manager-search"' in national.text
     assert 'id="mobile-property-manager-search"' in national.text
+
+
+@pytest.mark.anyio
+async def test_legacy_gukgongyu_path_is_not_supported(async_client: httpx.AsyncClient) -> None:
+    legacy = await async_client.get("/gukgongyu", follow_redirects=False)
+    assert legacy.status_code == 404
 
 
 def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
@@ -119,12 +127,14 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert 'deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }' in workflow_ts
     assert 'downloadClient.downloadSearchResultFile({' in workflow_ts
     assert 'const THEME_PATHS: Record<ThemeType, string> = {' in theme_routing_ts
-    assert 'national_public: "/gukgongyu"' in theme_routing_ts
+    assert 'national_public: "/file2map"' in theme_routing_ts
     assert 'city_owned: "/siyu"' in theme_routing_ts
     assert "pushThemeHistory(theme);" in map_ts
-    assert 'item.dataset.linkTheme === theme' in topbar_menu_ts
-    assert 'document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link]")' in topbar_menu_ts
-    assert "window.location.assign(target);" in topbar_menu_ts
+    assert 'document.getElementById("menu-file-map")' in topbar_menu_ts
+    assert 'fileMapLink.classList.toggle("is-active", theme === "national_public")' in topbar_menu_ts
+    assert 'item.dataset.linkTheme === theme' not in topbar_menu_ts
+    assert 'document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link]")' not in topbar_menu_ts
+    assert "window.location.assign(target);" not in topbar_menu_ts
     assert 'rawBasemap !== "Base"' in topbar_menu_ts
     assert 'layerType === "White"' in map_ts
 

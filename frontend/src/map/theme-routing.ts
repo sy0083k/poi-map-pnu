@@ -5,7 +5,7 @@ import type { ThemeType } from "./types";
 export const THEME_HISTORY_KEY = "mapTheme";
 
 const THEME_PATHS: Record<ThemeType, string> = {
-  national_public: "/gukgongyu",
+  national_public: "/file2map",
   city_owned: "/siyu"
 };
 

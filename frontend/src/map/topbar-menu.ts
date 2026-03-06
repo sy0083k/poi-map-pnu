@@ -18,9 +18,7 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
   ];
 
   const themeMenuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".menu-item[data-theme]"));
-  const linkThemeMenuItems = Array.from(
-    document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link][data-link-theme]")
-  );
+  const fileMapLink = document.getElementById("menu-file-map");
 
   const closeAllMenus = (): void => {
     menuTriggers.forEach((trigger) => {
@@ -36,9 +34,9 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
     themeMenuItems.forEach((item) => {
       item.classList.toggle("is-active", item.dataset.theme === theme);
     });
-    linkThemeMenuItems.forEach((item) => {
-      item.classList.toggle("is-active", item.dataset.linkTheme === theme);
-    });
+    if (fileMapLink instanceof HTMLAnchorElement) {
+      fileMapLink.classList.toggle("is-active", theme === "national_public");
+    }
   };
 
   menuTriggers.forEach((trigger) => {
@@ -53,17 +51,6 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
         trigger.setAttribute("aria-expanded", "true");
         trigger.parentElement?.classList.add("is-open");
       }
-    });
-  });
-
-  document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link]").forEach((item) => {
-    item.addEventListener("click", () => {
-      const target = item.dataset.menuLink || "";
-      if (!target.startsWith("/")) {
-        return;
-      }
-      closeAllMenus();
-      window.location.assign(target);
     });
   });
 
