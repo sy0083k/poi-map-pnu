@@ -320,6 +320,33 @@ body {
 }
 #filter-section { flex-shrink: 0; padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
 .filter-group { margin-bottom: var(--filter-row-gap); }
+.file2map-upload-panel {
+    display: none;
+    margin-bottom: 8px;
+    padding: 8px;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    background: #eef2ff;
+}
+.file2map-upload-title {
+    margin: 0 0 6px;
+    font-size: 0.86rem;
+    color: #312e81;
+}
+.file2map-upload-controls {
+    display: grid;
+    gap: 6px;
+}
+
+body.file2map-mode #file2map-upload-panel {
+    display: block;
+}
+body.file2map-mode #desktop-property-usage-group,
+body.file2map-mode #desktop-property-manager-group,
+body.file2map-mode #mobile-property-usage-group,
+body.file2map-mode #mobile-property-manager-group {
+    display: none;
+}
 .filter-group label {
     display: block;
     font-size: 0.85em;

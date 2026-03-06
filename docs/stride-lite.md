@@ -2,12 +2,13 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-05
+최종 수정일: 2026-03-06
 
 ## 범위
 - 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/lands`, `/api/lands/list`, `/api/events`, `/api/web-events`, `/api/v1/*`
 - 관리자 API: `/admin/*`, `/login`, `/logout`
 - 저장소: `data/database.db`, `data/*.fgb`
+- 클라이언트 저장소: 브라우저 IndexedDB(`/file2map` 로컬 업로드 데이터)
 
 ## 핵심 자산
 - 관리자 세션/자격
@@ -28,6 +29,8 @@
 ### Information Disclosure
 - 위협: 비밀 설정 노출
 - 통제: `SECRET_KEY`, 비밀번호 해시 비노출, WMTS 키만 예외 공개
+- 위협: `/file2map` 로컬 업로드 데이터가 브라우저 저장소에 잔존
+- 통제: 업로드 초기화 버튼 제공, 민감 데이터 업로드 금지 운영 가이드
 
 ### Denial of Service
 - 위협: 대용량 요청/이벤트 남용
@@ -41,3 +44,4 @@
 - 인메모리 레이트리밋은 멀티 인스턴스에서 일관성 한계
 - FGB 파일 교체 실수 시 지도 장애 가능
 - 원시 로그 CSV 반출 후 2차 유출 위험
+- 공용 단말 브라우저에서 `/file2map` 로컬 업로드 데이터 잔존 가능

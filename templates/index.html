@@ -6,7 +6,7 @@
     <title>{{ request.app.state.config.APP_NAME }}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 </head>
-<body data-initial-theme="{{ initial_theme|default('national_public') }}">
+<body data-initial-theme="{{ initial_theme|default('national_public') }}" class="{{ 'file2map-mode' if initial_theme == 'national_public' else '' }}">
     {% include "partials/topbar.html" %}
 
     <div id="ui-toast" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -37,7 +37,7 @@
                 >
             </div>
             <div class="inline-filter-row compact-filter-row">
-                <div class="filter-group">
+                <div class="filter-group" id="mobile-property-usage-group">
                     <label>재산용도</label>
                     <select
                         id="mobile-property-usage-search"
@@ -66,7 +66,7 @@
                     <input type="number" id="mobile-max-area" class="filter-control" placeholder="최대" min="0">
                 </div>
             </div>
-            <div class="filter-group">
+            <div class="filter-group" id="mobile-property-manager-group">
                 <label>재산관리관 (예: 회계과)</label>
                 <input
                     type="text"
@@ -85,6 +85,19 @@
     <div id="sidebar">
         <div class="mobile-handle"></div>
         <div id="filter-section">
+            <section id="file2map-upload-panel" class="file2map-upload-panel" aria-label="파일 업로드">
+                <h3 class="file2map-upload-title">표시할 파일 업로드</h3>
+                <div class="file2map-upload-controls">
+                    <input
+                        id="file2map-upload-input"
+                        type="file"
+                        class="filter-control"
+                        accept=".xlsx,.xls"
+                    >
+                    <button id="file2map-upload-btn" type="button">파일 적용</button>
+                    <button id="file2map-upload-clear-btn" type="button" class="btn-secondary">업로드 초기화</button>
+                </div>
+            </section>
             <div class="filter-group">
                 <label>지역명·주소 검색 (예: 대산읍, 동문동)</label>
                 <input
@@ -95,7 +108,7 @@
                 >
             </div>
             <div class="inline-filter-row compact-filter-row">
-                <div class="filter-group">
+                <div class="filter-group" id="desktop-property-usage-group">
                     <label>재산용도</label>
                     <select
                         id="property-usage-search"
@@ -124,7 +137,7 @@
                     <input type="number" id="max-area" class="filter-control" placeholder="최대" min="0">
                 </div>
             </div>
-            <div class="filter-group">
+            <div class="filter-group" id="desktop-property-manager-group">
                 <label>재산관리관 (예: 회계과)</label>
                 <input
                     type="text"
