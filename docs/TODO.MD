@@ -102,3 +102,4 @@
 - 2026-03-06 | reviewer: team | 세로 긴 사진 케이스 재발 방지를 위해 `/photo2map`·`/file2map` 모두 사진 패널 실측값(ResizeObserver + 런타임 CSS 변수) 기반 상세 패널 높이 계산으로 전환 | 다음 액션: 구형 브라우저(ResizeObserver 미지원) fallback 동작 및 성능 영향(리사이즈 이벤트 빈도) 점검
 - 2026-03-06 | reviewer: team | 사용성 회귀 대응으로 라이트박스(모달 확대/휠 줌/드래그 팬)를 제거하고 미리보기 패널 클릭 시 새창 열기 동작으로 복구 | 다음 액션: 팝업 차단 브라우저 비율과 사용자 안내 문구 이해도(토스트) 모니터링
 - 2026-03-06 | reviewer: team | `/siyu`에서 상세 정보 패널과 선택 사진 패널 동시 노출 시 가림 현상을 막기 위해 `photo-panel-open` 기반 공통 높이 제한과 오버레이 초기화를 적용 | 다음 액션: 테마 전환(popstate/메뉴 전환) 반복 시 패널 상태/런타임 CSS 변수 정합성 회귀 점검
+- 2026-03-06 | reviewer: team | 공통 `index.html` 기반 구조로 정리하기 위해 미사용 레거시 `templates/photo2map.html`과 `frontend/src/photo-map.ts` 및 Vite `photoMap` 입력을 제거 | 다음 액션: 빌드 산출물에서 불필요 `photoMap` 번들 재생성 여부를 주기 점검

@@ -266,3 +266,8 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "loadUploadedHighlights" in cadastral_layer_ts
     assert "TAG_GPS_LAT" in exif_parser_ts
     assert "TAG_GPS_LON" in exif_parser_ts
+    assert not Path("templates/photo2map.html").exists()
+    assert not Path("frontend/src/photo-map.ts").exists()
+    vite_config_ts = Path("frontend/vite.config.ts").read_text(encoding="utf-8")
+    assert "photoMap:" not in vite_config_ts
+    assert "src/photo-map.ts" not in vite_config_ts
