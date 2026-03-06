@@ -196,17 +196,8 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
 
   const applyFilters = async (trackEvent = false): Promise<void> => {
     const originalItems = deps.state.getOriginalItems() ?? [];
-    const currentTheme = deps.state.getCurrentTheme();
-
     const values = deps.filters.getValues();
-    const effectiveValues =
-      currentTheme === "city_owned"
-        ? values
-        : {
-            ...values,
-            propertyManagerTerm: ""
-          };
-    const filteredItems = deps.filters.filterItems(originalItems, effectiveValues);
+    const filteredItems = deps.filters.filterItems(originalItems, values);
 
     if (trackEvent) {
       deps.telemetry.trackSearchEvent(
@@ -219,7 +210,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       );
     }
 
-    if (currentTheme === "city_owned" && effectiveValues.propertyManagerTerm !== "") {
+    if (values.propertyManagerTerm !== "") {
       const uniqueManagers = Array.from(
         new Set(filteredItems.map((item) => (item.property_manager || "").trim()).filter((value) => value !== ""))
       );

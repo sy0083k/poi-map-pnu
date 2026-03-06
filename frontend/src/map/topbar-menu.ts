@@ -18,6 +18,9 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
   ];
 
   const themeMenuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".menu-item[data-theme]"));
+  const linkThemeMenuItems = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link][data-link-theme]")
+  );
 
   const closeAllMenus = (): void => {
     menuTriggers.forEach((trigger) => {
@@ -32,6 +35,9 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
   const syncThemeMenuActiveState = (theme: ThemeType): void => {
     themeMenuItems.forEach((item) => {
       item.classList.toggle("is-active", item.dataset.theme === theme);
+    });
+    linkThemeMenuItems.forEach((item) => {
+      item.classList.toggle("is-active", item.dataset.linkTheme === theme);
     });
   };
 
@@ -50,10 +56,14 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
     });
   });
 
-  document.querySelectorAll<HTMLElement>(".menu-item[data-menu-action='coming-soon']").forEach((item) => {
+  document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link]").forEach((item) => {
     item.addEventListener("click", () => {
+      const target = item.dataset.menuLink || "";
+      if (!target.startsWith("/")) {
+        return;
+      }
       closeAllMenus();
-      options.showToast("준비 중입니다.");
+      window.location.assign(target);
     });
   });
 

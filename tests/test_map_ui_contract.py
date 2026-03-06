@@ -16,8 +16,9 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert 'id="land-info-panel" class="is-hidden"' in res.text
     assert 'class="topbar-separator"' in res.text
     assert "시유지" in res.text
-    assert "공유지(시+도)" in res.text
-    assert "국·공유지" in res.text
+    assert "파일→주제도" in res.text
+    assert "공유지(시+도)" not in res.text
+    assert "국·공유지" not in res.text
     assert ">백지도<" in res.text
     assert 'data-basemap="White"' in res.text
     assert "시유재산" not in res.text
@@ -57,8 +58,8 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     info_panel_idx = res.text.index('id="land-info-panel"')
     assert map_idx < status_idx < status_text_idx < status_close_idx < info_panel_idx
     assert 'data-theme="city_owned"' in res.text
-    assert 'data-theme="national_public"' in res.text
-    assert 'class="menu-item is-active" type="button" role="menuitem" data-theme="national_public"' in res.text
+    assert 'data-menu-link="/gukgongyu"' in res.text
+    assert 'data-link-theme="national_public"' in res.text
     assert ">관심 필지<" not in res.text
     assert ">행정 경계<" not in res.text
     assert ">개발 예정<" not in res.text
@@ -72,6 +73,8 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert city.status_code == 200
     assert 'data-initial-theme="national_public"' in national.text
     assert 'data-initial-theme="city_owned"' in city.text
+    assert 'id="property-manager-search"' in national.text
+    assert 'id="mobile-property-manager-search"' in national.text
 
 
 def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
@@ -82,8 +85,6 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert 'content: "<";' in css_text
     assert 'content: ">";' in css_text
     assert "#sidebar-handle[aria-expanded=\"false\"]::after" in css_text
-    assert ".theme-city-only { display: none; }" in css_text
-    assert "body.theme-city-owned .theme-city-only { display: block; }" in css_text
     assert ".compact-filter-row {" in css_text
     assert "display: grid;" in css_text
     assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in css_text
@@ -109,17 +110,21 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     moveend_block = map_ts.split(moveend_anchor, maxsplit=1)[1].split("});", maxsplit=1)[0]
     assert "void reloadCadastralLayers();" not in moveend_block
     assert 'state.setCurrentTheme(theme);' in map_ts
-    assert "clearPropertyManagerInputs();" in map_ts
+    assert "clearPropertyManagerInputs();" not in map_ts
     assert "applyThemeUiState(theme);" in map_ts
     assert "await workflow.loadThemeData(state.getCurrentTheme());" in map_ts
     assert "재산관리관 다중 검출:" in workflow_ts
     assert "정확한 재산관리관을 입력하세요." in workflow_ts
+    assert 'currentTheme === "city_owned"' not in workflow_ts
     assert 'deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }' in workflow_ts
     assert 'downloadClient.downloadSearchResultFile({' in workflow_ts
     assert 'const THEME_PATHS: Record<ThemeType, string> = {' in theme_routing_ts
     assert 'national_public: "/gukgongyu"' in theme_routing_ts
     assert 'city_owned: "/siyu"' in theme_routing_ts
     assert "pushThemeHistory(theme);" in map_ts
+    assert 'item.dataset.linkTheme === theme' in topbar_menu_ts
+    assert 'document.querySelectorAll<HTMLButtonElement>(".menu-item[data-menu-link]")' in topbar_menu_ts
+    assert "window.location.assign(target);" in topbar_menu_ts
     assert 'rawBasemap !== "Base"' in topbar_menu_ts
     assert 'layerType === "White"' in map_ts
 
