@@ -55,6 +55,8 @@ async function bootstrap(): Promise<void> {
   const mapStatus = document.getElementById("map-status");
   const mapStatusText = document.getElementById("map-status-text");
   const mapStatusCloseButton = document.getElementById("map-status-close");
+  const mapLegend = document.getElementById("map-legend");
+  const mapLegendCloseButton = document.getElementById("map-legend-close");
   const uiToast = document.getElementById("ui-toast");
   const sidebarHandle = document.getElementById("sidebar-handle");
   const menuBasemapTrigger = document.getElementById("menu-basemap-trigger");
@@ -162,6 +164,14 @@ async function bootstrap(): Promise<void> {
     document.body.classList.toggle("file2map-mode", theme === "national_public");
   };
 
+  let isLegendDismissedByUser = false;
+  const applyLegendUiState = (theme: "national_public" | "city_owned"): void => {
+    if (!(mapLegend instanceof HTMLElement)) {
+      return;
+    }
+    mapLegend.classList.toggle("is-hidden", theme !== "city_owned" || isLegendDismissedByUser);
+  };
+
   const closePhotoPanelUi = (): void => {
     document.body.classList.remove("photo-panel-open");
     document.body.style.removeProperty("--photo-panel-runtime-height");
@@ -226,6 +236,10 @@ async function bootstrap(): Promise<void> {
     menuBasemapTrigger,
     menuThemeTrigger,
     onThemeSelected: (theme) => {
+      const previousTheme = state.getCurrentTheme();
+      if (previousTheme !== "city_owned" && theme === "city_owned") {
+        isLegendDismissedByUser = false;
+      }
       state.setCurrentTheme(theme);
       mapView.setTheme(theme);
       applyThemeUiState(theme);
@@ -234,6 +248,7 @@ async function bootstrap(): Promise<void> {
       }
       syncThemeMenuActiveState(theme);
       closePhotoPanelUi();
+      applyLegendUiState(theme);
       mapView.clearInfoPanel();
       pushThemeHistory(theme);
       void workflow.loadThemeData(theme);
@@ -292,6 +307,10 @@ async function bootstrap(): Promise<void> {
     if (!nextTheme || nextTheme === state.getCurrentTheme()) {
       return;
     }
+    const previousTheme = state.getCurrentTheme();
+    if (previousTheme !== "city_owned" && nextTheme === "city_owned") {
+      isLegendDismissedByUser = false;
+    }
     state.setCurrentTheme(nextTheme);
     mapView.setTheme(nextTheme);
     applyThemeUiState(nextTheme);
@@ -300,6 +319,7 @@ async function bootstrap(): Promise<void> {
     }
     syncThemeMenuActiveState(nextTheme);
     closePhotoPanelUi();
+    applyLegendUiState(nextTheme);
     mapView.clearInfoPanel();
     void workflow.loadThemeData(nextTheme);
   });
@@ -329,6 +349,7 @@ async function bootstrap(): Promise<void> {
     state.setCurrentTheme(initialTheme);
     mapView.setTheme(initialTheme);
     applyThemeUiState(initialTheme);
+    applyLegendUiState(initialTheme);
     if (initialTheme === "national_public") {
       clearFile2MapSpecificFilters();
     }
@@ -378,6 +399,14 @@ async function bootstrap(): Promise<void> {
     listPanel.setStatus(message, "red");
     setMapStatus(message, "#b91c1c");
   }
+
+  mapLegendCloseButton?.addEventListener("click", () => {
+    if (state.getCurrentTheme() !== "city_owned") {
+      return;
+    }
+    isLegendDismissedByUser = true;
+    applyLegendUiState("city_owned");
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
