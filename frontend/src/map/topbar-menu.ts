@@ -18,7 +18,6 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
   ];
 
   const themeMenuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".menu-item[data-theme]"));
-  const fileMapLink = document.getElementById("menu-file-map");
 
   const closeAllMenus = (): void => {
     menuTriggers.forEach((trigger) => {
@@ -34,9 +33,6 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
     themeMenuItems.forEach((item) => {
       item.classList.toggle("is-active", item.dataset.theme === theme);
     });
-    if (fileMapLink instanceof HTMLAnchorElement) {
-      fileMapLink.classList.toggle("is-active", theme === "national_public");
-    }
   };
 
   menuTriggers.forEach((trigger) => {

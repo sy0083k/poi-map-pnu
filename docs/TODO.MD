@@ -84,3 +84,5 @@
 - 2026-03-06 | reviewer: team | `/file2map`을 `/siyu`와 기능 동등하게 맞추기 위해 `재산관리관` 필터 분기를 제거하고 `poi_city -> poi` 1회 복제 스크립트를 추가 | 다음 액션: `/file2map` 독립 개선 요구사항 확정 후 테마별 기능 플래그 재분리 여부 결정
 - 2026-03-06 | reviewer: team | `/file2map` 유틸리티 사이드바를 로컬 업로드 중심으로 전환하고 `재산관리관/재산용도` UI를 제거, 업로드 데이터 IndexedDB 복원 및 클라이언트 Excel 다운로드를 반영 | 다음 액션: 업로드 파일 크기 상한/브라우저 저장소 한계에 대한 운영 가이드 보강
 - 2026-03-06 | reviewer: team | `/file2map` 최초 진입 시 목록 비표시로 전환하고, 서버 `national_public` 경로(`poi`, `/admin/upload`)를 제거해 `poi_city` 단일 데이터 소스로 정리 | 다음 액션: 운영 DB에서 `scripts/remove_legacy_national_table.py` 실행 여부와 백업 정책 확정
+- 2026-03-06 | reviewer: team | `/photo2map` 페이지를 추가해 브라우저 폴더 선택 기반 JPEG EXIF GPS 마커 렌더 및 마커 클릭 로컬 사진 열기 기능을 반영 | 다음 액션: HEIC/PNG EXIF 확장 지원 필요성 및 공용 단말 운영 가이드 보강
+- 2026-03-06 | reviewer: team | `/photo2map` 유틸리티 사이드바에 사진 목록/이전·다음 네비게이션을 추가하고, 새 탭 오픈 대신 지도 우상단 사진 패널 연동으로 전환 | 다음 액션: 선택 상태 복원(새로고침/세션) 및 썸네일 성능 최적화 여부 검토

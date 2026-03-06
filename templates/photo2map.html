@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ request.app.state.config.APP_NAME }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+</head>
+<body class="photo2map-mode">
+    {% include "partials/topbar.html" %}
+
+    <div id="ui-toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="app-shell">
+        <button id="sidebar-handle" type="button" aria-expanded="true" aria-controls="sidebar" aria-label="사이드 메뉴 접기/펼치기"></button>
+
+        <div id="sidebar">
+            <div id="filter-section">
+                <section id="photo-upload-panel" class="file2map-upload-panel" aria-label="사진 폴더 선택">
+                    <h3 class="file2map-upload-title">EXIF 사진 폴더 선택</h3>
+                    <div class="file2map-upload-controls">
+                        <input
+                            id="photo-folder-input"
+                            type="file"
+                            class="filter-control"
+                            accept="image/jpeg,image/jpg"
+                            webkitdirectory
+                            directory
+                            multiple
+                        >
+                        <div class="action-cluster file2map-upload-actions" role="group" aria-label="사진 처리 작업">
+                            <button id="photo-load-btn" type="button">마커 생성</button>
+                            <button id="photo-clear-btn" type="button" class="btn-secondary">마커 초기화</button>
+                        </div>
+                    </div>
+                </section>
+                <div class="file2map-upload-divider" aria-hidden="true"></div>
+                <p id="photo-summary" class="photo-summary">폴더를 선택한 뒤 마커 생성을 눌러주세요.</p>
+            </div>
+            <div id="list-container">
+                <p id="photo-list-empty" style="padding: 20px; color: #4b5563; line-height: 1.5;">
+                    지원 형식: JPEG(.jpg, .jpeg)<br>
+                    GPS 정보가 있는 사진만 마커로 표시됩니다.
+                </p>
+                <ul id="photo-list" class="photo-list" aria-label="사진 목록"></ul>
+            </div>
+            <div id="nav-footer">
+                <button class="nav-btn" id="photo-prev-btn" type="button" disabled>◀ 이전</button>
+                <span id="nav-info">0 / 0</span>
+                <button class="nav-btn" id="photo-next-btn" type="button" disabled>다음 ▶</button>
+            </div>
+        </div>
+
+        <div id="map">
+            <div id="map-status" class="is-hidden" role="status" aria-live="polite">
+                <span id="map-status-text"></span>
+                <button id="map-status-close" type="button" aria-label="상태 메시지 닫기">✕</button>
+            </div>
+            <aside id="photo-info-panel" class="photo-info-panel is-hidden" aria-live="polite" aria-label="선택 사진 정보">
+                <header class="photo-info-header">
+                    <h3>선택 사진</h3>
+                    <button id="photo-info-close" class="photo-info-close" type="button" aria-label="사진 패널 닫기">✕</button>
+                </header>
+                <div class="photo-info-body">
+                    <img id="photo-info-image" class="photo-info-image" alt="선택된 사진 미리보기">
+                    <div id="photo-info-caption" class="photo-info-caption">마커 또는 목록에서 사진을 선택하세요.</div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    {% set assets = vite_assets('src/photo-map.ts') %}
+    {% for css_file in assets.css %}
+    <link rel="stylesheet" href="{{ css_file }}">
+    {% endfor %}
+    <script type="module" src="{{ assets.js }}"></script>
+</body>
+</html>
