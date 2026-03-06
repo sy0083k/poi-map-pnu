@@ -104,10 +104,6 @@ async function bootstrap(): Promise<void> {
   const panelCloseButton = document.getElementById("photo-info-close") as HTMLButtonElement | null;
   const panelImage = document.getElementById("photo-info-image") as HTMLImageElement | null;
   const panelCaption = document.getElementById("photo-info-caption");
-  const lightbox = document.getElementById("photo-lightbox");
-  const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
-  const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
-  const lightboxCaption = document.getElementById("photo-lightbox-caption");
 
   if (
     !(folderInput instanceof HTMLInputElement) ||
@@ -117,9 +113,7 @@ async function bootstrap(): Promise<void> {
     !(prevButton instanceof HTMLButtonElement) ||
     !(nextButton instanceof HTMLButtonElement) ||
     !(panel instanceof HTMLElement) ||
-    !(panelImage instanceof HTMLImageElement) ||
-    !(lightbox instanceof HTMLElement) ||
-    !(lightboxImage instanceof HTMLImageElement)
+    !(panelImage instanceof HTMLImageElement)
   ) {
     return;
   }
@@ -169,7 +163,6 @@ async function bootstrap(): Promise<void> {
   let photoItems: PhotoMarkerItem[] = [];
   let currentIndex = -1;
   let currentObjectUrl: string | null = null;
-  let lastFocusBeforeLightbox: HTMLElement | null = null;
   const markerItemsById = new globalThis.Map<number, PhotoMarkerItem>();
   const featureByMarkerId = new globalThis.Map<number, Feature<Point>>();
 
@@ -237,37 +230,16 @@ async function bootstrap(): Promise<void> {
     panel.setAttribute("aria-expanded", "false");
   };
 
-  const hideLightbox = (): void => {
-    lightbox.classList.add("is-hidden");
-    panel.setAttribute("aria-expanded", "false");
-    lightboxImage.removeAttribute("src");
-    if (lastFocusBeforeLightbox) {
-      lastFocusBeforeLightbox.focus();
-    }
-    lastFocusBeforeLightbox = null;
-  };
-
-  const updateLightboxFromSelection = (): void => {
+  const openSelectedPhotoInNewWindow = (): void => {
     if (currentIndex < 0 || currentIndex >= photoItems.length || !currentObjectUrl) {
       return;
     }
-    const selected = photoItems[currentIndex];
-    lightboxImage.src = currentObjectUrl;
-    lightboxImage.alt = `${selected.fileName} 원본 보기`;
-    if (lightboxCaption instanceof HTMLElement) {
-      lightboxCaption.textContent = `${selected.fileName} (${selected.relativePath})`;
-    }
-  };
-
-  const showLightbox = (): void => {
-    if (currentIndex < 0 || currentIndex >= photoItems.length || !currentObjectUrl) {
+    const opened = window.open(currentObjectUrl, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      showToast("팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해주세요.");
       return;
     }
-    lastFocusBeforeLightbox = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    updateLightboxFromSelection();
-    lightbox.classList.remove("is-hidden");
     panel.setAttribute("aria-expanded", "true");
-    lightboxCloseButton?.focus();
   };
 
   const clearSelection = (): void => {
@@ -275,14 +247,9 @@ async function bootstrap(): Promise<void> {
     updateSelectedMarker(null);
     clearPanelObjectUrl();
     panelImage.removeAttribute("src");
-    lightboxImage.removeAttribute("src");
     if (panelCaption instanceof HTMLElement) {
       panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
     }
-    if (lightboxCaption instanceof HTMLElement) {
-      lightboxCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
-    }
-    hideLightbox();
     hidePanel();
     renderList();
     updateNavigation();
@@ -307,9 +274,6 @@ async function bootstrap(): Promise<void> {
     panelImage.alt = selected.fileName;
     if (panelCaption instanceof HTMLElement) {
       panelCaption.textContent = `${selected.fileName} (${selected.relativePath})`;
-    }
-    if (!lightbox.classList.contains("is-hidden")) {
-      updateLightboxFromSelection();
     }
 
     showPanel();
@@ -381,7 +345,6 @@ async function bootstrap(): Promise<void> {
   });
 
   panelCloseButton?.addEventListener("click", () => {
-    hideLightbox();
     hidePanel();
   });
 
@@ -390,7 +353,7 @@ async function bootstrap(): Promise<void> {
     if (target instanceof Element && target.closest("#photo-info-close")) {
       return;
     }
-    showLightbox();
+    openSelectedPhotoInNewWindow();
   });
 
   panel.addEventListener("keydown", (event) => {
@@ -398,23 +361,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
     event.preventDefault();
-    showLightbox();
-  });
-
-  lightboxCloseButton?.addEventListener("click", () => {
-    hideLightbox();
-  });
-
-  lightbox.addEventListener("click", (event) => {
-    if (event.target === lightbox) {
-      hideLightbox();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !lightbox.classList.contains("is-hidden")) {
-      hideLightbox();
-    }
+    openSelectedPhotoInNewWindow();
   });
 
   clearButton.addEventListener("click", () => {
@@ -510,14 +457,9 @@ async function bootstrap(): Promise<void> {
       updateNavigation();
       clearPanelObjectUrl();
       panelImage.removeAttribute("src");
-      lightboxImage.removeAttribute("src");
       if (panelCaption instanceof HTMLElement) {
         panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
       }
-      if (lightboxCaption instanceof HTMLElement) {
-        lightboxCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
-      }
-      hideLightbox();
       hidePanel();
       updateSummary(summaryElement instanceof HTMLElement ? summaryElement : null, summary);
       setMapStatus(`GPS 마커 ${features.length}개를 지도에 표시했습니다.`, "#166534");

@@ -102,7 +102,7 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert 'id="file2map-upload-btn"' in national.text
     assert 'id="file2map-upload-clear-btn"' in national.text
     assert 'id="photo-info-panel"' in national.text
-    assert 'id="photo-lightbox"' in national.text
+    assert 'id="photo-lightbox"' not in national.text
     assert 'id="file2map-upload-summary"' not in national.text
     assert 'id="file2map-upload-status"' not in national.text
     assert 'class="file2map-mode"' not in city.text
@@ -191,7 +191,6 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
     photo_overlay_ts = Path("frontend/src/map/persisted-photo-overlay.ts").read_text(encoding="utf-8")
-    photo_lightbox_zoom_ts = Path("frontend/src/map/photo-lightbox-zoom.ts").read_text(encoding="utf-8")
     photo_persistence_ts = Path("frontend/src/map/photo-persistence.ts").read_text(encoding="utf-8")
     panel_overlap_guard_ts = Path("frontend/src/map/panel-overlap-guard.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
@@ -208,7 +207,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "savePersistedPhotoMarkers" in photo_mode_ts
     assert "loadPersistedPhotoMarkers" in photo_mode_ts
     assert "clearPersistedPhotoMarkers" in photo_mode_ts
-    assert "window.open(" not in photo_mode_ts
+    assert 'window.open(currentObjectUrl, "_blank", "noopener,noreferrer")' in photo_mode_ts
     assert 'id="photo-folder-input"' not in photo_mode_ts
     assert "webkitdirectory" in index_template
     assert "URL.createObjectURL(selected.file)" in photo_mode_ts
@@ -216,48 +215,24 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "selectPhoto(0, { shouldMoveMap: true, source: \"nav\" });" in photo_mode_ts
     assert 'button.className = "photo-list-btn list-item";' in photo_mode_ts
     assert 'button.classList.add("selected");' in photo_mode_ts
-    assert "showLightbox" in photo_mode_ts
+    assert "openSelectedPhotoInNewWindow" in photo_mode_ts
     assert "createPanelOverlapGuard" in photo_mode_ts
-    assert "createPhotoLightboxZoomController" in photo_mode_ts
-    assert "lightboxZoom.setEnabled(true);" in photo_mode_ts
-    assert "lightboxZoom.reset();" in photo_mode_ts
+    assert "createPhotoLightboxZoomController" not in photo_mode_ts
     assert "overlapGuard.open()" in photo_mode_ts
     assert "overlapGuard.close()" in photo_mode_ts
     assert "loadPersistedPhotoMarkers" in photo_overlay_ts
     assert "photo_marker_id" in photo_overlay_ts
     assert "createPanelOverlapGuard" in photo_overlay_ts
-    assert "createPhotoLightboxZoomController" in photo_overlay_ts
+    assert "createPhotoLightboxZoomController" not in photo_overlay_ts
+    assert 'window.open(objectUrl, "_blank", "noopener,noreferrer")' in photo_overlay_ts
     assert "overlapGuard.open()" in photo_overlay_ts
     assert "overlapGuard.close()" in photo_overlay_ts
-    assert "wheel" in photo_lightbox_zoom_ts
-    assert "pointerdown" in photo_lightbox_zoom_ts
-    assert "const PAN_FACTOR = 2.4;" in photo_lightbox_zoom_ts
-    assert "const PAN_CLAMP_OVERSCROLL_PX = 96;" in photo_lightbox_zoom_ts
-    assert "const PAN_SCALE_GAIN = 0.4;" in photo_lightbox_zoom_ts
-    assert "const PAN_SHIFT_MULTIPLIER = 1.8;" in photo_lightbox_zoom_ts
-    assert "const AUTO_PAN_EDGE_PX = 48;" in photo_lightbox_zoom_ts
-    assert "const AUTO_PAN_MAX_PX_PER_FRAME = 22;" in photo_lightbox_zoom_ts
-    assert "const SCALE_EPSILON = 0.001;" in photo_lightbox_zoom_ts
-    assert "scaleFactor = 1 + (scale - 1) * PAN_SCALE_GAIN;" in photo_lightbox_zoom_ts
-    assert "const overscroll = mode === \"soft\" ? PAN_CLAMP_OVERSCROLL_PX : 0;" in photo_lightbox_zoom_ts
-    assert "if (scale > SCALE_MIN + SCALE_EPSILON) {" in photo_lightbox_zoom_ts
-    assert "translateX = 0;" in photo_lightbox_zoom_ts
-    assert "translateY = 0;" in photo_lightbox_zoom_ts
-    assert "clampEasing = true;" in photo_lightbox_zoom_ts
-    assert "window.setTimeout(() => {" in photo_lightbox_zoom_ts
-    assert "requestAnimationFrame(stepAutoPan)" in photo_lightbox_zoom_ts
-    assert "computeEdgeVelocity(" in photo_lightbox_zoom_ts
-    assert "event.key === \"Shift\"" in photo_lightbox_zoom_ts
-    assert "transform = `translate3d(" in photo_lightbox_zoom_ts
-    assert "const onViewportResize = (): void => {" in photo_lightbox_zoom_ts
-    assert "window.addEventListener(\"resize\", onViewportResize);" in photo_lightbox_zoom_ts
-    assert "new ResizeObserver(() => {" in photo_lightbox_zoom_ts
+    assert not Path("frontend/src/map/photo-lightbox-zoom.ts").exists()
     assert "ResizeObserver" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-height" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-bottom-offset" in panel_overlap_guard_ts
     assert 'const STORE_NAME = "photo_markers";' in photo_persistence_ts
-    assert "event.key === \"Escape\"" in photo_mode_ts
-    assert "event.target === lightbox" in photo_mode_ts
+    assert "event.key === \"Escape\"" not in photo_mode_ts
     assert "photo_marker_id" in photo_mode_ts
     assert "loadPersistedFile2MapUpload" in photo_mode_ts
     assert "loadUploadedHighlights" in photo_mode_ts
@@ -268,13 +243,10 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "sidebar-list-container" in index_template
     assert "sidebar-nav-footer" in index_template
     assert "photo-info-panel" in index_template
-    assert "photo-lightbox" in index_template
-    assert "photo-lightbox-body" in index_template
-    assert "photo-lightbox-viewport" in index_template
-    assert "photo-lightbox-image" in index_template
+    assert "photo-lightbox" not in index_template
     assert "land-info-panel" in index_template
     assert "land-info-content" in index_template
-    assert "aria-modal=\"true\"" in index_template
+    assert "aria-haspopup=\"dialog\"" not in index_template
     assert "bottom: 20px;" in css_text
     assert "--land-panel-max-safe: calc(" in css_text
     assert "--photo-panel-runtime-height: var(--photo-panel-safe-height);" in css_text
@@ -287,14 +259,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "--photo-panel-bottom-offset: calc(50vh + 12px);" in css_text
     assert ".photo-list-item {" in css_text
     assert "border-bottom: 1px solid #eee;" in css_text
-    assert ".photo-lightbox {" in css_text
-    assert ".photo-lightbox-image.is-zoomable {" in css_text
-    assert ".photo-lightbox-image.is-dragging {" in css_text
-    assert ".photo-lightbox-viewport {" in css_text
-    assert ".photo-lightbox-viewport.is-zoomable" in css_text
-    assert ".photo-lightbox-viewport.is-clamp-easing .photo-lightbox-image {" in css_text
-    assert "image-rendering: auto;" in css_text
-    assert "will-change: transform;" not in css_text
+    assert ".photo-lightbox {" not in css_text
     assert "img-src 'self' data: blob:" in main_py
     assert "loadPersistedFile2MapUpload" in local_upload_ts
     assert "loadUploadedHighlights" in cadastral_layer_ts

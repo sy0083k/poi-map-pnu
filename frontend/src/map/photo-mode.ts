@@ -21,7 +21,6 @@ import { loadUploadedHighlights } from "./cadastral-fgb-layer";
 import { createFeedback } from "./feedback";
 import { loadPersistedFile2MapUpload } from "./local-upload";
 import { createPanelOverlapGuard } from "./panel-overlap-guard";
-import { createPhotoLightboxZoomController } from "./photo-lightbox-zoom";
 import {
   clearPersistedPhotoMarkers,
   loadPersistedPhotoMarkers,
@@ -141,11 +140,6 @@ export async function bootstrapPhotoMode(): Promise<void> {
   const panelCloseButton = document.getElementById("photo-info-close") as HTMLButtonElement | null;
   const panelImage = document.getElementById("photo-info-image") as HTMLImageElement | null;
   const panelCaption = document.getElementById("photo-info-caption");
-  const lightbox = document.getElementById("photo-lightbox");
-  const lightboxCloseButton = document.getElementById("photo-lightbox-close") as HTMLButtonElement | null;
-  const lightboxImage = document.getElementById("photo-lightbox-image") as HTMLImageElement | null;
-  const lightboxViewport = document.getElementById("photo-lightbox-viewport");
-  const lightboxCaption = document.getElementById("photo-lightbox-caption");
   const landInfoPanel = document.getElementById("land-info-panel");
   const landInfoContent = document.getElementById("land-info-content");
   const landInfoCloseButton = document.getElementById("land-info-close") as HTMLButtonElement | null;
@@ -158,10 +152,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
     !(prevButton instanceof HTMLButtonElement) ||
     !(nextButton instanceof HTMLButtonElement) ||
     !(panel instanceof HTMLElement) ||
-    !(panelImage instanceof HTMLImageElement) ||
-    !(lightbox instanceof HTMLElement) ||
-    !(lightboxImage instanceof HTMLImageElement) ||
-    !(lightboxViewport instanceof HTMLElement)
+    !(panelImage instanceof HTMLImageElement)
   ) {
     return;
   }
@@ -224,16 +215,10 @@ export async function bootstrapPhotoMode(): Promise<void> {
   let photoItems: PhotoMarkerItem[] = [];
   let currentIndex = -1;
   let currentObjectUrl: string | null = null;
-  let lastFocusBeforeLightbox: HTMLElement | null = null;
   const overlapGuard = createPanelOverlapGuard({
     body: document.body,
     photoPanel: panel
   });
-  const lightboxZoom = createPhotoLightboxZoomController({
-    viewport: lightboxViewport,
-    image: lightboxImage
-  });
-  lightboxZoom.setEnabled(false);
   const markerItemsById = new globalThis.Map<number, PhotoMarkerItem>();
   const featureByMarkerId = new globalThis.Map<number, Feature<Point>>();
   const landItemsByIndex = new globalThis.Map<number, LandListItem>();
@@ -352,45 +337,16 @@ export async function bootstrapPhotoMode(): Promise<void> {
     panel.setAttribute("aria-expanded", "false");
   };
 
-  const hideLightbox = (): void => {
-    lightbox.classList.add("is-hidden");
-    panel.setAttribute("aria-expanded", "false");
-    lightboxZoom.setEnabled(false);
-    lightboxZoom.reset();
-    lightboxImage.removeAttribute("src");
-    if (lastFocusBeforeLightbox) {
-      lastFocusBeforeLightbox.focus();
-    }
-    lastFocusBeforeLightbox = null;
-  };
-
-  const updateLightboxFromSelection = (): void => {
+  const openSelectedPhotoInNewWindow = (): void => {
     if (currentIndex < 0 || currentIndex >= photoItems.length || !currentObjectUrl) {
       return;
     }
-    const selected = photoItems[currentIndex];
-    lightboxImage.src = currentObjectUrl;
-    lightboxImage.alt = `${selected.fileName} 원본 보기`;
-    if (lightboxCaption instanceof HTMLElement) {
-      lightboxCaption.textContent = `${selected.fileName} (${selected.relativePath})`;
-    }
-  };
-
-  const showLightbox = (): void => {
-    if (currentIndex < 0 || currentIndex >= photoItems.length || !currentObjectUrl) {
+    const opened = window.open(currentObjectUrl, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      showToast("팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해주세요.");
       return;
     }
-    lastFocusBeforeLightbox = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    updateLightboxFromSelection();
-    lightbox.classList.remove("is-hidden");
     panel.setAttribute("aria-expanded", "true");
-    lightboxZoom.setEnabled(true);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        lightboxZoom.reset();
-      });
-    });
-    lightboxCloseButton?.focus();
   };
 
   const clearSelection = (): void => {
@@ -398,14 +354,9 @@ export async function bootstrapPhotoMode(): Promise<void> {
     updateSelectedMarker(null);
     clearPanelObjectUrl();
     panelImage.removeAttribute("src");
-    lightboxImage.removeAttribute("src");
     if (panelCaption instanceof HTMLElement) {
       panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
     }
-    if (lightboxCaption instanceof HTMLElement) {
-      lightboxCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
-    }
-    hideLightbox();
     hidePanel();
     renderList();
     updateNavigation();
@@ -455,9 +406,6 @@ export async function bootstrapPhotoMode(): Promise<void> {
     panelImage.alt = selected.fileName;
     if (panelCaption instanceof HTMLElement) {
       panelCaption.textContent = `${selected.fileName} (${selected.relativePath})`;
-    }
-    if (!lightbox.classList.contains("is-hidden")) {
-      updateLightboxFromSelection();
     }
 
     showPanel();
@@ -647,14 +595,9 @@ export async function bootstrapPhotoMode(): Promise<void> {
     updateNavigation();
     clearPanelObjectUrl();
     panelImage.removeAttribute("src");
-    lightboxImage.removeAttribute("src");
     if (panelCaption instanceof HTMLElement) {
       panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
     }
-    if (lightboxCaption instanceof HTMLElement) {
-      lightboxCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
-    }
-    hideLightbox();
     hidePanel();
     if (options.statusMessage) {
       setMapStatus(options.statusMessage, "#166534");
@@ -686,7 +629,6 @@ export async function bootstrapPhotoMode(): Promise<void> {
   });
 
   panelCloseButton?.addEventListener("click", () => {
-    hideLightbox();
     hidePanel();
   });
 
@@ -695,7 +637,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
     if (target instanceof Element && target.closest("#photo-info-close")) {
       return;
     }
-    showLightbox();
+    openSelectedPhotoInNewWindow();
   });
 
   panel.addEventListener("keydown", (event) => {
@@ -703,31 +645,15 @@ export async function bootstrapPhotoMode(): Promise<void> {
       return;
     }
     event.preventDefault();
-    showLightbox();
-  });
-
-  lightboxCloseButton?.addEventListener("click", () => {
-    hideLightbox();
+    openSelectedPhotoInNewWindow();
   });
 
   panelImage.addEventListener("load", () => {
     overlapGuard.refresh();
   });
 
-  lightbox.addEventListener("click", (event) => {
-    if (event.target === lightbox) {
-      hideLightbox();
-    }
-  });
-
   landInfoCloseButton?.addEventListener("click", () => {
     clearSelectedLand();
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !lightbox.classList.contains("is-hidden")) {
-      hideLightbox();
-    }
   });
 
   clearButton.addEventListener("click", () => {
@@ -820,7 +746,6 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
   window.addEventListener("beforeunload", () => {
     clearPanelObjectUrl();
-    lightboxZoom.destroy();
     overlapGuard.destroy();
   });
 
