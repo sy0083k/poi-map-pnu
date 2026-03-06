@@ -75,8 +75,14 @@ async def test_theme_path_pages_set_initial_theme(async_client: httpx.AsyncClien
     assert city.status_code == 200
     assert 'data-initial-theme="national_public"' in national.text
     assert 'data-initial-theme="city_owned"' in city.text
-    assert 'id="property-manager-search"' in national.text
-    assert 'id="mobile-property-manager-search"' in national.text
+    assert 'class="file2map-mode"' in national.text
+    assert 'id="file2map-upload-panel"' in national.text
+    assert 'id="file2map-upload-input"' in national.text
+    assert 'id="file2map-upload-btn"' in national.text
+    assert 'id="file2map-upload-clear-btn"' in national.text
+    assert 'id="file2map-upload-summary"' not in national.text
+    assert 'id="file2map-upload-status"' not in national.text
+    assert 'class="file2map-mode"' not in city.text
 
 
 @pytest.mark.anyio
@@ -105,6 +111,8 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
     assert ".filter-control:focus-visible {" in css_text
     assert ".area-input-container {" in css_text
     assert "grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);" in css_text
+    assert "body.file2map-mode #file2map-upload-panel" in css_text
+    assert "body.file2map-mode #desktop-property-usage-group" in css_text
 
 
 def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:

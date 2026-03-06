@@ -7,6 +7,7 @@ import { createFilters } from "./map/filters";
 import { createLandWorkflow } from "./map/land-workflow";
 import { setupLayoutControls, readInitialSidebarCollapsed } from "./map/layout-controls";
 import { createListPanel } from "./map/list-panel";
+import { setupFile2MapUpload } from "./map/local-upload";
 import { createMapView } from "./map/map-view";
 import { createSessionTracker } from "./map/session-tracker";
 import { createMapState } from "./map/state";
@@ -51,6 +52,9 @@ async function bootstrap(): Promise<void> {
   const sidebarHandle = document.getElementById("sidebar-handle");
   const menuBasemapTrigger = document.getElementById("menu-basemap-trigger");
   const menuThemeTrigger = document.getElementById("menu-theme-trigger");
+  const file2mapUploadInput = document.getElementById("file2map-upload-input") as HTMLInputElement | null;
+  const file2mapUploadButton = document.getElementById("file2map-upload-btn") as HTMLButtonElement | null;
+  const file2mapUploadClearButton = document.getElementById("file2map-upload-clear-btn") as HTMLButtonElement | null;
 
   if (!(infoPanelElement instanceof HTMLElement) || !(infoPanelContent instanceof HTMLElement)) {
     return;
@@ -148,6 +152,22 @@ async function bootstrap(): Promise<void> {
   const applyThemeUiState = (theme: "national_public" | "city_owned"): void => {
     document.body.classList.toggle("theme-city-owned", theme === "city_owned");
     document.body.classList.toggle("theme-national-public", theme === "national_public");
+    document.body.classList.toggle("file2map-mode", theme === "national_public");
+  };
+
+  const clearFile2MapSpecificFilters = (): void => {
+    if (propertyManagerSearchInput) {
+      propertyManagerSearchInput.value = "";
+    }
+    if (propertyUsageSearchInput) {
+      propertyUsageSearchInput.value = "";
+    }
+    if (mobilePropertyManagerSearchInput) {
+      mobilePropertyManagerSearchInput.value = "";
+    }
+    if (mobilePropertyUsageSearchInput) {
+      mobilePropertyUsageSearchInput.value = "";
+    }
   };
 
   const workflow = createLandWorkflow({
@@ -190,6 +210,9 @@ async function bootstrap(): Promise<void> {
     onThemeSelected: (theme) => {
       state.setCurrentTheme(theme);
       applyThemeUiState(theme);
+      if (theme === "national_public") {
+        clearFile2MapSpecificFilters();
+      }
       syncThemeMenuActiveState(theme);
       mapView.clearInfoPanel();
       pushThemeHistory(theme);
@@ -251,6 +274,9 @@ async function bootstrap(): Promise<void> {
     }
     state.setCurrentTheme(nextTheme);
     applyThemeUiState(nextTheme);
+    if (nextTheme === "national_public") {
+      clearFile2MapSpecificFilters();
+    }
     syncThemeMenuActiveState(nextTheme);
     mapView.clearInfoPanel();
     void workflow.loadThemeData(nextTheme);
@@ -272,9 +298,38 @@ async function bootstrap(): Promise<void> {
 
     state.setCurrentTheme(initialTheme);
     applyThemeUiState(initialTheme);
+    if (initialTheme === "national_public") {
+      clearFile2MapSpecificFilters();
+    }
     syncThemeMenuActiveState(initialTheme);
     replaceThemeHistory(initialTheme);
     state.setOriginalItems([]);
+
+    await setupFile2MapUpload({
+      fileInput: file2mapUploadInput,
+      uploadButton: file2mapUploadButton,
+      clearButton: file2mapUploadClearButton,
+      onStatusMessage: (message, color) => {
+        setMapStatus(message, color);
+      },
+      onApplied: (event) => {
+        workflow.setThemeOverrideItems("national_public", event.result.items);
+        if (state.getCurrentTheme() === "national_public" && event.source === "uploaded") {
+          void workflow.loadThemeData("national_public");
+          setMapStatus(
+            `${event.result.summary.fileName} 적용 완료 (${event.result.summary.rowCount.toLocaleString()}건)`,
+            "#166534"
+          );
+        }
+      },
+      onCleared: () => {
+        workflow.clearThemeOverrideItems("national_public");
+        if (state.getCurrentTheme() === "national_public") {
+          void workflow.loadThemeData("national_public");
+          setMapStatus("업로드 데이터를 초기화했습니다.", "#1f2937");
+        }
+      }
+    });
 
     await workflow.applyFilters(false);
     await workflow.loadThemeData(state.getCurrentTheme());

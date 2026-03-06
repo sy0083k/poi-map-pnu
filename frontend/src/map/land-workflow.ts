@@ -32,6 +32,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let uploadedHighlightsRequestSeq = 0;
   let themeLoadRequestSeq = 0;
   let highlightLoadAbortController: AbortController | null = null;
+  const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
 
   const updateNavigation = (): void => {
     deps.listPanel.updateNavigation(deps.state.getCurrentIndex(), deps.state.getCurrentItems().length);
@@ -244,6 +245,14 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   const loadThemeData = async (theme: ThemeType): Promise<void> => {
     const seq = ++themeLoadRequestSeq;
     const themeLabel = deps.getThemeLabel(theme);
+    const overrideItems = overrideItemsByTheme.get(theme) ?? null;
+    if (overrideItems) {
+      deps.listPanel.setStatus(`${themeLabel} 목록을 로컬 업로드 데이터로 표시합니다.`);
+      deps.state.setOriginalItems(overrideItems);
+      await applyFilters(false);
+      void prepareUploadedHighlights(overrideItems);
+      return;
+    }
     try {
       deps.listPanel.setStatus(`${themeLabel} 목록을 불러오는 중입니다...`);
       const items = await loadAllLandListItems(theme);
@@ -288,15 +297,33 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   };
 
   const downloadCurrentSearchResults = (): void => {
-    const landIds = deps.state.getCurrentItems().map((item) => item.id);
-    if (landIds.length === 0) {
+    const currentItems = deps.state.getCurrentItems();
+    if (currentItems.length === 0) {
       deps.setMapStatus("검색 결과가 없어 다운로드할 수 없습니다.", "#b45309");
       return;
     }
-    void deps.downloadClient.downloadSearchResultFile({
-      theme: deps.state.getCurrentTheme(),
-      landIds
-    });
+    const currentTheme = deps.state.getCurrentTheme();
+    if (overrideItemsByTheme.has(currentTheme)) {
+      void deps.downloadClient.downloadLocalSearchResultFile({
+        theme: currentTheme,
+        items: currentItems
+      });
+      return;
+    }
+    const landIds = currentItems.map((item) => item.id);
+    void deps.downloadClient.downloadSearchResultFile({ theme: currentTheme, landIds });
+  };
+
+  const setThemeOverrideItems = (theme: ThemeType, items: LandListItem[]): void => {
+    overrideItemsByTheme.set(theme, items);
+  };
+
+  const clearThemeOverrideItems = (theme: ThemeType): void => {
+    overrideItemsByTheme.delete(theme);
+  };
+
+  const hasThemeOverrideItems = (theme: ThemeType): boolean => {
+    return overrideItemsByTheme.has(theme);
   };
 
   return {
@@ -306,7 +333,10 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     navigateItem,
     resetFilters,
     selectItem,
-    setConfig
+    setConfig,
+    setThemeOverrideItems,
+    clearThemeOverrideItems,
+    hasThemeOverrideItems
   };
 }
 
