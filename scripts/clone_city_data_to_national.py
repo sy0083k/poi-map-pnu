@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-time copy from poi_city (/siyu) to poi (/gukgongyu)."""
+"""One-time copy from poi_city (/siyu) to poi (/file2map)."""
 
 from __future__ import annotations
 
@@ -113,7 +113,7 @@ def clone_city_to_national(db_path: Path, dry_run: bool) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Clone poi_city(/siyu) data to poi(/gukgongyu) once."
+        description="Clone poi_city(/siyu) data to poi(/file2map) once."
     )
     parser.add_argument(
         "--db-path",

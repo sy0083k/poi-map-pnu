@@ -166,7 +166,7 @@ async def read_root(request: Request) -> Response:
     return RedirectResponse(url="/siyu", status_code=307)
 
 
-@app.get("/gukgongyu", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/file2map", response_class=HTMLResponse, include_in_schema=False)
 async def read_national_public_theme(request: Request) -> HTMLResponse:
     return _render_map_page(request, initial_theme="national_public")
 
