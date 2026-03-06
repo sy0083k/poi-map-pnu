@@ -192,6 +192,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
     photo_overlay_ts = Path("frontend/src/map/persisted-photo-overlay.ts").read_text(encoding="utf-8")
     photo_persistence_ts = Path("frontend/src/map/photo-persistence.ts").read_text(encoding="utf-8")
+    panel_overlap_guard_ts = Path("frontend/src/map/panel-overlap-guard.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
     local_upload_ts = Path("frontend/src/map/local-upload.ts").read_text(encoding="utf-8")
     cadastral_layer_ts = Path("frontend/src/map/cadastral-fgb-layer.ts").read_text(encoding="utf-8")
@@ -215,10 +216,17 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert 'button.className = "photo-list-btn list-item";' in photo_mode_ts
     assert 'button.classList.add("selected");' in photo_mode_ts
     assert "showLightbox" in photo_mode_ts
-    assert "photo-panel-open" in photo_mode_ts
+    assert "createPanelOverlapGuard" in photo_mode_ts
+    assert "overlapGuard.open()" in photo_mode_ts
+    assert "overlapGuard.close()" in photo_mode_ts
     assert "loadPersistedPhotoMarkers" in photo_overlay_ts
     assert "photo_marker_id" in photo_overlay_ts
-    assert "photo-panel-open" in photo_overlay_ts
+    assert "createPanelOverlapGuard" in photo_overlay_ts
+    assert "overlapGuard.open()" in photo_overlay_ts
+    assert "overlapGuard.close()" in photo_overlay_ts
+    assert "ResizeObserver" in panel_overlap_guard_ts
+    assert "--photo-panel-runtime-height" in panel_overlap_guard_ts
+    assert "--photo-panel-runtime-bottom-offset" in panel_overlap_guard_ts
     assert 'const STORE_NAME = "photo_markers";' in photo_persistence_ts
     assert "event.key === \"Escape\"" in photo_mode_ts
     assert "event.target === lightbox" in photo_mode_ts
@@ -239,8 +247,12 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "aria-modal=\"true\"" in index_template
     assert "bottom: 20px;" in css_text
     assert "--land-panel-max-safe: calc(" in css_text
+    assert "--photo-panel-runtime-height: var(--photo-panel-safe-height);" in css_text
+    assert "--photo-panel-runtime-bottom-offset: var(--photo-panel-bottom-offset);" in css_text
     assert "body.photo2map-mode #land-info-panel" in css_text
     assert "body.file2map-mode.photo-panel-open #land-info-panel" in css_text
+    assert "var(--photo-panel-runtime-height)" in css_text
+    assert "var(--photo-panel-runtime-bottom-offset)" in css_text
     assert "max-height: clamp(220px, var(--land-panel-max-safe), 560px);" in css_text
     assert "--photo-panel-bottom-offset: calc(50vh + 12px);" in css_text
     assert ".photo-list-item {" in css_text

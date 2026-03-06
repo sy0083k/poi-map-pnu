@@ -20,6 +20,7 @@ import { parseJpegExifGps } from "../photo/exif-gps";
 import { loadUploadedHighlights } from "./cadastral-fgb-layer";
 import { createFeedback } from "./feedback";
 import { loadPersistedFile2MapUpload } from "./local-upload";
+import { createPanelOverlapGuard } from "./panel-overlap-guard";
 import {
   clearPersistedPhotoMarkers,
   loadPersistedPhotoMarkers,
@@ -221,6 +222,10 @@ export async function bootstrapPhotoMode(): Promise<void> {
   let currentIndex = -1;
   let currentObjectUrl: string | null = null;
   let lastFocusBeforeLightbox: HTMLElement | null = null;
+  const overlapGuard = createPanelOverlapGuard({
+    body: document.body,
+    photoPanel: panel
+  });
   const markerItemsById = new globalThis.Map<number, PhotoMarkerItem>();
   const featureByMarkerId = new globalThis.Map<number, Feature<Point>>();
   const landItemsByIndex = new globalThis.Map<number, LandListItem>();
@@ -329,12 +334,12 @@ export async function bootstrapPhotoMode(): Promise<void> {
   };
 
   const showPanel = (): void => {
-    document.body.classList.add("photo-panel-open");
     panel.classList.remove("is-hidden");
+    overlapGuard.open();
   };
 
   const hidePanel = (): void => {
-    document.body.classList.remove("photo-panel-open");
+    overlapGuard.close();
     panel.classList.add("is-hidden");
     panel.setAttribute("aria-expanded", "false");
   };
@@ -689,6 +694,10 @@ export async function bootstrapPhotoMode(): Promise<void> {
     hideLightbox();
   });
 
+  panelImage.addEventListener("load", () => {
+    overlapGuard.refresh();
+  });
+
   lightbox.addEventListener("click", (event) => {
     if (event.target === lightbox) {
       hideLightbox();
@@ -795,6 +804,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
   window.addEventListener("beforeunload", () => {
     clearPanelObjectUrl();
+    overlapGuard.destroy();
   });
 
   renderList();
