@@ -315,3 +315,9 @@ project-root/
 
 ## 📄 라이선스
 MIT License
+
+### 오픈소스 라이선스 고지 (이미지 뷰어)
+- 사용 컴포넌트: `Viewer.js (image viewer)`
+- 출처: https://github.com/fengyuanchen/viewerjs
+- 라이선스: MIT
+- 저작권 고지: Copyright 2015-present Chen Fengyuan
