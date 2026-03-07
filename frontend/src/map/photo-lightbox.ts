@@ -65,12 +65,14 @@ export function createPhotoLightbox(options: CreatePhotoLightboxOptions): {
 
     viewer = new Viewer(holder, {
       inline: false,
+      fullscreen: true,
       navbar: true,
       button: true,
       keyboard: true,
       loop: false,
       movable: true,
       zoomable: true,
+      rotatable: true,
       scalable: true,
       transition: true,
       title: (image: HTMLElement) => String(image.getAttribute("data-caption") || image.getAttribute("alt") || ""),
@@ -80,7 +82,13 @@ export function createPhotoLightbox(options: CreatePhotoLightboxOptions): {
         oneToOne: 1,
         reset: 1,
         prev: 1,
-        next: 1
+        next: 1,
+        rotateLeft: 1,
+        rotateRight: 1,
+        flipHorizontal: 1,
+        flipVertical: 1,
+        play: 1,
+        fullscreen: 1
       },
       hidden: () => {
         cleanup();
