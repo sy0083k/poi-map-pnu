@@ -181,6 +181,15 @@ body.photo-panel-open {
     transform: translate(-50%, 0);
 }
 
+/* Keep Viewer.js lightbox above app overlays/handles. */
+.viewer-container {
+    z-index: 110000 !important;
+}
+
+body.viewer-open #sidebar-handle {
+    pointer-events: none;
+}
+
 #app-shell {
     flex: 1;
     min-height: 0;
