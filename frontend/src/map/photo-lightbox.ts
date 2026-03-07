@@ -65,7 +65,6 @@ export function createPhotoLightbox(options: CreatePhotoLightboxOptions): {
 
     viewer = new Viewer(holder, {
       inline: false,
-      fullscreen: true,
       navbar: true,
       button: true,
       keyboard: true,
@@ -82,13 +81,12 @@ export function createPhotoLightbox(options: CreatePhotoLightboxOptions): {
         oneToOne: 1,
         reset: 1,
         prev: 1,
+        play: 1,
         next: 1,
         rotateLeft: 1,
         rotateRight: 1,
         flipHorizontal: 1,
-        flipVertical: 1,
-        play: 1,
-        fullscreen: 1
+        flipVertical: 1
       },
       hidden: () => {
         cleanup();
