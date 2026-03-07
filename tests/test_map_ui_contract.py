@@ -287,6 +287,13 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "import Viewer from \"viewerjs\";" in photo_lightbox_ts
     assert "viewerjs/dist/viewer.css" in photo_lightbox_ts
     assert "viewer.view(startIndex);" in photo_lightbox_ts
+    assert "fullscreen: true" in photo_lightbox_ts
+    assert "rotatable: true" in photo_lightbox_ts
+    assert "flipHorizontal: 1" in photo_lightbox_ts
+    assert "flipVertical: 1" in photo_lightbox_ts
+    assert "rotateLeft: 1" in photo_lightbox_ts
+    assert "rotateRight: 1" in photo_lightbox_ts
+    assert "fullscreen: 1" in photo_lightbox_ts
     assert not Path("frontend/src/map/photo-lightbox-zoom.ts").exists()
     assert "ResizeObserver" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-height" in panel_overlap_guard_ts
