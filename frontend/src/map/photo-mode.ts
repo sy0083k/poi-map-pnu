@@ -21,6 +21,7 @@ import { loadUploadedHighlights } from "./cadastral-fgb-layer";
 import { createFeedback } from "./feedback";
 import { loadPersistedFile2MapUpload } from "./local-upload";
 import { createPanelOverlapGuard } from "./panel-overlap-guard";
+import { createPhotoLightbox } from "./photo-lightbox";
 import {
   clearPersistedPhotoMarkers,
   loadPersistedPhotoMarkers,
@@ -215,6 +216,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
   let photoItems: PhotoMarkerItem[] = [];
   let currentIndex = -1;
   let currentObjectUrl: string | null = null;
+  const lightbox = createPhotoLightbox({ showToast });
   const overlapGuard = createPanelOverlapGuard({
     body: document.body,
     photoPanel: panel
@@ -338,16 +340,18 @@ export async function bootstrapPhotoMode(): Promise<void> {
     panel.setAttribute("aria-expanded", "false");
   };
 
-  const openSelectedPhotoInNewWindow = (): void => {
-    if (currentIndex < 0 || currentIndex >= photoItems.length || !currentObjectUrl) {
+  const openSelectedPhotoInLightbox = (): void => {
+    if (currentIndex < 0 || currentIndex >= photoItems.length) {
       return;
     }
-    const opened = window.open(currentObjectUrl, "_blank", "noopener,noreferrer");
-    if (!opened) {
-      showToast("팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해주세요.");
-      return;
-    }
-    panel.setAttribute("aria-expanded", "true");
+    lightbox.open(
+      photoItems.map((item) => ({
+        file: item.file,
+        fileName: item.fileName,
+        relativePath: item.relativePath
+      })),
+      currentIndex
+    );
   };
 
   const clearSelection = (): void => {
@@ -638,7 +642,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
     if (target instanceof Element && target.closest("#photo-info-close")) {
       return;
     }
-    openSelectedPhotoInNewWindow();
+    openSelectedPhotoInLightbox();
   });
 
   panel.addEventListener("keydown", (event) => {
@@ -646,7 +650,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
       return;
     }
     event.preventDefault();
-    openSelectedPhotoInNewWindow();
+    openSelectedPhotoInLightbox();
   });
 
   panelImage.addEventListener("load", () => {
@@ -747,6 +751,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
 
   window.addEventListener("beforeunload", () => {
     clearPanelObjectUrl();
+    lightbox.destroy();
     overlapGuard.destroy();
   });
 

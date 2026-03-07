@@ -107,3 +107,4 @@
 - 2026-03-06 | reviewer: team | 공통 `index.html` 기반 구조로 정리하기 위해 미사용 레거시 `templates/photo2map.html`과 `frontend/src/photo-map.ts` 및 Vite `photoMap` 입력을 제거 | 다음 액션: 빌드 산출물에서 불필요 `photoMap` 번들 재생성 여부를 주기 점검
 - 2026-03-07 | reviewer: team | 웹 방문 이벤트 수집을 Referrer/UTM/디바이스·브라우저 컨텍스트까지 확장하고 `/admin/stats/web` breakdown(유입/채널/디바이스/브라우저/페이지) 집계를 추가 | 다음 액션: 로그 보존·파기 자동화 정책(RISK-008) 설계 및 운영 반출 통제 점검
 - 2026-03-07 | reviewer: team | `web_visit_event`를 ALTER TABLE 기반 idempotent 보강 패턴으로 정리하고, referrer 원문 미저장 + 채널 분류 규칙 + 운영 점검 항목(길이 제한/증가 추이)을 문서화 | 다음 액션: RISK-008 완료를 위해 자동 파기 주기와 실행 스크립트 확정
+- 2026-03-07 | reviewer: team | 사진 미리보기 패널 클릭 동작을 새창 열기에서 Viewer.js 라이트박스로 교체하고 `/photo2map`·`/file2map`·`/siyu` 공통 경로로 통합 | 다음 액션: 모바일 터치 제스처/메모리 사용량 회귀 모니터링
