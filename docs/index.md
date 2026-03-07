@@ -49,6 +49,8 @@
 - 베이스맵: VWorld WMTS (`VWORLD_WMTS_KEY`), 기본 배경은 영상 지도(Satellite)이며 헤더 메뉴 `배경지도`에서 `일반지도/백지도/영상지도/하이브리드` 실제 전환 지원 (`White -> white` 매핑, White 최대 줌 18)
 - 관리자 통계: `totalLands` + 이벤트 통계(경계선 실패 재조회 기능 제거)
 - 웹 관측 확장: `/api/web-events`가 referrer/UTM/디바이스·브라우저 컨텍스트를 수집하고 `/admin/stats/web` breakdown으로 조회
+- 개인정보 최소화: referrer는 원문 URL을 저장하지 않고 `domain/path`만 저장(query/fragment 제거)
+- 채널 집계: `utm_medium` 우선, 미존재 시 `direct/organic/referral` 규칙으로 `channelBreakdown` 제공(기존 summary/dailyTrend는 유지)
 
 ## 기능 변경 시 동시 갱신 대상
 - 구조/흐름 변경: `docs/architecture.md`

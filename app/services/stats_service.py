@@ -99,6 +99,14 @@ def _is_bot_user_agent(user_agent: str) -> bool:
     return web_stats_service.is_bot_user_agent(user_agent)
 
 
+def parse_referrer_context(raw: Any) -> tuple[str | None, str | None]:
+    return web_stats_service.parse_referrer_context(raw)
+
+
+def derive_traffic_channel(*, utm_medium: str | None, referrer_domain: str | None) -> str:
+    return web_stats_service.derive_traffic_channel(utm_medium=utm_medium, referrer_domain=referrer_domain)
+
+
 def _serialize_raw_payload(payload: dict[str, Any]) -> str:
     return map_event_service.serialize_raw_payload(payload)
 

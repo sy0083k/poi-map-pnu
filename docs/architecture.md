@@ -47,9 +47,15 @@
 
 ## 웹 이벤트 수집(`POST /api/web-events`)
 - 필수: `eventType`, `anonId`, `sessionId`, `pagePath`, `clientTs`, `clientTz`
-- 선택: `pageQuery`, `referrerUrl`, `referrerDomain`, `utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`, `clientLang`, `platform`, `screenWidth`, `screenHeight`, `viewportWidth`, `viewportHeight`
-- 서버 파생: `user_agent`, `is_bot`, `browser_family`, `device_type`, `os_family`
+- 선택: `pageQuery`, `referrerUrl`, `utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`, `clientLang`, `platform`, `screenWidth`, `screenHeight`, `viewportWidth`, `viewportHeight`
+- 서버 파생: `user_agent`, `is_bot`, `browser_family`, `device_type`, `os_family`, `referrer_domain`, `referrer_path`, `traffic_channel`
 - `pagePath` 허용: `/`, `/siyu`, `/file2map`, `/photo2map`, `/readme`
+- 개인정보 최소화: `referrerUrl` 원문은 저장하지 않고, 서버에서 `domain/path`만 파생 저장하며 query/fragment는 버린다.
+- 채널 분류 규칙:
+  - `utm_medium` 존재 시 우선 분류(`paid`/`email`/`social`, 그 외 `campaign`)
+  - `utm_medium` 부재 + referrer 없음: `direct`
+  - `utm_medium` 부재 + 검색엔진 referrer: `organic`
+  - 그 외: `referral`
 
 ## 지도 데이터 흐름
 1. 클라이언트가 `/api/config`로 지도 설정을 조회한다.

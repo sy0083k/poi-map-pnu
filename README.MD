@@ -179,7 +179,9 @@ uvicorn app.main:app --reload
 - `POST /api/events`
 - `POST /api/web-events`
   - 필수 필드: `eventType`, `anonId`, `sessionId`, `pagePath`, `clientTs`, `clientTz`
-  - 선택 필드: `pageQuery`, `referrerUrl/referrerDomain`, `utm*`, `clientLang`, `platform`, `screen*/viewport*`
+  - 선택 필드: `pageQuery`, `referrerUrl`, `utm*`, `clientLang`, `platform`, `screen*/viewport*`
+  - 저장 정책: `referrerUrl` 원문은 저장하지 않고 `referrer_domain`/`referrer_path`(query/fragment 제거)만 저장
+  - 채널 규칙: `utm_medium` 우선(`paid`/`email`/`social`/`campaign`), 없으면 `direct`/`organic`/`referral`
   - `pagePath` 허용: `/`, `/siyu`, `/file2map`, `/photo2map`, `/readme`
 
 ### 버전 경로 (`/api/v1`)
@@ -198,7 +200,8 @@ uvicorn app.main:app --reload
 - `POST /admin/password`
 - `GET /admin/stats`
 - `GET /admin/stats/web`
-  - 요약/추세 외 breakdown: `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`
+  - 요약/추세 외 breakdown: `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`, `channelBreakdown`
+  - 기존 `summary`/`dailyTrend` 계약은 유지하고 breakdown 필드만 확장(additive)한다.
 - `GET /admin/raw-queries/export`
 
 ### 상태 점검

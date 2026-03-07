@@ -1,6 +1,56 @@
 import sqlite3
 from typing import Sequence
 
+WEB_VISIT_EXT_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("referrer_domain", "TEXT"),
+    ("referrer_path", "TEXT"),
+    ("utm_source", "TEXT"),
+    ("utm_medium", "TEXT"),
+    ("utm_campaign", "TEXT"),
+    ("utm_term", "TEXT"),
+    ("utm_content", "TEXT"),
+    ("page_query", "TEXT"),
+    ("client_lang", "TEXT"),
+    ("platform", "TEXT"),
+    ("screen_width", "INTEGER"),
+    ("screen_height", "INTEGER"),
+    ("viewport_width", "INTEGER"),
+    ("viewport_height", "INTEGER"),
+    ("browser_family", "TEXT"),
+    ("device_type", "TEXT"),
+    ("os_family", "TEXT"),
+    ("traffic_channel", "TEXT"),
+)
+
+WEB_VISIT_INSERT_COLUMNS: tuple[str, ...] = (
+    "anon_id",
+    "session_id",
+    "event_type",
+    "page_path",
+    "occurred_at",
+    "client_tz",
+    "user_agent",
+    "is_bot",
+    "referrer_domain",
+    "referrer_path",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "page_query",
+    "client_lang",
+    "platform",
+    "screen_width",
+    "screen_height",
+    "viewport_width",
+    "viewport_height",
+    "browser_family",
+    "device_type",
+    "os_family",
+    "traffic_channel",
+)
+
 
 def init_web_visit_schema(conn: sqlite3.Connection) -> None:
     cursor = conn.cursor()
@@ -16,8 +66,8 @@ def init_web_visit_schema(conn: sqlite3.Connection) -> None:
             client_tz TEXT,
             user_agent TEXT,
             is_bot INTEGER NOT NULL DEFAULT 0,
-            referrer_url TEXT,
             referrer_domain TEXT,
+            referrer_path TEXT,
             utm_source TEXT,
             utm_medium TEXT,
             utm_campaign TEXT,
@@ -32,7 +82,8 @@ def init_web_visit_schema(conn: sqlite3.Connection) -> None:
             viewport_height INTEGER,
             browser_family TEXT,
             device_type TEXT,
-            os_family TEXT
+            os_family TEXT,
+            traffic_channel TEXT
         )
         """
     )
@@ -75,6 +126,12 @@ def init_web_visit_schema(conn: sqlite3.Connection) -> None:
     )
     cursor.execute(
         """
+        CREATE INDEX IF NOT EXISTS idx_web_visit_channel_occurred
+            ON web_visit_event (traffic_channel, occurred_at)
+        """
+    )
+    cursor.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_web_visit_device_browser_occurred
             ON web_visit_event (device_type, browser_family, occurred_at)
         """
@@ -92,8 +149,8 @@ def insert_web_visit_event(
     client_tz: str | None,
     user_agent: str | None,
     is_bot: bool,
-    referrer_url: str | None = None,
     referrer_domain: str | None = None,
+    referrer_path: str | None = None,
     utm_source: str | None = None,
     utm_medium: str | None = None,
     utm_campaign: str | None = None,
@@ -109,17 +166,13 @@ def insert_web_visit_event(
     browser_family: str | None = None,
     device_type: str | None = None,
     os_family: str | None = None,
+    traffic_channel: str | None = None,
 ) -> None:
     cursor = conn.cursor()
+    placeholders = ", ".join(["?"] * len(WEB_VISIT_INSERT_COLUMNS))
+    insert_columns = ", ".join(WEB_VISIT_INSERT_COLUMNS)
     cursor.execute(
-        """
-        INSERT INTO web_visit_event (
-            anon_id, session_id, event_type, page_path, occurred_at, client_tz, user_agent, is_bot,
-            referrer_url, referrer_domain, utm_source, utm_medium, utm_campaign, utm_term, utm_content,
-            page_query, client_lang, platform, screen_width, screen_height, viewport_width, viewport_height,
-            browser_family, device_type, os_family
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
+        f"INSERT INTO web_visit_event ({insert_columns}) VALUES ({placeholders})",
         (
             anon_id,
             session_id,
@@ -129,8 +182,8 @@ def insert_web_visit_event(
             client_tz,
             user_agent,
             1 if is_bot else 0,
-            referrer_url,
             referrer_domain,
+            referrer_path,
             utm_source,
             utm_medium,
             utm_campaign,
@@ -146,6 +199,7 @@ def insert_web_visit_event(
             browser_family,
             device_type,
             os_family,
+            traffic_channel,
         ),
     )
 
@@ -403,30 +457,28 @@ def fetch_web_top_page_paths(
     return cursor.fetchall()
 
 
+def fetch_web_channel_breakdown(
+    conn: sqlite3.Connection, *, since_utc: str
+) -> Sequence[sqlite3.Row]:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT COALESCE(NULLIF(traffic_channel, ''), 'unknown') AS key, COUNT(*) AS count
+          FROM web_visit_event
+         WHERE is_bot = 0
+           AND occurred_at >= ?
+         GROUP BY COALESCE(NULLIF(traffic_channel, ''), 'unknown')
+         ORDER BY count DESC, key ASC
+        """,
+        (since_utc,),
+    )
+    return cursor.fetchall()
+
+
 def _ensure_web_visit_columns(conn: sqlite3.Connection) -> None:
     cursor = conn.cursor()
     columns = cursor.execute("PRAGMA table_info(web_visit_event)").fetchall()
     column_names = {str(row[1]) for row in columns}
-
-    target_columns: list[tuple[str, str]] = [
-        ("referrer_url", "TEXT"),
-        ("referrer_domain", "TEXT"),
-        ("utm_source", "TEXT"),
-        ("utm_medium", "TEXT"),
-        ("utm_campaign", "TEXT"),
-        ("utm_term", "TEXT"),
-        ("utm_content", "TEXT"),
-        ("page_query", "TEXT"),
-        ("client_lang", "TEXT"),
-        ("platform", "TEXT"),
-        ("screen_width", "INTEGER"),
-        ("screen_height", "INTEGER"),
-        ("viewport_width", "INTEGER"),
-        ("viewport_height", "INTEGER"),
-        ("browser_family", "TEXT"),
-        ("device_type", "TEXT"),
-        ("os_family", "TEXT"),
-    ]
-    for name, sql_type in target_columns:
+    for name, sql_type in WEB_VISIT_EXT_COLUMNS:
         if name not in column_names:
             cursor.execute(f"ALTER TABLE web_visit_event ADD COLUMN {name} {sql_type}")

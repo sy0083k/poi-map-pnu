@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request
 
@@ -43,6 +44,10 @@ OS_SIGNATURES: tuple[tuple[str, str], ...] = (
     ("mac os x", "macos"),
     ("linux", "linux"),
 )
+SEARCH_ENGINE_DOMAINS = ("google.", "bing.", "yahoo.", "naver.", "daum.", "duckduckgo.", "baidu.", "yandex.")
+PAID_MEDIUM_TOKENS = ("cpc", "ppc", "paid", "display", "banner")
+EMAIL_MEDIUM_TOKENS = ("email", "newsletter")
+SOCIAL_MEDIUM_TOKENS = ("social", "sns")
 
 
 def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
@@ -59,8 +64,7 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
 
     client_tz = normalize_optional_string(payload.get("clientTz"), max_length=64)
     occurred_at = parse_client_ts(payload.get("clientTs"))
-    referrer_url = normalize_optional_string(payload.get("referrerUrl"), max_length=512)
-    referrer_domain = normalize_optional_string(payload.get("referrerDomain"), max_length=128)
+    referrer_domain, referrer_path = parse_referrer_context(payload.get("referrerUrl"))
     utm_source = normalize_optional_string(payload.get("utmSource"), max_length=128)
     utm_medium = normalize_optional_string(payload.get("utmMedium"), max_length=128)
     utm_campaign = normalize_optional_string(payload.get("utmCampaign"), max_length=128)
@@ -79,6 +83,9 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
         user_agent or "", viewport_width=viewport_width, viewport_height=viewport_height, is_bot=is_bot
     )
     os_family = parse_os_family(user_agent or "")
+    traffic_channel = derive_traffic_channel(
+        utm_medium=utm_medium, referrer_domain=referrer_domain
+    )
 
     with db_connection() as conn:
         web_visit_repository.insert_web_visit_event(
@@ -91,8 +98,8 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
             client_tz=client_tz,
             user_agent=user_agent,
             is_bot=is_bot,
-            referrer_url=referrer_url,
             referrer_domain=referrer_domain,
+            referrer_path=referrer_path,
             utm_source=utm_source,
             utm_medium=utm_medium,
             utm_campaign=utm_campaign,
@@ -108,6 +115,7 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
             browser_family=browser_family,
             device_type=device_type,
             os_family=os_family,
+            traffic_channel=traffic_channel,
         )
         conn.commit()
 
@@ -158,6 +166,9 @@ def get_web_stats(days: int = WEB_STATS_DAYS_DEFAULT) -> dict[str, Any]:
         top_page_paths = web_visit_repository.fetch_web_top_page_paths(
             conn, since_utc=since_utc, limit=TOP_BREAKDOWN_LIMIT
         )
+        channel_breakdown = web_visit_repository.fetch_web_channel_breakdown(
+            conn, since_utc=since_utc
+        )
 
     session_count = 0
     durations_total_seconds = 0
@@ -207,6 +218,7 @@ def get_web_stats(days: int = WEB_STATS_DAYS_DEFAULT) -> dict[str, Any]:
         "deviceBreakdown": to_breakdown(device_breakdown),
         "browserBreakdown": to_breakdown(browser_breakdown),
         "topPagePaths": to_breakdown(top_page_paths),
+        "channelBreakdown": to_breakdown(channel_breakdown),
     }
 
 
@@ -300,3 +312,34 @@ def parse_device_type(user_agent: str, *, viewport_width: int | None, viewport_h
 
 def to_breakdown(rows: list[Any] | Any) -> list[dict[str, Any]]:
     return [{"key": str(row["key"]), "count": int(row["count"])} for row in rows]
+
+
+def parse_referrer_context(raw: Any) -> tuple[str | None, str | None]:
+    value = normalize_optional_string(raw, max_length=512)
+    if not value:
+        return None, None
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return None, None
+    host = normalize_optional_string(parsed.hostname, max_length=128)
+    path = normalize_optional_string(parsed.path, max_length=256)
+    return host, path
+
+
+def derive_traffic_channel(*, utm_medium: str | None, referrer_domain: str | None) -> str:
+    if utm_medium:
+        medium = utm_medium.lower()
+        if any(token in medium for token in PAID_MEDIUM_TOKENS):
+            return "paid"
+        if any(token in medium for token in EMAIL_MEDIUM_TOKENS):
+            return "email"
+        if any(token in medium for token in SOCIAL_MEDIUM_TOKENS):
+            return "social"
+        return "campaign"
+    if not referrer_domain:
+        return "direct"
+    lowered = referrer_domain.lower()
+    if any(domain in lowered for domain in SEARCH_ENGINE_DOMAINS):
+        return "organic"
+    return "referral"
