@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-06
+최종 수정일: 2026-03-07
 
 ## 환경 변수
 ### 필수
@@ -59,6 +59,7 @@
 - 데스크톱에서 `#map-status`가 지도 좌상단 줌(확대/축소) UI를 가리지 않는지 점검
 - `#map-status`의 `X` 버튼으로 상태창을 닫은 뒤, 다음 상태 갱신 시 자동으로 다시 표시되는지 점검
 - 관리자 업로드에서 `시유지(/admin/upload/city)` 업로드 및 성공 메시지 점검
+- 관리자 로그아웃 버튼이 `POST /logout` + CSRF 토큰으로 동작하는지 점검
 - 구 테이블 정리가 필요할 때 `python scripts/remove_legacy_national_table.py --dry-run`으로 존재 여부를 확인하고 삭제 실행 여부를 점검
 - `/api/lands`, `/api/lands/list` 호출 시 `theme=city_owned` 정상 응답, `theme=national_public` 400 응답 여부 점검
 - 상단 헤더 메뉴 사이 짧은 구분 바 표시 여부 점검

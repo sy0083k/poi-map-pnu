@@ -1,5 +1,6 @@
 import io
 import json
+import re
 from base64 import b64encode
 
 import httpx
@@ -111,10 +112,20 @@ async def test_logout_cookie_secure_matches_session_https_setting(app_env: dict[
         app_main = importlib.reload(app_main)
         transport = httpx.ASGITransport(app=app_main.app, client=("127.0.0.1", 50000))
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            res = await client.get("/logout")
+            login_page = await client.get("/admin/login")
+            assert login_page.status_code == 200
+            csrf = re.search(r'name="csrf_token" value="([^"]+)"', login_page.text)
+            assert csrf is not None
+            res = await client.post("/logout", data={"csrf_token": csrf.group(1)})
             cookie_header = res.headers.get("set-cookie", "")
             assert "Secure" not in cookie_header
             assert "poi_map_pnu_session=" in cookie_header
+
+
+@pytest.mark.anyio
+async def test_logout_rejects_missing_csrf(async_client: httpx.AsyncClient) -> None:
+    res = await async_client.post("/logout", data={"csrf_token": ""})
+    assert res.status_code == 403
 
 
 @pytest.mark.anyio

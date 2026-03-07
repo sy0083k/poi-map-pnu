@@ -29,7 +29,7 @@ async def test_root_page_starts_with_hidden_info_panel(async_client: httpx.Async
     assert "시유재산" not in res.text
     assert "공유재산(시·도)" not in res.text
     assert "시+도유지" not in res.text
-    assert ">검색 결과 다운로드<" in res.text
+    assert ">필터 결과 다운로드<" in res.text
     assert ">전체 목록 다운로드<" not in res.text
     assert res.text.count(">재산관리관 (예: 회계과)<") >= 2
     assert res.text.count(">재산용도<") >= 2

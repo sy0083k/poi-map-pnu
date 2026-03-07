@@ -188,7 +188,7 @@ uvicorn app.main:app --reload
 ### 관리자/인증
 - `GET /admin/login`
 - `POST /login` (`POST /admin/login` alias 지원)
-- `GET /logout`
+- `POST /logout`
 - `GET /admin`
 - `POST /admin/upload/city`
 - `POST /admin/settings`

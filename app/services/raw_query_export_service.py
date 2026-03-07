@@ -11,6 +11,7 @@ from app.repositories import event_repository
 
 EVENT_TYPE_SEARCH = "search"
 EVENT_TYPE_LAND_CLICK = "land_click"
+FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
 def export_raw_query_csv(
@@ -60,20 +61,27 @@ def export_raw_query_csv(
         writer.writerow(
             [
                 int(row["id"]),
-                str(row["created_at"] or ""),
-                str(row["event_type"] or ""),
-                str(row["anon_id"] or ""),
-                str(row["raw_region_query"] or ""),
-                str(row["raw_min_area_input"] or ""),
-                str(row["raw_max_area_input"] or ""),
-                str(row["raw_rent_only_input"] or ""),
-                str(row["raw_land_id_input"] or ""),
-                str(row["raw_land_address_input"] or ""),
-                str(row["raw_click_source_input"] or ""),
-                str(row["raw_payload_json"] or ""),
+                _escape_csv_cell(str(row["created_at"] or "")),
+                _escape_csv_cell(str(row["event_type"] or "")),
+                _escape_csv_cell(str(row["anon_id"] or "")),
+                _escape_csv_cell(str(row["raw_region_query"] or "")),
+                _escape_csv_cell(str(row["raw_min_area_input"] or "")),
+                _escape_csv_cell(str(row["raw_max_area_input"] or "")),
+                _escape_csv_cell(str(row["raw_rent_only_input"] or "")),
+                _escape_csv_cell(str(row["raw_land_id_input"] or "")),
+                _escape_csv_cell(str(row["raw_land_address_input"] or "")),
+                _escape_csv_cell(str(row["raw_click_source_input"] or "")),
+                _escape_csv_cell(str(row["raw_payload_json"] or "")),
             ]
         )
     return output.getvalue()
+
+
+def _escape_csv_cell(value: str) -> str:
+    trimmed = value.lstrip()
+    if trimmed and trimmed[0] in FORMULA_PREFIXES:
+        return f"'{value}"
+    return value
 
 
 def parse_date_start(raw: str | None) -> str | None:
