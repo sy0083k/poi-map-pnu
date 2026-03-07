@@ -22,6 +22,16 @@ def test_stats_service_web_bot_detection() -> None:
     assert stats_service._is_bot_user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)") is False
 
 
+def test_stats_service_referrer_and_channel_rules() -> None:
+    domain, path = stats_service.parse_referrer_context("https://example.com/a/b?x=1#frag")
+    assert domain == "example.com"
+    assert path == "/a/b"
+    assert stats_service.derive_traffic_channel(utm_medium="cpc", referrer_domain="example.com") == "paid"
+    assert stats_service.derive_traffic_channel(utm_medium=None, referrer_domain=None) == "direct"
+    assert stats_service.derive_traffic_channel(utm_medium=None, referrer_domain="www.google.com") == "organic"
+    assert stats_service.derive_traffic_channel(utm_medium=None, referrer_domain="example.com") == "referral"
+
+
 def test_stats_service_get_web_stats(db_path: object) -> None:
     with db_connection() as conn:
         init_test_db(conn)
@@ -82,6 +92,7 @@ def test_stats_service_get_web_stats(db_path: object) -> None:
     assert "deviceBreakdown" in result
     assert "browserBreakdown" in result
     assert "topPagePaths" in result
+    assert "channelBreakdown" in result
 
 
 def test_stats_service_get_land_stats(db_path: object) -> None:

@@ -53,10 +53,12 @@ def test_web_visit_repository_breakdowns(db_path: object) -> None:
             user_agent="Mozilla/5.0",
             is_bot=False,
             referrer_domain="example.com",
+            referrer_path="/landing",
             utm_source="naver",
             utm_campaign="spring",
             browser_family="chrome",
             device_type="desktop",
+            traffic_channel="campaign",
         )
         conn.commit()
 
@@ -71,6 +73,9 @@ def test_web_visit_repository_breakdowns(db_path: object) -> None:
         paths = web_visit_repository.fetch_web_top_page_paths(
             conn, since_utc="2026-02-19 00:00:00", limit=10
         )
+        channels = web_visit_repository.fetch_web_channel_breakdown(
+            conn, since_utc="2026-02-19 00:00:00"
+        )
 
         assert len(referrers) == 1
         assert str(referrers[0]["key"]) == "example.com"
@@ -82,3 +87,5 @@ def test_web_visit_repository_breakdowns(db_path: object) -> None:
         assert str(devices[0]["key"]) == "desktop"
         assert len(paths) == 1
         assert str(paths[0]["key"]) == "/siyu"
+        assert len(channels) == 1
+        assert str(channels[0]["key"]) == "campaign"

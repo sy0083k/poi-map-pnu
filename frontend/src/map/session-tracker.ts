@@ -67,17 +67,12 @@ function getPageQuery(): string | undefined {
   return normalizeOptional(window.location.search || "", 512);
 }
 
-function getReferrerContext(): { referrerUrl?: string; referrerDomain?: string } {
+function getReferrerContext(): { referrerUrl?: string } {
   const referrerUrl = normalizeOptional(document.referrer || "", 512);
   if (!referrerUrl) {
     return {};
   }
-  try {
-    const parsed = new URL(referrerUrl);
-    return { referrerUrl, referrerDomain: normalizeOptional(parsed.hostname, 128) };
-  } catch {
-    return { referrerUrl };
-  }
+  return { referrerUrl };
 }
 
 function getUTMContext(): UTMContext {

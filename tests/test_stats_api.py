@@ -134,7 +134,6 @@ async def test_web_event_and_web_stats_flow(async_client: httpx.AsyncClient, db_
             "clientTs": 1763596800,
             "clientTz": "Asia/Seoul",
             "referrerUrl": "https://example.com/campaign?utm_source=naver",
-            "referrerDomain": "example.com",
             "utmSource": "naver",
             "utmMedium": "cpc",
             "utmCampaign": "spring",
@@ -177,6 +176,7 @@ async def test_web_event_and_web_stats_flow(async_client: httpx.AsyncClient, db_
     assert "deviceBreakdown" in payload
     assert "browserBreakdown" in payload
     assert "topPagePaths" in payload
+    assert "channelBreakdown" in payload
 
 
 @pytest.mark.anyio

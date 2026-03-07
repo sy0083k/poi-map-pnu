@@ -63,7 +63,8 @@
 - 구 테이블 정리가 필요할 때 `python scripts/remove_legacy_national_table.py --dry-run`으로 존재 여부를 확인하고 삭제 실행 여부를 점검
 - `/api/lands`, `/api/lands/list` 호출 시 `theme=city_owned` 정상 응답, `theme=national_public` 400 응답 여부 점검
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검
-- `/admin/stats/web`에 `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`가 정상 집계되는지 점검
+- `/admin/stats/web`에 `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`, `channelBreakdown`가 정상 집계되는지 점검
+- `referrerUrl` 원문이 DB에 저장되지 않고(`referrer_domain`/`referrer_path`만 저장), `referrer_path`에 query/fragment가 포함되지 않는지 점검
 - 상단 헤더 메뉴 사이 짧은 구분 바 표시 여부 점검
 - 데스크톱에서 상단 헤더 메뉴의 시작 x좌표가 사이드바 끝점 고정 오프셋(`--topbar-menu-anchor-x`)으로 유지되는지 점검
 - `시작` 클릭 시 새 창이 아닌 같은 창 `/readme`로 전환되고 글로벌 헤더가 유지되는지 점검
@@ -76,6 +77,12 @@
 - 데스크톱 핸들의 접기/펼치기 방향 힌트(`>`/`<`)가 상태에 맞게 바뀌는지 점검
 - DB 파일 권한 및 백업 점검
 - 로그/통계 테이블 증가 추이 점검
+
+## 웹 로그 보존/정리 정책
+- 저장 최소화: `referrerUrl` 원문 미저장, `referrer_domain`/`referrer_path`만 저장(query/fragment 제거).
+- 길이 제한: 서버 정규화 기준(`page_query<=512`, `referrer_domain<=128`, `referrer_path<=256`, `utm_*<=128`, `client_lang<=32`, `platform<=64`)을 유지한다.
+- 저장량 관리: 인덱스는 운영 통계 질의에 필요한 최소 집합만 유지한다.
+- 보존/파기: `RISK-008` 완료 전까지 운영자가 주기적으로 `web_visit_event` 적재량을 점검하고, 파기 자동화 도입 시 본 문서에 절차/주기/롤백 방법을 갱신한다.
 
 ## 하이라이트 초기 지연 대응 (2026-03-06)
 ### 적용 사항

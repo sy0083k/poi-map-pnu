@@ -92,7 +92,6 @@ export type WebVisitEventPayload = {
   clientTs: number;
   clientTz: string;
   referrerUrl?: string;
-  referrerDomain?: string;
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
