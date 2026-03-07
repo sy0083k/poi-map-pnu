@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-06
+최종 수정일: 2026-03-07
 
 ## 시스템 개요
 관심 필지 지도는 FastAPI + SQLite + Vite/OpenLayers 기반 애플리케이션이다.
@@ -36,7 +36,7 @@
 ## 관리자/인증 엔드포인트
 - `GET /admin/login`
 - `POST /login` (`POST /admin/login` alias)
-- `GET /logout`
+- `POST /logout`
 - `GET /admin`
 - `POST /admin/upload/city`
 - `POST /admin/settings`
@@ -44,6 +44,12 @@
 - `GET /admin/stats`
 - `GET /admin/stats/web`
 - `GET /admin/raw-queries/export`
+
+## 웹 이벤트 수집(`POST /api/web-events`)
+- 필수: `eventType`, `anonId`, `sessionId`, `pagePath`, `clientTs`, `clientTz`
+- 선택: `pageQuery`, `referrerUrl`, `referrerDomain`, `utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`, `clientLang`, `platform`, `screenWidth`, `screenHeight`, `viewportWidth`, `viewportHeight`
+- 서버 파생: `user_agent`, `is_bot`, `browser_family`, `device_type`, `os_family`
+- `pagePath` 허용: `/`, `/siyu`, `/file2map`, `/photo2map`, `/readme`
 
 ## 지도 데이터 흐름
 1. 클라이언트가 `/api/config`로 지도 설정을 조회한다.

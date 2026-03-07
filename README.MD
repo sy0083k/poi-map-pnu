@@ -178,6 +178,9 @@ uvicorn app.main:app --reload
   - 응답: 검색 결과 토지의 원본 업로드 컬럼 전체 속성 Excel(`.xlsx`)
 - `POST /api/events`
 - `POST /api/web-events`
+  - 필수 필드: `eventType`, `anonId`, `sessionId`, `pagePath`, `clientTs`, `clientTz`
+  - 선택 필드: `pageQuery`, `referrerUrl/referrerDomain`, `utm*`, `clientLang`, `platform`, `screen*/viewport*`
+  - `pagePath` 허용: `/`, `/siyu`, `/file2map`, `/photo2map`, `/readme`
 
 ### 버전 경로 (`/api/v1`)
 - `/api/v1/*`는 현재 **유지 중인 호환성(alias) 경로**입니다.
@@ -195,6 +198,7 @@ uvicorn app.main:app --reload
 - `POST /admin/password`
 - `GET /admin/stats`
 - `GET /admin/stats/web`
+  - 요약/추세 외 breakdown: `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`
 - `GET /admin/raw-queries/export`
 
 ### 상태 점검

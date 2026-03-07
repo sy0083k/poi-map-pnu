@@ -5,7 +5,14 @@ const WEB_LAST_SEEN_COOKIE_NAME = "web_last_seen_ts";
 const WEB_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24;
 const WEB_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const WEB_HEARTBEAT_INTERVAL_MS = 15000;
-const WEB_TRACK_PATH = "/";
+
+type UTMContext = {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+};
 
 type SessionTrackerDeps = {
   getOrCreateAnonId: () => string;
@@ -40,6 +47,73 @@ function getClientTz(): string {
   return tz || "UTC";
 }
 
+function normalizeOptional(value: string | null, maxLength: number): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.slice(0, maxLength);
+}
+
+function getPagePath(): string {
+  const pathname = window.location.pathname || "/";
+  return pathname.startsWith("/") ? pathname.slice(0, 256) : `/${pathname.slice(0, 255)}`;
+}
+
+function getPageQuery(): string | undefined {
+  return normalizeOptional(window.location.search || "", 512);
+}
+
+function getReferrerContext(): { referrerUrl?: string; referrerDomain?: string } {
+  const referrerUrl = normalizeOptional(document.referrer || "", 512);
+  if (!referrerUrl) {
+    return {};
+  }
+  try {
+    const parsed = new URL(referrerUrl);
+    return { referrerUrl, referrerDomain: normalizeOptional(parsed.hostname, 128) };
+  } catch {
+    return { referrerUrl };
+  }
+}
+
+function getUTMContext(): UTMContext {
+  const search = window.location.search || "";
+  if (!search) {
+    return {};
+  }
+  const params = new URLSearchParams(search);
+  return {
+    utmSource: normalizeOptional(params.get("utm_source"), 128),
+    utmMedium: normalizeOptional(params.get("utm_medium"), 128),
+    utmCampaign: normalizeOptional(params.get("utm_campaign"), 128),
+    utmTerm: normalizeOptional(params.get("utm_term"), 128),
+    utmContent: normalizeOptional(params.get("utm_content"), 128)
+  };
+}
+
+function getClientContext(): {
+  clientLang?: string;
+  platform?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+} {
+  const nav = window.navigator;
+  return {
+    clientLang: normalizeOptional(nav.language || null, 32),
+    platform: normalizeOptional(nav.platform || null, 64),
+    screenWidth: Number.isFinite(window.screen.width) ? window.screen.width : undefined,
+    screenHeight: Number.isFinite(window.screen.height) ? window.screen.height : undefined,
+    viewportWidth: Number.isFinite(window.innerWidth) ? window.innerWidth : undefined,
+    viewportHeight: Number.isFinite(window.innerHeight) ? window.innerHeight : undefined
+  };
+}
+
 function getOrCreateWebSessionId(nowMs: number): { sessionId: string; isNew: boolean } {
   const existingSessionId = getCookie(WEB_SESSION_ID_COOKIE_NAME);
   const existingLastSeenRaw = getCookie(WEB_LAST_SEEN_COOKIE_NAME);
@@ -67,13 +141,22 @@ export function createSessionTracker(deps: SessionTrackerDeps) {
     nowSeconds: number,
     clientTz: string
   ): Promise<void> => {
+    const pagePath = getPagePath();
+    const pageQuery = getPageQuery();
+    const referrer = getReferrerContext();
+    const utm = getUTMContext();
+    const client = getClientContext();
     await deps.postWebEvent({
       eventType,
       anonId,
       sessionId,
-      pagePath: WEB_TRACK_PATH,
+      pagePath,
+      pageQuery,
       clientTs: nowSeconds,
-      clientTz
+      clientTz,
+      ...referrer,
+      ...utm,
+      ...client
     });
   };
 

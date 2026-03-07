@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-23  
-최종 수정일: 2026-03-06  
+최종 수정일: 2026-03-07  
 운영 주기: 매주 1회 (월요일 기준)
 
 ## 목적
@@ -34,6 +34,7 @@
 | RISK-005 | P1 | 프런트 전체 데이터 선적재로 인한 확장성 한계 | doing | team | 2026-03-12 | 데이터 증가 시 초기 로딩 시간/브라우저 메모리 사용을 제어하는 점진 로딩 전략이 수립된다. | 관련: `frontend/src/map/lands-list-client.ts`, `frontend/src/map.ts` / 2026-03-06: `map.ts`/`admin.ts` 책임 분리 리팩터링 착수 |
 | RISK-006 | P1 | 루트 pytest 수집 충돌(복제본 tests 중복) | done | team | 2026-03-02 | 루트 `pytest -q`가 `tests/`만 수집하고 `IdlePublicProperty/`와의 `conftest` 충돌 없이 통과한다. | 관련: `pyproject.toml` (`testpaths`, `norecursedirs`) |
 | RISK-007 | P1 | 관리자 세션 쿠키 앱 간 교차 인식 | done | team | 2026-03-02 | 세션 쿠키명/네임스페이스 분리와 인증 검증 강화로 동일 도메인 다중 앱 간 세션 재사용이 차단된다. | 관련: `app/main.py`, `app/dependencies.py`, `app/services/auth_service.py` |
+| RISK-008 | P1 | 확장 웹 로그(Referrer/UTM/디바이스) 보존·파기 정책 미정 | todo | unassigned | 2026-03-14 | 수집 필드별 보존 기간/파기 절차/반출 통제 정책이 문서화되고 운영 점검 항목에 반영된다. | 관련: `app/services/web_stats_service.py`, `app/repositories/web_visit_repository.py`, `docs/maintenance.md` |
 
 ## 주간 리뷰 로그
 - 2026-02-23 | reviewer: team | 초기 백로그 문서 생성 및 5개 리스크 등록 | 다음 액션: RISK-001, RISK-002 우선 설계안 작성
@@ -104,3 +105,4 @@
 - 2026-03-06 | reviewer: team | 사용성 회귀 대응으로 라이트박스(모달 확대/휠 줌/드래그 팬)를 제거하고 미리보기 패널 클릭 시 새창 열기 동작으로 복구 | 다음 액션: 팝업 차단 브라우저 비율과 사용자 안내 문구 이해도(토스트) 모니터링
 - 2026-03-06 | reviewer: team | `/siyu`에서 상세 정보 패널과 선택 사진 패널 동시 노출 시 가림 현상을 막기 위해 `photo-panel-open` 기반 공통 높이 제한과 오버레이 초기화를 적용 | 다음 액션: 테마 전환(popstate/메뉴 전환) 반복 시 패널 상태/런타임 CSS 변수 정합성 회귀 점검
 - 2026-03-06 | reviewer: team | 공통 `index.html` 기반 구조로 정리하기 위해 미사용 레거시 `templates/photo2map.html`과 `frontend/src/photo-map.ts` 및 Vite `photoMap` 입력을 제거 | 다음 액션: 빌드 산출물에서 불필요 `photoMap` 번들 재생성 여부를 주기 점검
+- 2026-03-07 | reviewer: team | 웹 방문 이벤트 수집을 Referrer/UTM/디바이스·브라우저 컨텍스트까지 확장하고 `/admin/stats/web` breakdown(유입/채널/디바이스/브라우저/페이지) 집계를 추가 | 다음 액션: 로그 보존·파기 자동화 정책(RISK-008) 설계 및 운영 반출 통제 점검
