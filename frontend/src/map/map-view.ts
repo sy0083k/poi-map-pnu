@@ -225,6 +225,10 @@ export function createMapView(elements: MapViewElements) {
     });
   };
 
+  const resetInfoPanelScroll = (): void => {
+    elements.infoPanelContent.scrollTop = 0;
+  };
+
   const showInfoPanel = (): void => {
     elements.infoPanelElement.classList.remove("is-hidden");
   };
@@ -242,6 +246,7 @@ export function createMapView(elements: MapViewElements) {
 
     if (fields.length > 0) {
       renderInfoRows(fields);
+      resetInfoPanelScroll();
       isInfoPanelDismissedByUser = false;
       showInfoPanel();
       elements.infoPanelElement.classList.add("has-selection");
@@ -257,6 +262,7 @@ export function createMapView(elements: MapViewElements) {
     ].filter((item) => item.value !== "");
 
     renderInfoRows(fallback);
+    resetInfoPanelScroll();
     isInfoPanelDismissedByUser = false;
     showInfoPanel();
     elements.infoPanelElement.classList.add("has-selection");
@@ -443,6 +449,7 @@ export function createMapView(elements: MapViewElements) {
     empty.className = "land-info-empty";
     empty.textContent = "토지를 선택하면 상세 정보가 표시됩니다.";
     elements.infoPanelContent.appendChild(empty);
+    resetInfoPanelScroll();
     elements.infoPanelElement.classList.remove("has-selection");
     if (!isInfoPanelDismissedByUser) {
       showInfoPanel();

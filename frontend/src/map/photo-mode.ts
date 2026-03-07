@@ -237,6 +237,7 @@ export async function bootstrapPhotoMode(): Promise<void> {
       return;
     }
     landInfoContent.replaceChildren();
+    landInfoContent.scrollTop = 0;
     if (rows.length === 0) {
       const empty = document.createElement("div");
       empty.className = "land-info-empty";
