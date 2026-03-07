@@ -2,7 +2,7 @@ import logging
 import secrets
 
 import bcrypt
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.dependencies import get_or_create_csrf_token, validate_csrf_token
@@ -111,7 +111,10 @@ def login(request: Request, username: str, password: str, csrf_token: str) -> JS
     )
 
 
-def logout(request: Request) -> RedirectResponse:
+def logout(request: Request, *, csrf_token: str) -> RedirectResponse:
+    if not validate_csrf_token(request, csrf_token):
+        raise HTTPException(status_code=403, detail="CSRF 토큰 검증에 실패했습니다.")
+
     config = request.app.state.config
     request.session.clear()
     response = RedirectResponse(url="/admin/login", status_code=303)

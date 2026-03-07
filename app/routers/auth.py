@@ -37,6 +37,6 @@ async def login_admin_alias(
     return await login(request=request, username=username, password=password, csrf_token=csrf_token)
 
 
-@router.get("/logout")
-async def logout(request: Request) -> RedirectResponse:
-    return auth_service.logout(request)
+@router.post("/logout", dependencies=[Depends(check_internal_network)])
+async def logout(request: Request, csrf_token: str = Form(default="")) -> RedirectResponse:
+    return auth_service.logout(request, csrf_token=csrf_token)

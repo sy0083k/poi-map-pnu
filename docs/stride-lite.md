@@ -2,12 +2,12 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-06
+최종 수정일: 2026-03-07
 
 ## 범위
 - 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/lands`, `/api/lands/list`, `/api/events`, `/api/web-events`, `/api/v1/*`
 - 공개 페이지: `/siyu`, `/file2map`, `/photo2map`
-- 관리자 API: `/admin/*`, `/login`, `/logout`
+- 관리자 API: `/admin/*`, `/login`, `/logout`(POST)
 - 저장소: `data/database.db`, `data/*.fgb`
 - 클라이언트 저장소: 브라우저 IndexedDB(`/file2map` 로컬 업로드 데이터), 브라우저 메모리(`/photo2map` 로컬 사진 미리보기 blob URL)
 
@@ -42,6 +42,8 @@
 ### Elevation of Privilege
 - 위협: 관리자 경로 우회 접근
 - 통제: 내부망 + 세션 + CSRF
+- 위협: 교차 사이트 로그아웃 요청(CSRF)
+- 통제: `/logout`를 내부망 제한 + POST + CSRF 검증으로 운영
 
 ## 잔여 위험
 - 인메모리 레이트리밋은 멀티 인스턴스에서 일관성 한계
