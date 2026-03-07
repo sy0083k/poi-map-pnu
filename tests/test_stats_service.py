@@ -30,33 +30,45 @@ def test_stats_service_get_web_stats(db_path: object) -> None:
             anon_id="anon-a",
             session_id="session-a",
             event_type="visit_start",
-            page_path="/",
+            page_path="/siyu",
             occurred_at="2026-02-20 00:00:00",
             client_tz="Asia/Seoul",
             user_agent="Mozilla/5.0",
             is_bot=False,
+            referrer_domain="example.com",
+            utm_source="naver",
+            utm_campaign="spring",
+            browser_family="chrome",
+            device_type="desktop",
         )
         web_visit_repository.insert_web_visit_event(
             conn,
             anon_id="anon-a",
             session_id="session-a",
             event_type="heartbeat",
-            page_path="/",
+            page_path="/siyu",
             occurred_at="2026-02-20 00:05:00",
             client_tz="Asia/Seoul",
             user_agent="Mozilla/5.0",
             is_bot=False,
+            browser_family="chrome",
+            device_type="desktop",
         )
         web_visit_repository.insert_web_visit_event(
             conn,
             anon_id="anon-b",
             session_id="session-b",
             event_type="visit_start",
-            page_path="/",
+            page_path="/photo2map",
             occurred_at="2026-02-20 01:00:00",
             client_tz="Asia/Seoul",
             user_agent="Mozilla/5.0",
             is_bot=False,
+            referrer_domain="google.com",
+            utm_source="google",
+            utm_campaign="launch",
+            browser_family="safari",
+            device_type="mobile",
         )
         conn.commit()
 
@@ -64,6 +76,12 @@ def test_stats_service_get_web_stats(db_path: object) -> None:
     assert "summary" in result
     assert result["summary"]["totalVisitors"] >= 2
     assert result["summary"]["sessionCount"] >= 2
+    assert "topReferrers" in result
+    assert "topUtmSources" in result
+    assert "topUtmCampaigns" in result
+    assert "deviceBreakdown" in result
+    assert "browserBreakdown" in result
+    assert "topPagePaths" in result
 
 
 def test_stats_service_get_land_stats(db_path: object) -> None:

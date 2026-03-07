@@ -130,9 +130,22 @@ async def test_web_event_and_web_stats_flow(async_client: httpx.AsyncClient, db_
             "eventType": "visit_start",
             "anonId": "anon-web-1",
             "sessionId": "session-web-1",
-            "pagePath": "/",
+            "pagePath": "/siyu",
             "clientTs": 1763596800,
             "clientTz": "Asia/Seoul",
+            "referrerUrl": "https://example.com/campaign?utm_source=naver",
+            "referrerDomain": "example.com",
+            "utmSource": "naver",
+            "utmMedium": "cpc",
+            "utmCampaign": "spring",
+            "utmTerm": "land",
+            "utmContent": "banner-a",
+            "clientLang": "ko-KR",
+            "platform": "Linux x86_64",
+            "screenWidth": 1920,
+            "screenHeight": 1080,
+            "viewportWidth": 1400,
+            "viewportHeight": 900,
         },
     )
     assert event_start.status_code == 200
@@ -144,7 +157,7 @@ async def test_web_event_and_web_stats_flow(async_client: httpx.AsyncClient, db_
             "eventType": "visit_end",
             "anonId": "anon-web-1",
             "sessionId": "session-web-1",
-            "pagePath": "/",
+            "pagePath": "/siyu",
             "clientTs": 1763596860,
             "clientTz": "Asia/Seoul",
         },
@@ -158,6 +171,12 @@ async def test_web_event_and_web_stats_flow(async_client: httpx.AsyncClient, db_
     payload = web_stats_response.json()
     assert payload["summary"]["totalVisitors"] >= 1
     assert "dailyTrend" in payload
+    assert "topReferrers" in payload
+    assert "topUtmSources" in payload
+    assert "topUtmCampaigns" in payload
+    assert "deviceBreakdown" in payload
+    assert "browserBreakdown" in payload
+    assert "topPagePaths" in payload
 
 
 @pytest.mark.anyio
