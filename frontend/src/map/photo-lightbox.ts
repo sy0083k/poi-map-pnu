@@ -15,6 +15,7 @@ export function createPhotoLightbox(options: CreatePhotoLightboxOptions): {
   open: (items: PhotoLightboxItem[], startIndex: number) => void;
   destroy: () => void;
 } {
+  const BODY_VIEWER_OPEN_CLASS = "viewer-open";
   let viewer: Viewer | null = null;
   let container: HTMLDivElement | null = null;
   let objectUrls: string[] = [];
@@ -30,6 +31,7 @@ export function createPhotoLightbox(options: CreatePhotoLightboxOptions): {
     container = null;
     objectUrls.forEach((url) => URL.revokeObjectURL(url));
     objectUrls = [];
+    document.body.classList.remove(BODY_VIEWER_OPEN_CLASS);
   };
 
   const open = (items: PhotoLightboxItem[], startIndex: number): void => {
@@ -86,6 +88,7 @@ export function createPhotoLightbox(options: CreatePhotoLightboxOptions): {
     });
 
     try {
+      document.body.classList.add(BODY_VIEWER_OPEN_CLASS);
       viewer.view(startIndex);
     } catch {
       options.showToast("사진 뷰어를 열지 못했습니다.");
