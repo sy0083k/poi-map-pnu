@@ -247,6 +247,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
     photo_overlay_ts = Path("frontend/src/map/persisted-photo-overlay.ts").read_text(encoding="utf-8")
+    photo_lightbox_ts = Path("frontend/src/map/photo-lightbox.ts").read_text(encoding="utf-8")
     photo_persistence_ts = Path("frontend/src/map/photo-persistence.ts").read_text(encoding="utf-8")
     panel_overlap_guard_ts = Path("frontend/src/map/panel-overlap-guard.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
@@ -263,7 +264,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "savePersistedPhotoMarkers" in photo_mode_ts
     assert "loadPersistedPhotoMarkers" in photo_mode_ts
     assert "clearPersistedPhotoMarkers" in photo_mode_ts
-    assert 'window.open(currentObjectUrl, "_blank", "noopener,noreferrer")' in photo_mode_ts
+    assert "createPhotoLightbox" in photo_mode_ts
     assert 'id="photo-folder-input"' not in photo_mode_ts
     assert "webkitdirectory" in index_template
     assert "URL.createObjectURL(selected.file)" in photo_mode_ts
@@ -271,7 +272,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "selectPhoto(0, { shouldMoveMap: true, source: \"nav\" });" in photo_mode_ts
     assert 'button.className = "photo-list-btn list-item";' in photo_mode_ts
     assert 'button.classList.add("selected");' in photo_mode_ts
-    assert "openSelectedPhotoInNewWindow" in photo_mode_ts
+    assert "openSelectedPhotoInLightbox" in photo_mode_ts
     assert "createPanelOverlapGuard" in photo_mode_ts
     assert "createPhotoLightboxZoomController" not in photo_mode_ts
     assert "overlapGuard.open()" in photo_mode_ts
@@ -280,9 +281,12 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "photo_marker_id" in photo_overlay_ts
     assert "createPanelOverlapGuard" in photo_overlay_ts
     assert "createPhotoLightboxZoomController" not in photo_overlay_ts
-    assert 'window.open(objectUrl, "_blank", "noopener,noreferrer")' in photo_overlay_ts
+    assert "createPhotoLightbox" in photo_overlay_ts
     assert "overlapGuard.open()" in photo_overlay_ts
     assert "overlapGuard.close()" in photo_overlay_ts
+    assert "import Viewer from \"viewerjs\";" in photo_lightbox_ts
+    assert "viewerjs/dist/viewer.css" in photo_lightbox_ts
+    assert "viewer.view(startIndex);" in photo_lightbox_ts
     assert not Path("frontend/src/map/photo-lightbox-zoom.ts").exists()
     assert "ResizeObserver" in panel_overlap_guard_ts
     assert "--photo-panel-runtime-height" in panel_overlap_guard_ts

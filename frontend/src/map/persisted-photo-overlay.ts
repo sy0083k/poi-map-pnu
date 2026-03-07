@@ -10,6 +10,7 @@ import Stroke from "ol/style/Stroke";
 import Style from "ol/style/Style";
 
 import { loadPersistedPhotoMarkers } from "./photo-persistence";
+import { createPhotoLightbox, type PhotoLightboxItem } from "./photo-lightbox";
 import { createPanelOverlapGuard } from "./panel-overlap-guard";
 import type { MapView } from "./map-view";
 
@@ -35,7 +36,9 @@ const selectedMarkerStyle = new Style({
   })
 });
 
-function createPhotoPanel(showToast: (message: string) => void) {
+function createPhotoPanel(
+  openLightboxFromCurrent: (item: { id: number; file: File; fileName: string; relativePath: string }) => void
+) {
   const panel = document.getElementById("photo-info-panel");
   const panelCloseButton = document.getElementById("photo-info-close") as HTMLButtonElement | null;
   const panelImage = document.getElementById("photo-info-image") as HTMLImageElement | null;
@@ -46,6 +49,7 @@ function createPhotoPanel(showToast: (message: string) => void) {
   }
 
   let objectUrl: string | null = null;
+  let selectedItem: { id: number; file: File; fileName: string; relativePath: string } | null = null;
   const overlapGuard = createPanelOverlapGuard({
     body: document.body,
     photoPanel: panel
@@ -65,16 +69,11 @@ function createPhotoPanel(showToast: (message: string) => void) {
     panel.setAttribute("aria-expanded", "false");
   };
 
-  const openSelectedPhotoInNewWindow = (): void => {
-    if (!objectUrl) {
+  const openSelectedPhotoInLightbox = (): void => {
+    if (!selectedItem) {
       return;
     }
-    const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
-    if (!opened) {
-      showToast("팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해주세요.");
-      return;
-    }
-    panel.setAttribute("aria-expanded", "true");
+    openLightboxFromCurrent(selectedItem);
   };
 
   panelCloseButton?.addEventListener("click", () => {
@@ -86,7 +85,7 @@ function createPhotoPanel(showToast: (message: string) => void) {
     if (target instanceof Element && target.closest("#photo-info-close")) {
       return;
     }
-    openSelectedPhotoInNewWindow();
+    openSelectedPhotoInLightbox();
   });
 
   panel.addEventListener("keydown", (event) => {
@@ -94,7 +93,7 @@ function createPhotoPanel(showToast: (message: string) => void) {
       return;
     }
     event.preventDefault();
-    openSelectedPhotoInNewWindow();
+    openSelectedPhotoInLightbox();
   });
 
   panelImage.addEventListener("load", () => {
@@ -107,8 +106,9 @@ function createPhotoPanel(showToast: (message: string) => void) {
   });
 
   return {
-    show(item: { file: File; fileName: string; relativePath: string }): void {
+    show(item: { id: number; file: File; fileName: string; relativePath: string }): void {
       clearObjectUrl();
+      selectedItem = item;
       objectUrl = URL.createObjectURL(item.file);
       panelImage.src = objectUrl;
       panelImage.alt = item.fileName;
@@ -120,6 +120,7 @@ function createPhotoPanel(showToast: (message: string) => void) {
     },
     clear(): void {
       clearObjectUrl();
+      selectedItem = null;
       panelImage.removeAttribute("src");
       if (panelCaption instanceof HTMLElement) {
         panelCaption.textContent = "마커 또는 목록에서 사진을 선택하세요.";
@@ -134,14 +135,25 @@ export async function bootstrapPersistedPhotoOverlay(deps: PersistedPhotoOverlay
   if (!map) {
     return;
   }
-  const panel = createPhotoPanel(deps.showToast);
-  if (!panel) {
+  const persisted = await loadPersistedPhotoMarkers();
+  if (!persisted || persisted.items.length === 0) {
     return;
   }
 
-  const persisted = await loadPersistedPhotoMarkers();
-  if (!persisted || persisted.items.length === 0) {
-    panel.clear();
+  const lightbox = createPhotoLightbox({ showToast: deps.showToast });
+  const panel = createPhotoPanel((item) => {
+    const lightboxItems: PhotoLightboxItem[] = persisted.items.map((persistedItem) => ({
+      file: persistedItem.file,
+      fileName: persistedItem.fileName,
+      relativePath: persistedItem.relativePath
+    }));
+    const startIndex = persisted.items.findIndex((persistedItem) => persistedItem.id === item.id);
+    if (startIndex < 0) {
+      return;
+    }
+    lightbox.open(lightboxItems, startIndex);
+  });
+  if (!panel) {
     return;
   }
 
@@ -201,4 +213,8 @@ export async function bootstrapPersistedPhotoOverlay(deps: PersistedPhotoOverlay
   });
 
   deps.setMapStatus(`사진 마커 ${features.length}개를 복원했습니다.`, "#166534");
+
+  window.addEventListener("beforeunload", () => {
+    lightbox.destroy();
+  });
 }
