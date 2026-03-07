@@ -235,6 +235,9 @@ def test_select_highlight_is_flushed_before_fit_animation() -> None:
     assert 'if (manager === "산림공원과") {' in map_view_ts
     assert 'if (manager === "회계과") {' in map_view_ts
     assert "return fallbackFeatureStyle;" in map_view_ts
+    assert "const resetInfoPanelScroll = (): void => {" in map_view_ts
+    assert "elements.infoPanelContent.scrollTop = 0;" in map_view_ts
+    assert "resetInfoPanelScroll();" in map_view_ts
     assert "mapView.setTheme(theme);" in map_ts
     assert "mapView.setTheme(nextTheme);" in map_ts
     assert "mapView.setTheme(initialTheme);" in map_ts
@@ -290,6 +293,7 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     assert "loadPersistedFile2MapUpload" in photo_mode_ts
     assert "loadUploadedHighlights" in photo_mode_ts
     assert "land-info-panel" in photo_mode_ts
+    assert "landInfoContent.scrollTop = 0;" in photo_mode_ts
     assert "photo-prev-btn" in index_template
     assert "photo-next-btn" in index_template
     assert "sidebar-filter-section" in index_template
