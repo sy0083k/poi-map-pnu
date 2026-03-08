@@ -1,12 +1,12 @@
-from typing import Any, Final, Literal
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
 
 from app.services import (
     cadastral_fgb_service,
     cadastral_highlight_service,
     land_service,
+    map_api_helpers,
     stats_service,
 )
 
@@ -16,69 +16,6 @@ MAX_EXPORT_IDS = 10000
 EVENT_LIMIT_PER_MINUTE = 60
 WEB_EVENT_LIMIT_PER_MINUTE = 120
 RATE_LIMIT_WINDOW_SECONDS = 60
-THEME_CITY_OWNED: Final[Literal["city_owned"]] = "city_owned"
-
-
-def _parse_cursor(raw_cursor: str | None) -> int | None:
-    if raw_cursor is None or raw_cursor.strip() == "":
-        return None
-    cursor = int(raw_cursor)
-    if cursor < 0:
-        raise ValueError("cursor must be >= 0")
-    return cursor
-
-
-def _parse_theme(raw_theme: str | None) -> Literal["city_owned"]:
-    if raw_theme is None or raw_theme.strip() == "":
-        return THEME_CITY_OWNED
-    theme = raw_theme.strip()
-    if theme == THEME_CITY_OWNED:
-        return THEME_CITY_OWNED
-    raise ValueError("theme must be city_owned")
-
-
-def _parse_land_ids(raw_ids: Any) -> list[int]:
-    if not isinstance(raw_ids, list):
-        raise ValueError("landIds must be an array of integers")
-    parsed: list[int] = []
-    seen: set[int] = set()
-    for value in raw_ids:
-        item_id = int(value)
-        if item_id <= 0 or item_id in seen:
-            continue
-        seen.add(item_id)
-        parsed.append(item_id)
-    if not parsed:
-        raise ValueError("landIds must include at least one positive integer")
-    if len(parsed) > MAX_EXPORT_IDS:
-        raise ValueError(f"landIds must be <= {MAX_EXPORT_IDS}")
-    return parsed
-
-
-def _parse_highlight_payload(payload: Any) -> tuple[str, list[str], tuple[float, float, float, float] | None, str]:
-    if not isinstance(payload, dict):
-        raise ValueError("payload must be an object")
-    theme = cadastral_highlight_service.parse_theme(payload.get("theme"))
-    pnus = cadastral_highlight_service.parse_requested_pnus(payload.get("pnus"))
-    bbox = cadastral_highlight_service.parse_bbox(payload.get("bbox"))
-    bbox_crs = cadastral_highlight_service.parse_bbox_crs(payload.get("bboxCrs"))
-    return theme, pnus, bbox, bbox_crs
-
-
-def _rate_limit_key(request: Request, payload: dict[str, Any]) -> str:
-    client_ip = request.client.host if request.client else "unknown"
-    anon_id = str(payload.get("anonId", "")).strip()
-    if anon_id:
-        return f"{client_ip}:{anon_id}"
-    return client_ip
-
-
-def _rate_limited_response(retry_after: int) -> JSONResponse:
-    return JSONResponse(
-        status_code=429,
-        content={"success": False, "message": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."},
-        headers={"Retry-After": str(retry_after)},
-    )
 
 
 def create_router() -> APIRouter:
@@ -109,7 +46,7 @@ def create_router() -> APIRouter:
     @router.post("/cadastral/highlights")
     async def post_cadastral_highlights(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            theme, pnus, bbox, bbox_crs = _parse_highlight_payload(payload)
+            theme, pnus, bbox, bbox_crs = map_api_helpers.parse_highlight_payload(payload)
         except (HTTPException, ValueError) as exc:
             if isinstance(exc, HTTPException):
                 raise
@@ -135,8 +72,8 @@ def create_router() -> APIRouter:
     ) -> dict[str, Any]:
         clamped_limit = max(1, min(limit, MAX_LANDS_PAGE_LIMIT))
         try:
-            parsed_cursor = _parse_cursor(cursor)
-            parsed_theme = _parse_theme(theme)
+            parsed_cursor = map_api_helpers.parse_cursor(cursor)
+            parsed_theme = map_api_helpers.parse_theme(theme)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return land_service.get_public_land_features_page(
@@ -153,8 +90,8 @@ def create_router() -> APIRouter:
     ) -> dict[str, Any]:
         clamped_limit = max(1, min(limit, MAX_LANDS_PAGE_LIMIT))
         try:
-            parsed_cursor = _parse_cursor(cursor)
-            parsed_theme = _parse_theme(theme)
+            parsed_cursor = map_api_helpers.parse_cursor(cursor)
+            parsed_theme = map_api_helpers.parse_theme(theme)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return land_service.get_public_land_list_page(
@@ -166,8 +103,11 @@ def create_router() -> APIRouter:
     @router.post("/lands/export")
     async def export_lands(payload: dict[str, Any]):
         try:
-            parsed_theme = _parse_theme(str(payload.get("theme", "")))
-            parsed_land_ids = _parse_land_ids(payload.get("landIds"))
+            parsed_theme = map_api_helpers.parse_theme(str(payload.get("theme", "")))
+            parsed_land_ids = map_api_helpers.parse_land_ids(
+                payload.get("landIds"),
+                max_export_ids=MAX_EXPORT_IDS,
+            )
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -181,27 +121,27 @@ def create_router() -> APIRouter:
 
     @router.post("/events")
     async def post_map_event(request: Request, payload: dict[str, Any]):
-        key = _rate_limit_key(request, payload)
+        key = map_api_helpers.build_rate_limit_key(request, payload)
         allowed, retry_after = request.app.state.event_rate_limiter.allow(
             key=f"events:{key}",
             limit=EVENT_LIMIT_PER_MINUTE,
             window_seconds=RATE_LIMIT_WINDOW_SECONDS,
         )
         if not allowed:
-            return _rate_limited_response(retry_after)
+            return map_api_helpers.build_rate_limited_response(retry_after)
         stats_service.record_map_event(payload)
         return {"success": True}
 
     @router.post("/web-events")
     async def post_web_event(request: Request, payload: dict[str, Any]):
-        key = _rate_limit_key(request, payload)
+        key = map_api_helpers.build_rate_limit_key(request, payload)
         allowed, retry_after = request.app.state.event_rate_limiter.allow(
             key=f"web-events:{key}",
             limit=WEB_EVENT_LIMIT_PER_MINUTE,
             window_seconds=RATE_LIMIT_WINDOW_SECONDS,
         )
         if not allowed:
-            return _rate_limited_response(retry_after)
+            return map_api_helpers.build_rate_limited_response(retry_after)
         stats_service.record_web_visit_event(payload, request)
         return {"success": True}
 
