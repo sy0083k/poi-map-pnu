@@ -244,6 +244,25 @@ pytest -m e2e -q
 pytest -q
 ```
 
+커버리지 리포트는 아래 스크립트로 실행합니다(항상 `coverage erase` 후 재생성).
+
+```bash
+scripts/run_coverage.sh
+```
+
+선택 출력:
+
+```bash
+scripts/run_coverage.sh --xml --html
+```
+
+과거 다른 경로를 가리키는 stale `.coverage`가 남아 있으면 1회 정리 후 재실행합니다.
+
+```bash
+rm -f .coverage .coverage.*
+scripts/run_coverage.sh
+```
+
 선택 실행:
 ```bash
 RUN_HTTP_E2E=1 pytest -q tests/test_e2e_smoke.py

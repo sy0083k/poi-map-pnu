@@ -52,3 +52,36 @@ jobs:
           pytest -q -m integration
           pytest -q -m e2e
           pytest -q
+
+      - name: Coverage fresh run and path validation
+        env:
+          WORKSPACE: ${{ github.workspace }}
+        run: |
+          pip install coverage
+          scripts/run_coverage.sh
+          coverage debug data > /tmp/coverage-debug-data.txt
+          python - <<'PY'
+          import os
+          import re
+          import sys
+
+          workspace = os.environ["WORKSPACE"].rstrip("/")
+          bad_paths = []
+          with open("/tmp/coverage-debug-data.txt", encoding="utf-8") as handle:
+              for raw_line in handle:
+                  line = raw_line.strip()
+                  match = re.match(r"^(/.*):\s+\d+\s+lines$", line)
+                  if not match:
+                      continue
+                  file_path = match.group(1)
+                  if not file_path.startswith(f"{workspace}/"):
+                      bad_paths.append(file_path)
+
+          if bad_paths:
+              print("coverage data contains files outside workspace:")
+              for path in bad_paths:
+                  print(f"- {path}")
+              sys.exit(1)
+
+          print("coverage data path validation passed")
+          PY
