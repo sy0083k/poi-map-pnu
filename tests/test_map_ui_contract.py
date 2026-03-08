@@ -168,25 +168,29 @@ def test_topbar_menu_uses_sidebar_anchor_offset_css() -> None:
 
 def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    events_ts = Path("frontend/src/map/land-map-events.ts").read_text(encoding="utf-8")
+    init_ts = Path("frontend/src/map/land-map-init.ts").read_text(encoding="utf-8")
+    ui_ts = Path("frontend/src/map/land-map-ui.ts").read_text(encoding="utf-8")
     workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
     theme_routing_ts = Path("frontend/src/map/theme-routing.ts").read_text(encoding="utf-8")
     topbar_menu_ts = Path("frontend/src/map/topbar-menu.ts").read_text(encoding="utf-8")
 
     moveend_anchor = "mapView.setMoveEndHandler(() => {"
-    assert moveend_anchor in map_ts
-    moveend_block = map_ts.split(moveend_anchor, maxsplit=1)[1].split("});", maxsplit=1)[0]
+    assert moveend_anchor in events_ts
+    moveend_block = events_ts.split(moveend_anchor, maxsplit=1)[1].split("});", maxsplit=1)[0]
     assert "void reloadCadastralLayers();" not in moveend_block
     assert 'state.setCurrentTheme(theme);' in map_ts
     assert "clearPropertyManagerInputs();" not in map_ts
     assert "applyThemeUiState(theme);" in map_ts
     assert "applyLegendUiState(theme);" in map_ts
-    assert "const mapLegendCloseButton = document.getElementById(\"map-legend-close\");" in map_ts
-    assert "let isLegendDismissedByUser = false;" in map_ts
-    assert "if (previousTheme !== \"city_owned\" && theme === \"city_owned\") {" in map_ts
-    assert "isLegendDismissedByUser = false;" in map_ts
-    assert "mapLegendCloseButton?.addEventListener(\"click\", () => {" in map_ts
-    assert "isLegendDismissedByUser = true;" in map_ts
-    assert "await workflow.loadThemeData(state.getCurrentTheme());" in map_ts
+    assert "let isLegendDismissedByUser = false;" in ui_ts
+    assert "isLegendDismissedByUser = false;" in ui_ts
+    assert "isLegendDismissedByUser = true;" in ui_ts
+    assert "if (state.getCurrentTheme() !== \"city_owned\" && theme === \"city_owned\") {" in map_ts
+    assert "dom.mapLegendCloseButton?.addEventListener(\"click\", () => {" in map_ts
+    assert "legendController.dismissLegend();" in map_ts
+    assert "void deps.workflow.loadThemeData(nextTheme);" in events_ts
+    assert "await deps.workflow.loadThemeData(deps.state.getCurrentTheme());" in init_ts
     assert "재산관리관 다중 검출:" in workflow_ts
     assert "정확한 재산관리관을 입력하세요." in workflow_ts
     assert 'currentTheme === "city_owned"' not in workflow_ts
@@ -202,8 +206,8 @@ def test_map_navigation_does_not_reload_cadastral_layers_on_moveend() -> None:
     assert "window.location.assign(target);" not in topbar_menu_ts
     assert 'rawBasemap !== "Base"' in topbar_menu_ts
     assert 'layerType === "White"' in map_ts
-    assert "applyLegendUiState(nextTheme);" in map_ts
-    assert "applyLegendUiState(initialTheme);" in map_ts
+    assert "applyLegendUiState(nextTheme);" in events_ts
+    assert "applyLegendUiState(initialTheme);" in init_ts
 
 
 def test_lands_list_client_sends_theme_query() -> None:
@@ -215,6 +219,8 @@ def test_lands_list_client_sends_theme_query() -> None:
 def test_select_highlight_is_flushed_before_fit_animation() -> None:
     map_view_ts = Path("frontend/src/map/map-view.ts").read_text(encoding="utf-8")
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    events_ts = Path("frontend/src/map/land-map-events.ts").read_text(encoding="utf-8")
+    init_ts = Path("frontend/src/map/land-map-init.ts").read_text(encoding="utf-8")
     assert "renderFeatureLayers();" in map_view_ts
     assert "map.renderSync();" in map_view_ts
     assert "window.requestAnimationFrame(() => {" in map_view_ts
@@ -239,6 +245,5 @@ def test_select_highlight_is_flushed_before_fit_animation() -> None:
     assert "elements.infoPanelContent.scrollTop = 0;" in map_view_ts
     assert "resetInfoPanelScroll();" in map_view_ts
     assert "mapView.setTheme(theme);" in map_ts
-    assert "mapView.setTheme(nextTheme);" in map_ts
-    assert "mapView.setTheme(initialTheme);" in map_ts
-
+    assert "deps.mapView.setTheme(nextTheme);" in events_ts
+    assert "deps.mapView.setTheme(initialTheme);" in init_ts
