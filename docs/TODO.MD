@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map Geo)  
 작성일: 2026-02-23  
-최종 수정일: 2026-03-07  
+최종 수정일: 2026-03-08  
 운영 주기: 매주 1회 (월요일 기준)
 
 ## 목적
@@ -31,7 +31,7 @@
 | RISK-002 | P0 | 인메모리 제한기 다중 인스턴스 한계 | todo | unassigned | 2026-03-09 | 로그인/이벤트 레이트리밋이 멀티 인스턴스 환경에서 일관 동작하도록 공유 스토어 전략이 확정된다. | 관련: `app/auth_security.py`, `app/rate_limit.py` |
 | RISK-003 | P1 | FlatGeobuf 뷰포트 로딩 내구성/성능 검증 부족 | doing | team | 2026-03-12 | 파일 교체/대용량 뷰포트 이동 시에도 지도 렌더링이 안정적으로 동작하고 성능 한계가 문서화된다. | 관련: `frontend/src/map/cadastral-fgb-layer.ts`, `app/services/cadastral_fgb_service.py` / 2026-03-06: Web Worker 파싱 + IndexedDB 캐시(`theme+pnuSetHash+ETag`) + `/api/cadastral/fgb` ETag 반영 |
 | RISK-004 | P1 | 공개 다운로드 응답 메모리 사용량 리스크 | done | team | 2026-03-05 | 공개 다운로드 기능 제거로 관련 응답 메모리 리스크가 소거된다. | 관련 코드(`app/services/public_download_service.py`, `/api/public-download`, `/admin/public-download/*`) 제거 완료 |
-| RISK-005 | P1 | 프런트 전체 데이터 선적재로 인한 확장성 한계 | doing | team | 2026-03-12 | 데이터 증가 시 초기 로딩 시간/브라우저 메모리 사용을 제어하는 점진 로딩 전략이 수립된다. | 관련: `frontend/src/map/lands-list-client.ts`, `frontend/src/map.ts` / 2026-03-06: `map.ts`/`admin.ts` 책임 분리 리팩터링 착수 |
+| RISK-005 | P1 | 프런트 전체 데이터 선적재로 인한 확장성 한계 | doing | team | 2026-03-12 | 데이터 증가 시 초기 로딩 시간/브라우저 메모리 사용을 제어하는 점진 로딩 전략이 수립된다. | 관련: `frontend/src/map/lands-list-client.ts`, `frontend/src/map.ts` / 2026-03-06: `map.ts`/`admin.ts` 책임 분리 리팩터링 착수 / 2026-03-08: 백엔드 repository/service 분해 + 장대 테스트 파일 분할로 파일 길이 경고 16→7 축소(잔여: map 모듈 6건 + xenon 환경 경고 1건) |
 | RISK-006 | P1 | 루트 pytest 수집 충돌(복제본 tests 중복) | done | team | 2026-03-02 | 루트 `pytest -q`가 `tests/`만 수집하고 `IdlePublicProperty/`와의 `conftest` 충돌 없이 통과한다. | 관련: `pyproject.toml` (`testpaths`, `norecursedirs`) |
 | RISK-007 | P1 | 관리자 세션 쿠키 앱 간 교차 인식 | done | team | 2026-03-02 | 세션 쿠키명/네임스페이스 분리와 인증 검증 강화로 동일 도메인 다중 앱 간 세션 재사용이 차단된다. | 관련: `app/main.py`, `app/dependencies.py`, `app/services/auth_service.py` |
 | RISK-008 | P1 | 확장 웹 로그(Referrer/UTM/디바이스) 보존·파기 정책 미정 | doing | team | 2026-03-14 | 수집 필드별 보존 기간/파기 절차/반출 통제 정책이 문서화되고 운영 점검 항목에 반영된다. 채널 분류 규칙과 개인정보 최소화(원문 referrer 미저장) 기준이 명시된다. | 관련: `app/services/web_stats_service.py`, `app/repositories/web_visit_repository.py`, `docs/maintenance.md` |
@@ -110,3 +110,4 @@
 - 2026-03-07 | reviewer: team | `web_visit_event`를 ALTER TABLE 기반 idempotent 보강 패턴으로 정리하고, referrer 원문 미저장 + 채널 분류 규칙 + 운영 점검 항목(길이 제한/증가 추이)을 문서화 | 다음 액션: RISK-008 완료를 위해 자동 파기 주기와 실행 스크립트 확정
 - 2026-03-07 | reviewer: team | 사진 미리보기 패널 클릭 동작을 새창 열기에서 Viewer.js 이미지 뷰어로 교체하고 `/photo2map`·`/file2map`·`/siyu` 공통 경로로 통합 | 다음 액션: 모바일 터치 제스처/메모리 사용량 회귀 모니터링
 - 2026-03-07 | reviewer: team | Deploy 워크플로를 `workflow_dispatch` 수동 실행 + 품질 게이트 + SSH/Compose 배포 + `/health` 실패 자동 롤백으로 구현하고 관련 운영 문서를 동기화 | 다음 액션: 운영 저장소에 `DEPLOY_*` GitHub Secrets 등록 및 첫 수동 배포 리허설 수행
+- 2026-03-08 | reviewer: team | 유지보수성 리스크 대응으로 `event/land/web_visit repository` 및 `web_stats_service`를 내부 모듈로 분해하고 장대 테스트 파일(`test_map_ui_contract`, `test_stats_api`, `test_upload_service`)을 분할 | 다음 액션: 남은 프런트 장대 파일(`map.ts`, `map-view.ts`, `photo-mode.ts` 등 6건) 분해 완료 및 xenon 설치 환경에서 경고 0 재검증

@@ -1,53 +1,34 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 from typing import Any
-from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request
 
 from app.db.connection import db_connection
 from app.repositories import web_visit_repository
-
-WEB_EVENT_TYPE_VISIT_START = "visit_start"
-WEB_EVENT_TYPE_HEARTBEAT = "heartbeat"
-WEB_EVENT_TYPE_VISIT_END = "visit_end"
-WEB_EVENT_TYPES = {WEB_EVENT_TYPE_VISIT_START, WEB_EVENT_TYPE_HEARTBEAT, WEB_EVENT_TYPE_VISIT_END}
-WEB_TRACKING_PAGE_PATH = "/"
-WEB_TRACKING_ALLOWED_PAGE_PATHS = {"/", "/siyu", "/file2map", "/photo2map", "/readme"}
-WEB_STATS_DAYS_DEFAULT = 30
-WEB_SESSION_TIMEOUT_MINUTES = 30
-SEOUL_OFFSET = timedelta(hours=9)
-TOP_BREAKDOWN_LIMIT = 10
-BOT_UA_PATTERNS = (
-    "bot",
-    "spider",
-    "crawler",
-    "curl",
-    "wget",
-    "python-requests",
-    "httpclient",
+from app.services.web_stats_analytics import get_web_stats as _get_web_stats
+from app.services.web_stats_utils import (
+    BOT_UA_PATTERNS,
+    SEOUL_OFFSET,
+    WEB_EVENT_TYPE_HEARTBEAT,
+    WEB_EVENT_TYPE_VISIT_END,
+    WEB_EVENT_TYPE_VISIT_START,
+    WEB_EVENT_TYPES,
+    WEB_SESSION_TIMEOUT_MINUTES,
+    WEB_STATS_DAYS_DEFAULT,
+    WEB_TRACKING_ALLOWED_PAGE_PATHS,
+    WEB_TRACKING_PAGE_PATH,
+    derive_traffic_channel,
+    is_bot_user_agent,
+    normalize_optional_int,
+    normalize_optional_string,
+    normalize_required_token,
+    parse_browser_family,
+    parse_client_ts,
+    parse_device_type,
+    parse_os_family,
+    parse_referrer_context,
 )
-BROWSER_SIGNATURES: tuple[tuple[str, str], ...] = (
-    ("edg/", "edge"),
-    ("opr/", "opera"),
-    ("samsungbrowser/", "samsung_internet"),
-    ("chrome/", "chrome"),
-    ("safari/", "safari"),
-    ("firefox/", "firefox"),
-)
-OS_SIGNATURES: tuple[tuple[str, str], ...] = (
-    ("windows", "windows"),
-    ("android", "android"),
-    ("iphone", "ios"),
-    ("ipad", "ios"),
-    ("mac os x", "macos"),
-    ("linux", "linux"),
-)
-SEARCH_ENGINE_DOMAINS = ("google.", "bing.", "yahoo.", "naver.", "daum.", "duckduckgo.", "baidu.", "yandex.")
-PAID_MEDIUM_TOKENS = ("cpc", "ppc", "paid", "display", "banner")
-EMAIL_MEDIUM_TOKENS = ("email", "newsletter")
-SOCIAL_MEDIUM_TOKENS = ("social", "sns")
 
 
 def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
@@ -60,7 +41,6 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
     page_path = str(payload.get("pagePath", "")).strip() or WEB_TRACKING_PAGE_PATH
     if page_path not in WEB_TRACKING_ALLOWED_PAGE_PATHS:
         raise HTTPException(status_code=400, detail="Unsupported pagePath.")
-    page_query = normalize_optional_string(payload.get("pageQuery"), max_length=512)
 
     client_tz = normalize_optional_string(payload.get("clientTz"), max_length=64)
     occurred_at = parse_client_ts(payload.get("clientTs"))
@@ -70,6 +50,7 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
     utm_campaign = normalize_optional_string(payload.get("utmCampaign"), max_length=128)
     utm_term = normalize_optional_string(payload.get("utmTerm"), max_length=128)
     utm_content = normalize_optional_string(payload.get("utmContent"), max_length=128)
+    page_query = normalize_optional_string(payload.get("pageQuery"), max_length=512)
     client_lang = normalize_optional_string(payload.get("clientLang"), max_length=32)
     platform = normalize_optional_string(payload.get("platform"), max_length=64)
     screen_width = normalize_optional_int(payload.get("screenWidth"))
@@ -83,9 +64,7 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
         user_agent or "", viewport_width=viewport_width, viewport_height=viewport_height, is_bot=is_bot
     )
     os_family = parse_os_family(user_agent or "")
-    traffic_channel = derive_traffic_channel(
-        utm_medium=utm_medium, referrer_domain=referrer_domain
-    )
+    traffic_channel = derive_traffic_channel(utm_medium=utm_medium, referrer_domain=referrer_domain)
 
     with db_connection() as conn:
         web_visit_repository.insert_web_visit_event(
@@ -121,225 +100,25 @@ def record_web_visit_event(payload: dict[str, Any], request: Request) -> None:
 
 
 def get_web_stats(days: int = WEB_STATS_DAYS_DEFAULT) -> dict[str, Any]:
-    clamped_days = max(1, min(int(days), 365))
-    now_utc = datetime.now(UTC)
-    now_kst = now_utc + SEOUL_OFFSET
-    today_kst_start = now_kst.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_kst_end = today_kst_start + timedelta(days=1)
-    today_utc_start = (today_kst_start - SEOUL_OFFSET).strftime("%Y-%m-%d %H:%M:%S")
-    today_utc_end = (today_kst_end - SEOUL_OFFSET).strftime("%Y-%m-%d %H:%M:%S")
-    since_utc = (now_utc - timedelta(days=clamped_days)).strftime("%Y-%m-%d %H:%M:%S")
-
-    with db_connection(row_factory=True) as conn:
-        total_visitors = web_visit_repository.fetch_web_total_visitors(conn, page_path=None)
-        daily_visitors = web_visit_repository.fetch_web_daily_visitors(
-            conn,
-            page_path=None,
-            since_utc=today_utc_start,
-            until_utc=today_utc_end,
-        )
-        session_rows = web_visit_repository.fetch_web_session_durations_seconds(
-            conn,
-            page_path=None,
-            since_utc=since_utc,
-        )
-        visitor_trend_rows = web_visit_repository.fetch_web_daily_unique_visitors_trend(
-            conn,
-            page_path=None,
-            since_utc=since_utc,
-        )
-        top_referrers = web_visit_repository.fetch_web_top_referrer_domains(
-            conn, since_utc=since_utc, limit=TOP_BREAKDOWN_LIMIT
-        )
-        top_utm_sources = web_visit_repository.fetch_web_top_utm_sources(
-            conn, since_utc=since_utc, limit=TOP_BREAKDOWN_LIMIT
-        )
-        top_utm_campaigns = web_visit_repository.fetch_web_top_utm_campaigns(
-            conn, since_utc=since_utc, limit=TOP_BREAKDOWN_LIMIT
-        )
-        device_breakdown = web_visit_repository.fetch_web_device_breakdown(
-            conn, since_utc=since_utc
-        )
-        browser_breakdown = web_visit_repository.fetch_web_browser_breakdown(
-            conn, since_utc=since_utc
-        )
-        top_page_paths = web_visit_repository.fetch_web_top_page_paths(
-            conn, since_utc=since_utc, limit=TOP_BREAKDOWN_LIMIT
-        )
-        channel_breakdown = web_visit_repository.fetch_web_channel_breakdown(
-            conn, since_utc=since_utc
-        )
-
-    session_count = 0
-    durations_total_seconds = 0
-    durations_by_date: dict[str, list[int]] = {}
-    for row in session_rows:
-        duration_seconds = int(row["duration_seconds"] or 0)
-        capped = min(duration_seconds, 8 * 60 * 60)
-        session_count += 1
-        durations_total_seconds += capped
-        date_key = str(row["kst_date"])
-        durations_by_date.setdefault(date_key, []).append(capped)
-
-    avg_dwell_minutes = round((durations_total_seconds / session_count) / 60, 2) if session_count > 0 else 0.0
-
-    sessions_by_date: dict[str, int] = {}
-    for row in session_rows:
-        date_key = str(row["kst_date"])
-        sessions_by_date[date_key] = sessions_by_date.get(date_key, 0) + 1
-
-    visitors_by_date = {str(row["date"]): int(row["visitors"]) for row in visitor_trend_rows}
-
-    all_dates = sorted(set(visitors_by_date.keys()) | set(sessions_by_date.keys()) | set(durations_by_date.keys()))
-    daily_trend = []
-    for date in all_dates:
-        per_day_durations = durations_by_date.get(date, [])
-        avg_day_dwell = round((sum(per_day_durations) / len(per_day_durations)) / 60, 2) if per_day_durations else 0.0
-        daily_trend.append(
-            {
-                "date": date,
-                "visitors": visitors_by_date.get(date, 0),
-                "sessions": sessions_by_date.get(date, 0),
-                "avgDwellMinutes": avg_day_dwell,
-            }
-        )
-
-    return {
-        "summary": {
-            "dailyVisitors": daily_visitors,
-            "totalVisitors": total_visitors,
-            "avgDwellMinutes": avg_dwell_minutes,
-            "sessionCount": session_count,
-        },
-        "dailyTrend": daily_trend,
-        "topReferrers": to_breakdown(top_referrers),
-        "topUtmSources": to_breakdown(top_utm_sources),
-        "topUtmCampaigns": to_breakdown(top_utm_campaigns),
-        "deviceBreakdown": to_breakdown(device_breakdown),
-        "browserBreakdown": to_breakdown(browser_breakdown),
-        "topPagePaths": to_breakdown(top_page_paths),
-        "channelBreakdown": to_breakdown(channel_breakdown),
-    }
+    return _get_web_stats(days=days)
 
 
-def normalize_required_token(raw: Any, field_name: str) -> str:
-    value = str(raw or "").strip()
-    if not value:
-        raise HTTPException(status_code=400, detail=f"{field_name} is required.")
-    return value[:128]
-
-
-def normalize_optional_string(raw: Any, *, max_length: int) -> str | None:
-    if raw is None:
-        return None
-    value = str(raw).strip()
-    if not value:
-        return None
-    return value[:max_length]
-
-
-def normalize_optional_int(raw: Any) -> int | None:
-    if raw in (None, ""):
-        return None
-    try:
-        parsed = int(raw)
-    except (TypeError, ValueError):
-        return None
-    if parsed < 0:
-        return None
-    return min(parsed, 10000)
-
-
-def parse_client_ts(raw: Any) -> str:
-    if raw in (None, ""):
-        now = datetime.now(UTC)
-        return now.strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        ts = float(raw)
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail="clientTs must be unix timestamp seconds.") from exc
-
-    event_dt = datetime.fromtimestamp(ts, tz=UTC)
-    now = datetime.now(UTC)
-    if event_dt > now + timedelta(minutes=5):
-        event_dt = now
-    if event_dt < now - timedelta(days=7):
-        event_dt = now - timedelta(days=7)
-    return event_dt.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def is_bot_user_agent(user_agent: str) -> bool:
-    normalized = user_agent.lower()
-    return any(pattern in normalized for pattern in BOT_UA_PATTERNS)
-
-
-def parse_browser_family(user_agent: str) -> str:
-    normalized = user_agent.lower()
-    if not normalized:
-        return "unknown"
-    for signature, family in BROWSER_SIGNATURES:
-        if signature in normalized:
-            return family
-    return "unknown"
-
-
-def parse_os_family(user_agent: str) -> str:
-    normalized = user_agent.lower()
-    if not normalized:
-        return "unknown"
-    for signature, family in OS_SIGNATURES:
-        if signature in normalized:
-            return family
-    return "unknown"
-
-
-def parse_device_type(user_agent: str, *, viewport_width: int | None, viewport_height: int | None, is_bot: bool) -> str:
-    if is_bot:
-        return "bot"
-    normalized = user_agent.lower()
-    if "ipad" in normalized:
-        return "tablet"
-    if any(token in normalized for token in ("mobile", "iphone", "android")):
-        return "mobile"
-    if viewport_width is not None and viewport_height is not None:
-        shorter = min(viewport_width, viewport_height)
-        if shorter <= 600:
-            return "mobile"
-        if shorter <= 900:
-            return "tablet"
-    return "desktop"
-
-
-def to_breakdown(rows: list[Any] | Any) -> list[dict[str, Any]]:
-    return [{"key": str(row["key"]), "count": int(row["count"])} for row in rows]
-
-
-def parse_referrer_context(raw: Any) -> tuple[str | None, str | None]:
-    value = normalize_optional_string(raw, max_length=512)
-    if not value:
-        return None, None
-    try:
-        parsed = urlparse(value)
-    except ValueError:
-        return None, None
-    host = normalize_optional_string(parsed.hostname, max_length=128)
-    path = normalize_optional_string(parsed.path, max_length=256)
-    return host, path
-
-
-def derive_traffic_channel(*, utm_medium: str | None, referrer_domain: str | None) -> str:
-    if utm_medium:
-        medium = utm_medium.lower()
-        if any(token in medium for token in PAID_MEDIUM_TOKENS):
-            return "paid"
-        if any(token in medium for token in EMAIL_MEDIUM_TOKENS):
-            return "email"
-        if any(token in medium for token in SOCIAL_MEDIUM_TOKENS):
-            return "social"
-        return "campaign"
-    if not referrer_domain:
-        return "direct"
-    lowered = referrer_domain.lower()
-    if any(domain in lowered for domain in SEARCH_ENGINE_DOMAINS):
-        return "organic"
-    return "referral"
+__all__ = [
+    "WEB_EVENT_TYPE_VISIT_START",
+    "WEB_EVENT_TYPE_HEARTBEAT",
+    "WEB_EVENT_TYPE_VISIT_END",
+    "WEB_EVENT_TYPES",
+    "WEB_TRACKING_PAGE_PATH",
+    "WEB_STATS_DAYS_DEFAULT",
+    "WEB_SESSION_TIMEOUT_MINUTES",
+    "SEOUL_OFFSET",
+    "BOT_UA_PATTERNS",
+    "record_web_visit_event",
+    "get_web_stats",
+    "normalize_required_token",
+    "normalize_optional_string",
+    "parse_client_ts",
+    "is_bot_user_agent",
+    "parse_referrer_context",
+    "derive_traffic_channel",
+]
