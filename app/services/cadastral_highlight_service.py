@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -131,7 +132,7 @@ def build_filtered_geojson_response(
     bbox_filtered = 0
 
     try:
-        all_features = load_features_from_fgb(file_path)
+        all_features = load_features_from_fgb(file_path, bbox=bbox)
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -156,39 +157,60 @@ def build_filtered_geojson_response(
             "bboxCrs": bbox_crs if bbox is not None else None,
         },
     }
-def load_features_from_fgb(file_path: Path) -> list[dict[str, Any]]:
+
+
+def load_features_from_fgb(
+    file_path: Path,
+    *,
+    bbox: tuple[float, float, float, float] | None = None,
+) -> Iterator[dict[str, Any]]:
     try:
         import flatgeobuf as fgb
     except ImportError as exc:
         raise RuntimeError(
             "flatgeobuf package is required for /api/cadastral/highlights. Install dependencies first."
         ) from exc
+    return _iter_features_from_fgb(file_path=file_path, fgb_module=fgb, bbox=bbox)
 
+
+def _iter_features_from_fgb(
+    *,
+    file_path: Path,
+    fgb_module: Any,
+    bbox: tuple[float, float, float, float] | None = None,
+) -> Iterator[dict[str, Any]]:
     with file_path.open("rb") as handle:
-        loaded = fgb.load(handle)
-    return to_feature_list(loaded)
+        try:
+            reader = fgb_module.Reader(handle, bbox=bbox)
+            for feature in reader:
+                if isinstance(feature, dict):
+                    yield feature
+            return
+        except Exception:
+            handle.seek(0)
+            loaded = fgb_module.load(handle, bbox=bbox)
+
+    yield from _iter_dict_features(loaded)
 
 
-def to_feature_list(loaded: Any) -> list[dict[str, Any]]:
+def _iter_dict_features(loaded: Any) -> Iterator[dict[str, Any]]:
     if isinstance(loaded, dict):
-        return _to_dict_features(loaded.get("features", []))
-    if isinstance(loaded, list):
-        return _to_dict_features(loaded)
-    try:
-        return _to_dict_features(list(loaded))
-    except Exception:
-        return []
-
-
-def _to_dict_features(raw_features: Any) -> list[dict[str, Any]]:
+        raw_features = loaded.get("features", [])
+    else:
+        raw_features = loaded
     if not isinstance(raw_features, list):
-        return []
-    return [item for item in raw_features if isinstance(item, dict)]
+        try:
+            raw_features = list(raw_features)
+        except Exception:
+            return
+    for item in raw_features:
+        if isinstance(item, dict):
+            yield item
 
 
 def collect_matching_features(
     *,
-    all_features: list[dict[str, Any]],
+    all_features: Iterable[dict[str, Any]],
     pnu_field: str,
     wanted: set[str],
     bbox: tuple[float, float, float, float] | None,
