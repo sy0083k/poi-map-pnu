@@ -1,5 +1,7 @@
 import {
+  buildBboxKey,
   buildCacheKey,
+  buildLegacyCacheKey,
   dedupeByPnu,
   getCachedHighlights,
   getFgbEtag,
@@ -42,11 +44,10 @@ export async function loadUploadedHighlights(
 
   const normalizedPnus = Array.from(requestedPnuSet);
   const fgbEtag = await getFgbEtag(fgbUrl, signal);
-  const bboxKey = bbox
-    ? `bbox:${bbox[0].toFixed(2)},${bbox[1].toFixed(2)},${bbox[2].toFixed(2)},${bbox[3].toFixed(2)}:${bboxCrs ?? cadastralCrs}`
-    : "bbox:none";
+  const bboxKey = buildBboxKey(bbox, bboxCrs ?? cadastralCrs);
   const cacheKey = await buildCacheKey(theme, normalizedPnus, fgbEtag, bboxKey);
-  const cached = await getCachedHighlights(cacheKey);
+  const legacyCacheKey = await buildLegacyCacheKey(theme, normalizedPnus, fgbEtag, bboxKey);
+  const cached = await getCachedHighlights([cacheKey, legacyCacheKey]);
   if (cached) {
     const progress: HighlightLoadProgress = {
       scanned: 0,

@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-22  
-최종 수정일: 2026-03-07
+최종 수정일: 2026-03-08
 
 ## 빠른 시작 경로
 1. 왜 만드는가: [`goals.md`](goals.md)
@@ -17,6 +17,7 @@
 - 좌표계 기준: `CADASTRAL_FGB_CRS` (`EPSG:3857` 기본)
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
 - 하이라이트 성능: 기본 경로는 `/api/cadastral/highlights`의 `PNU+bbox` 서버 필터링 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
+- 하이라이트 캐시 정책: 캐시 키 버전 `v2`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 `v1`는 읽기 호환으로 유지
 - 지도 표시 정책: 업로드 하이라이트 대상 필지만 렌더링(비하이라이트 배경 필지 미표시)
 - 상세 정보 UI: 선택 필지 정보를 우상단 패널의 2열(속성/값) 동적 필드(`sourceFields`)로 동일 라인 정렬해 표시하며, `X` 버튼으로 닫기 지원
 - 상세 패널 초기 상태: 웹앱 초기화 시 숨김, 필지 선택 시 자동 표시
