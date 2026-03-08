@@ -1,6 +1,6 @@
 # 문서 포털 (Documentation Hub)
 
-프로젝트: 관심 필지 지도 (POI Map Geo)  
+프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-22  
 최종 수정일: 2026-03-07
 

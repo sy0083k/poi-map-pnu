@@ -1,6 +1,6 @@
 # TODO 백로그 (Risk & Improvement Tracker)
 
-프로젝트: 관심 필지 지도 (POI Map Geo)  
+프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-23  
 최종 수정일: 2026-03-08  
 운영 주기: 매주 1회 (월요일 기준)
@@ -73,7 +73,7 @@
 - 2026-03-05 | reviewer: team | 배경지도 메뉴에 `백지도(White)`를 추가하고 순서를 `일반지도/백지도/영상지도/하이브리드`로 조정 | 다음 액션: White 레이어 선택 비율 telemetry 수집 필요성 검토
 - 2026-03-05 | reviewer: team | `백지도(White)` 미표시 이슈를 VWorld WMTS layer 식별자 매핑(`White -> white`) 및 White 최대 줌 18 보정으로 수정 | 다음 액션: 운영 브라우저에서 White 선택 시 타일 공백 재발 여부 모니터링
 - 2026-03-05 | reviewer: team | 지도 사이드바 다운로드 버튼을 `검색 결과 다운로드`로 변경하고 `/api/lands/export`를 통해 현재 검색 결과 `landIds`의 원본 업로드 컬럼 전체 속성을 Excel로 제공하도록 전환 | 다음 액션: 대용량 다운로드(수만 건) 비동기 큐/백그라운드 작업 전환 필요성 검토
-- 2026-03-05 | reviewer: team | 주제도별 진입 경로를 `국·공유지=/gukgongyu`, `시유재산=/siyu`로 추가하고 메뉴 전환/뒤로가기/popstate 동기화를 반영 | 다음 액션: `.html` 별칭 경로(`/gukgongyu.html`, `/siyu.html`) 필요 여부 결정
+- 2026-03-05 | reviewer: team | (레거시 이력) 주제도별 진입 경로를 `국·공유지=/gukgongyu`, `시유재산=/siyu`로 추가하고 메뉴 전환/뒤로가기/popstate 동기화를 반영. 현재 기준 경로는 `파일→지도=/file2map`, `시유지=/siyu` | 다음 액션: `.html` 별칭 경로(`/gukgongyu.html`, `/siyu.html`) 필요 여부 결정
 - 2026-03-05 | reviewer: team | 루트 경로(`/`)를 `307 Temporary Redirect`로 `/siyu`에 위임해 기본 진입 주제도를 시유재산으로 고정 | 다음 액션: 운영 배포 후 북마크/링크 유입의 경로 전환 영향(로그) 모니터링
 - 2026-03-05 | reviewer: team | 글로벌 헤더 `주제도` 하위 메뉴 표기명을 `시유지/공유지(시+도)/국·공유지` 순서로 조정하고 기존 `시유재산/공유재산(시·도)` 표기를 대체 | 다음 액션: 운영 용어집(사용자 안내 문구/매뉴얼) 동기화 점검
 - 2026-03-05 | reviewer: team | `public_download` 기능(`/api/public-download`, `/admin/public-download/*`)과 설정(`PUBLIC_DOWNLOAD_*`)을 코드/문서/테스트에서 제거 | 다음 액션: 운영 환경의 잔존 `data/public_download/` 파일 수동 정리 여부 결정
