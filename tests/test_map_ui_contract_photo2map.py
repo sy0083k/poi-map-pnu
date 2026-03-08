@@ -3,6 +3,7 @@ from pathlib import Path
 
 def test_photo2map_contract_for_local_exif_markers() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    init_ts = Path("frontend/src/map/land-map-init.ts").read_text(encoding="utf-8")
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
     photo_overlay_ts = Path("frontend/src/map/persisted-photo-overlay.ts").read_text(encoding="utf-8")
     photo_lightbox_ts = Path("frontend/src/map/photo-lightbox.ts").read_text(encoding="utf-8")
@@ -15,7 +16,8 @@ def test_photo2map_contract_for_local_exif_markers() -> None:
     css_text = Path("static/css/style.css").read_text(encoding="utf-8")
     index_template = Path("templates/index.html").read_text(encoding="utf-8")
     assert "bootstrapPhotoMode" in map_ts
-    assert "bootstrapPersistedPhotoOverlay" in map_ts
+    assert "bootstrapPersistedPhotoOverlay" in init_ts
+    assert "await bootstrapPersistedPhotoOverlay({" in init_ts
     assert "data-map-mode" in index_template
     assert "parseJpegExifGps" in photo_mode_ts
     assert "selectPhoto" in photo_mode_ts
