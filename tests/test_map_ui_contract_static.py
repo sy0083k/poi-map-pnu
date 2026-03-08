@@ -59,6 +59,7 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
     init_ts = Path("frontend/src/map/land-map-init.ts").read_text(encoding="utf-8")
     ui_ts = Path("frontend/src/map/land-map-ui.ts").read_text(encoding="utf-8")
     workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
+    workflow_download_ts = Path("frontend/src/map/land-workflow-download.ts").read_text(encoding="utf-8")
     theme_routing_ts = Path("frontend/src/map/theme-routing.ts").read_text(encoding="utf-8")
     topbar_menu_ts = Path("frontend/src/map/topbar-menu.ts").read_text(encoding="utf-8")
 
@@ -93,7 +94,16 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
     assert_contains_all(events_ts, ["void deps.workflow.loadThemeData(nextTheme);", "applyLegendUiState(nextTheme);"])
     assert_contains_all(init_ts, ["await deps.workflow.loadThemeData(deps.state.getCurrentTheme());", "applyLegendUiState(initialTheme);"])
 
-    assert_contains_all(workflow_ts, ["재산관리관 다중 검출:", "정확한 재산관리관을 입력하세요.", 'deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }', 'downloadClient.downloadSearchResultFile({'])
+    workflow_contract_text = "\n".join([workflow_ts, workflow_download_ts])
+    assert_contains_all(
+        workflow_contract_text,
+        [
+            "재산관리관 다중 검출:",
+            "정확한 재산관리관을 입력하세요.",
+            'deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }',
+            "downloadClient.downloadSearchResultFile({",
+        ],
+    )
     assert 'currentTheme === "city_owned"' not in workflow_ts
 
     assert_contains_all(theme_routing_ts, ['const THEME_PATHS: Record<ThemeType, string> = {', 'national_public: "/file2map"', 'city_owned: "/siyu"'])
@@ -111,8 +121,9 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
 
 def test_lands_list_client_sends_theme_query() -> None:
     client_ts = Path("frontend/src/map/lands-list-client.ts").read_text(encoding="utf-8")
-    assert "export async function loadAllLandListItems(theme: ThemeType)" in client_ts
+    assert "export async function loadAllLandListItems(theme: ThemeType, filters?: FilterValues)" in client_ts
     assert 'const query = new URLSearchParams({ limit: "500", theme });' in client_ts
+    assert 'query.set("propertyUsage", filters.propertyUsageTerm);' in client_ts
 
 
 def test_select_highlight_render_contract() -> None:

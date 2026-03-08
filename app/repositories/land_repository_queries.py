@@ -105,6 +105,7 @@ def insert_land(
     land_type: str,
     area: float,
     property_manager: str = "",
+    property_usage: str = "",
     source_fields_json: str = "[]",
     adm_property: str = "",
     gen_property: str = "",
@@ -115,8 +116,8 @@ def insert_land(
     cursor = conn.cursor()
     cursor.execute(
         f"""
-        INSERT INTO {table_name} (pnu, address, land_type, area, property_manager, source_fields_json, adm_property, gen_property, contact, geom, geom_status, geom_error)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO {table_name} (pnu, address, land_type, area, property_manager, property_usage, source_fields_json, adm_property, gen_property, contact, geom, geom_status, geom_error)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             pnu,
@@ -124,6 +125,7 @@ def insert_land(
             land_type,
             area,
             property_manager,
+            property_usage,
             source_fields_json,
             adm_property,
             gen_property,

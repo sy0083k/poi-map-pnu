@@ -199,6 +199,7 @@ def _replace_theme_lands(*, theme: ThemeType, normalized_rows: list[dict[str, An
                 land_type=row["land_type"],
                 area=row["area"],
                 property_manager=row["property_manager"],
+                property_usage=row.get("property_usage", ""),
                 source_fields_json=json.dumps(row["source_fields"], ensure_ascii=False),
                 table_name=table_name,
             )

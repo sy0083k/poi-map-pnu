@@ -175,6 +175,7 @@ uvicorn app.main:app --reload
 - `GET /api/lands`
 - `GET /api/lands/list`
   - `theme` 쿼리 지원: `city_owned` (미지정 시 기본 `city_owned`, `national_public`은 400)
+  - `/siyu` 필터 서버 처리 쿼리(선택): `searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`
 - `POST /api/lands/export`
   - 요청 본문: `theme`, `landIds[]`
   - 응답: 검색 결과 토지의 원본 업로드 컬럼 전체 속성 Excel(`.xlsx`)

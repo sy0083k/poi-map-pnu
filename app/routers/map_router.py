@@ -87,17 +87,32 @@ def create_router() -> APIRouter:
         limit: int = DEFAULT_LANDS_PAGE_LIMIT,
         cursor: str | None = None,
         theme: str | None = None,
+        searchTerm: str | None = None,
+        minArea: str | None = None,
+        maxArea: str | None = None,
+        propertyManager: str | None = None,
+        propertyUsage: str | None = None,
+        landType: str | None = None,
     ) -> dict[str, Any]:
         clamped_limit = max(1, min(limit, MAX_LANDS_PAGE_LIMIT))
         try:
             parsed_cursor = map_api_helpers.parse_cursor(cursor)
             parsed_theme = map_api_helpers.parse_theme(theme)
+            parsed_filters = map_api_helpers.parse_land_list_filters(
+                search_term=searchTerm,
+                min_area=minArea,
+                max_area=maxArea,
+                property_manager=propertyManager,
+                property_usage=propertyUsage,
+                land_type=landType,
+            )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return land_service.get_public_land_list_page(
             cursor=parsed_cursor,
             limit=clamped_limit,
             theme=parsed_theme,
+            filters=parsed_filters,
         )
 
     @router.post("/lands/export")

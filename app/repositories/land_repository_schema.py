@@ -15,6 +15,7 @@ def init_land_schema(conn: sqlite3.Connection, *, table_name: str = TABLE_NAME) 
             land_type TEXT,
             area REAL,
             property_manager TEXT,
+            property_usage TEXT,
             source_fields_json TEXT,
             adm_property TEXT,
             gen_property TEXT,
@@ -52,6 +53,8 @@ def _ensure_land_columns(conn: sqlite3.Connection, *, table_name: str = TABLE_NA
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN pnu TEXT NOT NULL DEFAULT ''")
     if "property_manager" not in names:
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN property_manager TEXT")
+    if "property_usage" not in names:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN property_usage TEXT")
     if "source_fields_json" not in names:
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN source_fields_json TEXT")
     if "geom_status" not in names:

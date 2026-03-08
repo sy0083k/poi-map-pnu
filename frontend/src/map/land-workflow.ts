@@ -1,7 +1,7 @@
 import { HttpError } from "../http";
-import { loadAllLandListItems } from "./lands-list-client";
+import { downloadCurrentSearchResults as downloadSearchResults } from "./land-workflow-download";
 import { hasMultipleManagers, prepareUploadedHighlights, reloadCadastralLayers } from "./land-workflow-highlight";
-
+import { loadServerFilteredItems } from "./land-workflow-server-filter";
 import type { DownloadClient } from "./download-client";
 import type { Filters } from "./filters";
 import type { ListPanel } from "./list-panel";
@@ -24,6 +24,7 @@ type LandWorkflowDeps = {
   downloadClient: DownloadClient;
   setMapStatus: (message: string, color?: string) => void;
   getThemeLabel: (theme: ThemeType) => string;
+  loadLandListItems: (theme: ThemeType, filters?: ReturnType<Filters["getValues"]>) => Promise<LandListItem[]>;
 };
 
 export function createLandWorkflow(deps: LandWorkflowDeps) {
@@ -33,6 +34,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let themeLoadRequestSeq = 0;
   let highlightLoadAbortController: AbortController | null = null;
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
+  const serverFilterTheme: ThemeType = "city_owned";
 
   const updateNavigation = (): void => {
     deps.listPanel.updateNavigation(deps.state.getCurrentIndex(), deps.state.getCurrentItems().length);
@@ -69,18 +71,15 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     if (index < 0 || index >= currentItems.length) {
       return;
     }
-
     deps.state.setCurrentIndex(index);
     if (options.clickSource) {
       const selected = currentItems[index];
       deps.telemetry.trackLandClickEvent(selected?.address || "", options.clickSource, selected?.id);
     }
-
     const moved = deps.mapView.selectFeatureByIndex(index, { shouldFit: options.shouldFit });
     if (!moved) {
       deps.setMapStatus("선택한 필지 하이라이트를 찾지 못했습니다.", "#b45309");
     }
-
     updateNavigation();
     deps.listPanel.scrollTo(index);
   };
@@ -88,8 +87,22 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   const applyFilters = async (trackEvent = false): Promise<void> => {
     const originalItems = deps.state.getOriginalItems() ?? [];
     const values = deps.filters.getValues();
-    const filteredItems = deps.filters.filterItems(originalItems, values);
-
+    const currentTheme = deps.state.getCurrentTheme();
+    const shouldUseServerFilters = currentTheme === serverFilterTheme && !overrideItemsByTheme.has(currentTheme);
+    const filteredItems = await loadServerFilteredItems({
+      deps: {
+        loadLandListItems: deps.loadLandListItems,
+        setMapStatus: deps.setMapStatus,
+      },
+      theme: currentTheme,
+      values,
+      originalItems,
+      isServerFilterEnabled: shouldUseServerFilters,
+      localFilter: deps.filters.filterItems,
+    });
+    if (shouldUseServerFilters) {
+      deps.state.setOriginalItems(filteredItems);
+    }
     if (trackEvent) {
       deps.telemetry.trackSearchEvent(values.minArea, values.searchTerm, values.rawSearchTerm, values.rawMinAreaInput, values.rawMaxAreaInput, "false");
     }
@@ -141,15 +154,18 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.setMapStatus("표시할 파일을 적용하면 목록이 표시됩니다.", "#1f2937");
       return;
     }
-
     try {
       deps.listPanel.setStatus(`${themeLabel} 목록을 불러오는 중입니다...`);
-      const items = await loadAllLandListItems(theme);
+      const items = await deps.loadLandListItems(theme);
       if (seq !== themeLoadRequestSeq) {
         return;
       }
       deps.state.setOriginalItems(items);
-      await applyFilters(false);
+      deps.state.setCurrentItems(items);
+      deps.listPanel.render(items, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
+      deps.mapView.clearInfoPanel();
+      updateNavigation();
+      await reloadCadastralLayers(highlightDeps);
       void prepareUploadedHighlights(highlightDeps, items);
     } catch (error) {
       if (seq !== themeLoadRequestSeq) {
@@ -178,19 +194,14 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     selectItem(nextIndex, { shouldFit: true, clickSource: direction < 0 ? "nav_prev" : "nav_next" });
   };
 
-  const downloadCurrentSearchResults = (): void => {
-    const currentItems = deps.state.getCurrentItems();
-    if (currentItems.length === 0) {
-      deps.setMapStatus("검색 결과가 없어 다운로드할 수 없습니다.", "#b45309");
-      return;
-    }
-    const currentTheme = deps.state.getCurrentTheme();
-    if (overrideItemsByTheme.has(currentTheme)) {
-      void deps.downloadClient.downloadLocalSearchResultFile({ theme: currentTheme, items: currentItems });
-      return;
-    }
-    void deps.downloadClient.downloadSearchResultFile({ theme: currentTheme, landIds: currentItems.map((item) => item.id) });
-  };
+  const downloadCurrentSearchResults = (): void =>
+    downloadSearchResults({
+      currentItems: deps.state.getCurrentItems(),
+      currentTheme: deps.state.getCurrentTheme(),
+      hasThemeOverrideItems: overrideItemsByTheme.has(deps.state.getCurrentTheme()),
+      downloadClient: deps.downloadClient,
+      setMapStatus: deps.setMapStatus,
+    });
 
   return {
     applyFilters,
