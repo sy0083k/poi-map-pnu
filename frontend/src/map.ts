@@ -1,29 +1,25 @@
 import "ol/ol.css";
 
-import { HttpError, fetchJson } from "./http";
 import { createDownloadClient } from "./map/download-client";
 import { createFeedback } from "./map/feedback";
 import { createFilters } from "./map/filters";
+import { queryLandMapDomElements } from "./map/land-map-dom";
+import { bindLandMapEvents } from "./map/land-map-events";
+import { initializeLandMapPage } from "./map/land-map-init";
+import { createInputSyncController, applyThemeUiState, closePhotoPanelUi, createLegendController } from "./map/land-map-ui";
 import { createLandWorkflow } from "./map/land-workflow";
-import { setupLayoutControls, readInitialSidebarCollapsed } from "./map/layout-controls";
+import { setupLayoutControls } from "./map/layout-controls";
 import { createListPanel } from "./map/list-panel";
 import { setupFile2MapUpload } from "./map/local-upload";
 import { createMapView } from "./map/map-view";
+import { bootstrapPhotoMode } from "./map/photo-mode";
 import { createSessionTracker } from "./map/session-tracker";
 import { createMapState } from "./map/state";
 import { createTelemetry } from "./map/telemetry";
 import { setupTopbarMenus } from "./map/topbar-menu";
-import { bootstrapPhotoMode } from "./map/photo-mode";
-import { bootstrapPersistedPhotoOverlay } from "./map/persisted-photo-overlay";
-import {
-  asThemeType,
-  getThemeFromPathname,
-  getThemeLabel,
-  pushThemeHistory,
-  replaceThemeHistory
-} from "./map/theme-routing";
+import { getThemeLabel, pushThemeHistory } from "./map/theme-routing";
 
-import type { BaseType, MapConfig } from "./map/types";
+import type { BaseType } from "./map/types";
 
 async function bootstrap(): Promise<void> {
   if (document.body.dataset.mapMode === "photo") {
@@ -31,41 +27,8 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
-  const regionSearchInput = document.getElementById("region-search") as HTMLInputElement | null;
-  const minAreaInput = document.getElementById("min-area") as HTMLInputElement | null;
-  const maxAreaInput = document.getElementById("max-area") as HTMLInputElement | null;
-  const propertyManagerSearchInput = document.getElementById("property-manager-search") as HTMLInputElement | null;
-  const propertyUsageSearchInput = document.getElementById("property-usage-search") as HTMLSelectElement | null;
-  const landTypeSearchInput = document.getElementById("land-type-search") as HTMLInputElement | null;
-
-  const mobileRegionSearchInput = document.getElementById("mobile-region-search") as HTMLInputElement | null;
-  const mobileMinAreaInput = document.getElementById("mobile-min-area") as HTMLInputElement | null;
-  const mobileMaxAreaInput = document.getElementById("mobile-max-area") as HTMLInputElement | null;
-  const mobilePropertyManagerSearchInput = document.getElementById("mobile-property-manager-search") as HTMLInputElement | null;
-  const mobilePropertyUsageSearchInput = document.getElementById("mobile-property-usage-search") as HTMLSelectElement | null;
-  const mobileLandTypeSearchInput = document.getElementById("mobile-land-type-search") as HTMLInputElement | null;
-  const mobileSearchFab = document.getElementById("mobile-search-fab");
-  const mobileSearchCloseBtn = document.getElementById("mobile-search-close");
-  const mobileSearchBtn = document.getElementById("mobile-btn-search");
-  const mobileResetBtn = document.getElementById("mobile-btn-reset-filters");
-
-  const infoPanelElement = document.getElementById("land-info-panel");
-  const infoPanelContent = document.getElementById("land-info-content");
-  const infoPanelCloseButton = document.getElementById("land-info-close");
-  const mapStatus = document.getElementById("map-status");
-  const mapStatusText = document.getElementById("map-status-text");
-  const mapStatusCloseButton = document.getElementById("map-status-close");
-  const mapLegend = document.getElementById("map-legend");
-  const mapLegendCloseButton = document.getElementById("map-legend-close");
-  const uiToast = document.getElementById("ui-toast");
-  const sidebarHandle = document.getElementById("sidebar-handle");
-  const menuBasemapTrigger = document.getElementById("menu-basemap-trigger");
-  const menuThemeTrigger = document.getElementById("menu-theme-trigger");
-  const file2mapUploadInput = document.getElementById("file2map-upload-input") as HTMLInputElement | null;
-  const file2mapUploadButton = document.getElementById("file2map-upload-btn") as HTMLButtonElement | null;
-  const file2mapUploadClearButton = document.getElementById("file2map-upload-clear-btn") as HTMLButtonElement | null;
-
-  if (!(infoPanelElement instanceof HTMLElement) || !(infoPanelContent instanceof HTMLElement)) {
+  const dom = queryLandMapDomElements();
+  if (!(dom.infoPanelElement instanceof HTMLElement) || !(dom.infoPanelContent instanceof HTMLElement)) {
     return;
   }
 
@@ -77,9 +40,9 @@ async function bootstrap(): Promise<void> {
   });
 
   const mapView = createMapView({
-    infoPanelElement,
-    infoPanelContent,
-    infoPanelCloseButton: infoPanelCloseButton instanceof HTMLButtonElement ? infoPanelCloseButton : null
+    infoPanelElement: dom.infoPanelElement,
+    infoPanelContent: dom.infoPanelContent,
+    infoPanelCloseButton: dom.infoPanelCloseButton
   });
 
   const listPanel = createListPanel({
@@ -92,111 +55,35 @@ async function bootstrap(): Promise<void> {
   });
 
   const filters = createFilters({
-    regionSearchInput,
-    minAreaInput,
-    maxAreaInput,
-    propertyManagerInput: propertyManagerSearchInput,
-    propertyUsageInput: propertyUsageSearchInput,
-    landTypeInput: landTypeSearchInput
+    regionSearchInput: dom.regionSearchInput,
+    minAreaInput: dom.minAreaInput,
+    maxAreaInput: dom.maxAreaInput,
+    propertyManagerInput: dom.propertyManagerSearchInput,
+    propertyUsageInput: dom.propertyUsageSearchInput,
+    landTypeInput: dom.landTypeSearchInput
   });
-  const downloadClient = createDownloadClient();
+
+  const { syncDesktopToMobileInputs, syncMobileToDesktopInputs, clearFile2MapSpecificFilters } = createInputSyncController({
+    regionSearchInput: dom.regionSearchInput,
+    minAreaInput: dom.minAreaInput,
+    maxAreaInput: dom.maxAreaInput,
+    propertyManagerSearchInput: dom.propertyManagerSearchInput,
+    propertyUsageSearchInput: dom.propertyUsageSearchInput,
+    landTypeSearchInput: dom.landTypeSearchInput,
+    mobileRegionSearchInput: dom.mobileRegionSearchInput,
+    mobileMinAreaInput: dom.mobileMinAreaInput,
+    mobileMaxAreaInput: dom.mobileMaxAreaInput,
+    mobilePropertyManagerSearchInput: dom.mobilePropertyManagerSearchInput,
+    mobilePropertyUsageSearchInput: dom.mobilePropertyUsageSearchInput,
+    mobileLandTypeSearchInput: dom.mobileLandTypeSearchInput
+  });
 
   const { setMapStatus, showToast } = createFeedback({
-    mapStatus: mapStatus instanceof HTMLElement ? mapStatus : null,
-    mapStatusText: mapStatusText instanceof HTMLElement ? mapStatusText : null,
-    mapStatusCloseButton: mapStatusCloseButton instanceof HTMLButtonElement ? mapStatusCloseButton : null,
-    uiToast: uiToast instanceof HTMLElement ? uiToast : null
+    mapStatus: dom.mapStatus,
+    mapStatusText: dom.mapStatusText,
+    mapStatusCloseButton: dom.mapStatusCloseButton,
+    uiToast: dom.uiToast
   });
-
-  const syncDesktopToMobileInputs = (): void => {
-    if (
-      !regionSearchInput ||
-      !minAreaInput ||
-      !maxAreaInput ||
-      !propertyManagerSearchInput ||
-      !propertyUsageSearchInput ||
-      !landTypeSearchInput ||
-      !mobileRegionSearchInput ||
-      !mobileMinAreaInput ||
-      !mobileMaxAreaInput ||
-      !mobilePropertyManagerSearchInput ||
-      !mobilePropertyUsageSearchInput ||
-      !mobileLandTypeSearchInput
-    ) {
-      return;
-    }
-    mobileRegionSearchInput.value = regionSearchInput.value;
-    mobileMinAreaInput.value = minAreaInput.value;
-    mobileMaxAreaInput.value = maxAreaInput.value;
-    mobilePropertyManagerSearchInput.value = propertyManagerSearchInput.value;
-    mobilePropertyUsageSearchInput.value = propertyUsageSearchInput.value;
-    mobileLandTypeSearchInput.value = landTypeSearchInput.value;
-  };
-
-  const syncMobileToDesktopInputs = (): void => {
-    if (
-      !regionSearchInput ||
-      !minAreaInput ||
-      !maxAreaInput ||
-      !propertyManagerSearchInput ||
-      !propertyUsageSearchInput ||
-      !landTypeSearchInput ||
-      !mobileRegionSearchInput ||
-      !mobileMinAreaInput ||
-      !mobileMaxAreaInput ||
-      !mobilePropertyManagerSearchInput ||
-      !mobilePropertyUsageSearchInput ||
-      !mobileLandTypeSearchInput
-    ) {
-      return;
-    }
-    regionSearchInput.value = mobileRegionSearchInput.value;
-    minAreaInput.value = mobileMinAreaInput.value;
-    maxAreaInput.value = mobileMaxAreaInput.value;
-    propertyManagerSearchInput.value = mobilePropertyManagerSearchInput.value;
-    propertyUsageSearchInput.value = mobilePropertyUsageSearchInput.value;
-    landTypeSearchInput.value = mobileLandTypeSearchInput.value;
-  };
-
-  const applyThemeUiState = (theme: "national_public" | "city_owned"): void => {
-    document.body.classList.toggle("theme-city-owned", theme === "city_owned");
-    document.body.classList.toggle("theme-national-public", theme === "national_public");
-    document.body.classList.toggle("file2map-mode", theme === "national_public");
-  };
-
-  let isLegendDismissedByUser = false;
-  const applyLegendUiState = (theme: "national_public" | "city_owned"): void => {
-    if (!(mapLegend instanceof HTMLElement)) {
-      return;
-    }
-    mapLegend.classList.toggle("is-hidden", theme !== "city_owned" || isLegendDismissedByUser);
-  };
-
-  const closePhotoPanelUi = (): void => {
-    document.body.classList.remove("photo-panel-open");
-    document.body.style.removeProperty("--photo-panel-runtime-height");
-    document.body.style.removeProperty("--photo-panel-runtime-bottom-offset");
-    const photoPanel = document.getElementById("photo-info-panel");
-    if (photoPanel instanceof HTMLElement) {
-      photoPanel.classList.add("is-hidden");
-      photoPanel.setAttribute("aria-expanded", "false");
-    }
-  };
-
-  const clearFile2MapSpecificFilters = (): void => {
-    if (propertyManagerSearchInput) {
-      propertyManagerSearchInput.value = "";
-    }
-    if (propertyUsageSearchInput) {
-      propertyUsageSearchInput.value = "";
-    }
-    if (mobilePropertyManagerSearchInput) {
-      mobilePropertyManagerSearchInput.value = "";
-    }
-    if (mobilePropertyUsageSearchInput) {
-      mobilePropertyUsageSearchInput.value = "";
-    }
-  };
 
   const workflow = createLandWorkflow({
     state,
@@ -204,17 +91,17 @@ async function bootstrap(): Promise<void> {
     mapView,
     listPanel,
     filters,
-    downloadClient,
+    downloadClient: createDownloadClient(),
     setMapStatus,
     getThemeLabel
   });
 
   const layoutControls = setupLayoutControls({
-    sidebarHandle,
-    mobileSearchFab,
-    mobileSearchCloseBtn,
-    mobileSearchBtn,
-    mobileResetBtn,
+    sidebarHandle: dom.sidebarHandle,
+    mobileSearchFab: dom.mobileSearchFab,
+    mobileSearchCloseBtn: dom.mobileSearchCloseBtn,
+    mobileSearchBtn: dom.mobileSearchBtn,
+    mobileResetBtn: dom.mobileResetBtn,
     syncDesktopToMobileInputs,
     syncMobileToDesktopInputs,
     onSearch: () => {
@@ -228,17 +115,15 @@ async function bootstrap(): Promise<void> {
     }
   });
 
-  let syncThemeMenuActiveState = (_theme: "national_public" | "city_owned"): void => {
-    // Assigned after topbar menu initialization.
-  };
+  const legendController = createLegendController(dom.mapLegend);
+  let syncThemeMenuActiveState = (_theme: "national_public" | "city_owned"): void => {};
 
   const topbarMenus = setupTopbarMenus({
-    menuBasemapTrigger,
-    menuThemeTrigger,
+    menuBasemapTrigger: dom.menuBasemapTrigger,
+    menuThemeTrigger: dom.menuThemeTrigger,
     onThemeSelected: (theme) => {
-      const previousTheme = state.getCurrentTheme();
-      if (previousTheme !== "city_owned" && theme === "city_owned") {
-        isLegendDismissedByUser = false;
+      if (state.getCurrentTheme() !== "city_owned" && theme === "city_owned") {
+        legendController.resetLegendDismissed();
       }
       state.setCurrentTheme(theme);
       mapView.setTheme(theme);
@@ -248,7 +133,7 @@ async function bootstrap(): Promise<void> {
       }
       syncThemeMenuActiveState(theme);
       closePhotoPanelUi();
-      applyLegendUiState(theme);
+      legendController.applyLegendUiState(theme);
       mapView.clearInfoPanel();
       pushThemeHistory(theme);
       void workflow.loadThemeData(theme);
@@ -256,156 +141,71 @@ async function bootstrap(): Promise<void> {
     },
     onBasemapSelected: (layerType: BaseType) => {
       mapView.changeLayer(layerType);
-      const label =
-        layerType === "Base"
-          ? "일반지도"
-          : layerType === "White"
-            ? "백지도"
-            : layerType === "Satellite"
-              ? "영상지도"
-              : "하이브리드";
+      const label = layerType === "Base" ? "일반지도" : layerType === "White" ? "백지도" : layerType === "Satellite" ? "영상지도" : "하이브리드";
       showToast(`${label}로 변경했습니다.`);
     },
     showToast
   });
   syncThemeMenuActiveState = topbarMenus.syncThemeMenuActiveState;
 
-  mapView.setFeatureClickHandler(({ index }) => {
-    workflow.selectItem(index, {
-      shouldFit: false,
-      clickSource: "map_click"
-    });
+  bindLandMapEvents({
+    mapView,
+    workflow,
+    state,
+    listPanel,
+    filters,
+    syncDesktopToMobileInputs,
+    applyThemeUiState,
+    clearFile2MapSpecificFilters,
+    syncThemeMenuActiveState,
+    closePhotoPanelUi,
+    applyLegendUiState: legendController.applyLegendUiState,
+    resetLegendDismissed: legendController.resetLegendDismissed
   });
-  mapView.setMoveEndHandler(() => {
-    // Keep moveend lightweight to avoid layer tear-down flicker during nav/fit animations.
-  });
-
-  document.getElementById("btn-search")?.addEventListener("click", () => {
-    void workflow.applyFilters(true);
-  });
-  document.getElementById("btn-reset-filters")?.addEventListener("click", () => {
-    workflow.resetFilters(syncDesktopToMobileInputs);
-  });
-  document.getElementById("btn-download-all")?.addEventListener("click", () => {
-    workflow.downloadCurrentSearchResults();
-  });
-
-  listPanel.bindNavigation(
-    () => workflow.navigateItem(-1),
-    () => workflow.navigateItem(1)
-  );
-
-  filters.attachEnter(() => {
-    void workflow.applyFilters(true);
-  });
-
-  listPanel.initBottomSheet();
   sessionTracker.mount();
 
-  window.addEventListener("popstate", () => {
-    const nextTheme = getThemeFromPathname(window.location.pathname);
-    if (!nextTheme || nextTheme === state.getCurrentTheme()) {
-      return;
-    }
-    const previousTheme = state.getCurrentTheme();
-    if (previousTheme !== "city_owned" && nextTheme === "city_owned") {
-      isLegendDismissedByUser = false;
-    }
-    state.setCurrentTheme(nextTheme);
-    mapView.setTheme(nextTheme);
-    applyThemeUiState(nextTheme);
-    if (nextTheme === "national_public") {
-      clearFile2MapSpecificFilters();
-    }
-    syncThemeMenuActiveState(nextTheme);
-    closePhotoPanelUi();
-    applyLegendUiState(nextTheme);
-    mapView.clearInfoPanel();
-    void workflow.loadThemeData(nextTheme);
+  await initializeLandMapPage({
+    listPanel,
+    setMapStatus,
+    showToast,
+    workflow,
+    mapView,
+    state,
+    layoutControls,
+    setupUpload: async () =>
+      setupFile2MapUpload({
+        fileInput: dom.file2mapUploadInput,
+        uploadButton: dom.file2mapUploadButton,
+        clearButton: dom.file2mapUploadClearButton,
+        onStatusMessage: (message, color) => setMapStatus(message, color),
+        onApplied: (event) => {
+          workflow.setThemeOverrideItems("national_public", event.result.items);
+          if (state.getCurrentTheme() === "national_public" && event.source === "uploaded") {
+            void workflow.loadThemeData("national_public");
+            setMapStatus(`${event.result.summary.fileName} 적용 완료 (${event.result.summary.rowCount.toLocaleString()}건)`, "#166534");
+          }
+        },
+        onCleared: () => {
+          workflow.clearThemeOverrideItems("national_public");
+          if (state.getCurrentTheme() === "national_public") {
+            void workflow.loadThemeData("national_public");
+            setMapStatus("업로드 데이터를 초기화했습니다.", "#1f2937");
+          }
+        }
+      }),
+    applyThemeUiState,
+    applyLegendUiState: legendController.applyLegendUiState,
+    clearFile2MapSpecificFilters,
+    syncThemeMenuActiveState,
+    syncDesktopToMobileInputs
   });
 
-  try {
-    listPanel.setStatus("데이터를 불러오는 중입니다...");
-    setMapStatus("지도를 초기화하는 중입니다...");
-    const config = await fetchJson<MapConfig>("/api/config", { timeoutMs: 10000 });
-    workflow.setConfig(config);
-    mapView.init(config);
-    const hasPhotoPanel = document.getElementById("photo-info-panel") instanceof HTMLElement;
-    if (hasPhotoPanel) {
-      await bootstrapPersistedPhotoOverlay({
-        mapView,
-        setMapStatus,
-        showToast
-      });
-    }
-
-    layoutControls.applySidebarCollapsed(readInitialSidebarCollapsed(), false);
-
-    const initialTheme =
-      asThemeType(document.body.dataset.initialTheme || "") ??
-      getThemeFromPathname(window.location.pathname) ??
-      "national_public";
-
-    state.setCurrentTheme(initialTheme);
-    mapView.setTheme(initialTheme);
-    applyThemeUiState(initialTheme);
-    applyLegendUiState(initialTheme);
-    if (initialTheme === "national_public") {
-      clearFile2MapSpecificFilters();
-    }
-    syncThemeMenuActiveState(initialTheme);
-    replaceThemeHistory(initialTheme);
-    state.setOriginalItems([]);
-
-    const uploadSetup = await setupFile2MapUpload({
-      fileInput: file2mapUploadInput,
-      uploadButton: file2mapUploadButton,
-      clearButton: file2mapUploadClearButton,
-      onStatusMessage: (message, color) => {
-        setMapStatus(message, color);
-      },
-      onApplied: (event) => {
-        workflow.setThemeOverrideItems("national_public", event.result.items);
-        if (state.getCurrentTheme() === "national_public" && event.source === "uploaded") {
-          void workflow.loadThemeData("national_public");
-          setMapStatus(
-            `${event.result.summary.fileName} 적용 완료 (${event.result.summary.rowCount.toLocaleString()}건)`,
-            "#166534"
-          );
-        }
-      },
-      onCleared: () => {
-        workflow.clearThemeOverrideItems("national_public");
-        if (state.getCurrentTheme() === "national_public") {
-          void workflow.loadThemeData("national_public");
-          setMapStatus("업로드 데이터를 초기화했습니다.", "#1f2937");
-        }
-      }
-    });
-
-    if (initialTheme === "national_public" && !uploadSetup.hasRestoredUpload) {
-      listPanel.clear();
-      setMapStatus("표시할 파일을 적용하면 목록이 표시됩니다.", "#1f2937");
-    }
-    await workflow.loadThemeData(state.getCurrentTheme());
-
-    syncDesktopToMobileInputs();
-    layoutControls.maybeInitMobileHistory();
-    if (window.matchMedia("(max-width: 768px)").matches) {
-      layoutControls.setMobileState("home", false);
-    }
-  } catch (error) {
-    const message = error instanceof HttpError ? error.message : "지도를 초기화하지 못했습니다.";
-    listPanel.setStatus(message, "red");
-    setMapStatus(message, "#b91c1c");
-  }
-
-  mapLegendCloseButton?.addEventListener("click", () => {
+  dom.mapLegendCloseButton?.addEventListener("click", () => {
     if (state.getCurrentTheme() !== "city_owned") {
       return;
     }
-    isLegendDismissedByUser = true;
-    applyLegendUiState("city_owned");
+    legendController.dismissLegend();
+    legendController.applyLegendUiState("city_owned");
   });
 }
 
