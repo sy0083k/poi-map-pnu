@@ -111,6 +111,12 @@ def _iter_file(*, file_path: Path, chunk_size: int = 64 * 1024) -> Iterator[byte
 
 
 def _parse_range_header(*, range_header: str, file_size: int) -> tuple[int, int]:
+    value = _extract_single_range_value(range_header)
+    start, end = _parse_range_bounds(value=value, file_size=file_size)
+    return _validate_and_clamp_range(start=start, end=end, file_size=file_size)
+
+
+def _extract_single_range_value(range_header: str) -> str:
     if not range_header.startswith("bytes="):
         raise HTTPException(status_code=416, detail="지원하지 않는 Range 헤더 형식입니다.")
 
@@ -119,21 +125,25 @@ def _parse_range_header(*, range_header: str, file_size: int) -> tuple[int, int]
         raise HTTPException(status_code=416, detail="멀티 파트 Range는 지원하지 않습니다.")
     if "-" not in value:
         raise HTTPException(status_code=416, detail="잘못된 Range 헤더 형식입니다.")
+    return value
 
+
+def _parse_range_bounds(*, value: str, file_size: int) -> tuple[int, int]:
     start_raw, end_raw = value.split("-", 1)
     try:
         if start_raw == "":
             suffix = int(end_raw)
             if suffix <= 0:
                 raise ValueError
-            start = max(file_size - suffix, 0)
-            end = file_size - 1
-        else:
-            start = int(start_raw)
-            end = file_size - 1 if end_raw == "" else int(end_raw)
+            return max(file_size - suffix, 0), file_size - 1
+        start = int(start_raw)
+        end = file_size - 1 if end_raw == "" else int(end_raw)
     except ValueError as exc:
         raise HTTPException(status_code=416, detail="Range 값은 정수여야 합니다.") from exc
+    return start, end
 
+
+def _validate_and_clamp_range(*, start: int, end: int, file_size: int) -> tuple[int, int]:
     if start < 0 or end < start or start >= file_size:
         raise HTTPException(status_code=416, detail="요청한 Range가 파일 범위를 벗어났습니다.")
     return start, min(end, file_size - 1)

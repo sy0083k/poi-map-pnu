@@ -154,17 +154,28 @@ def parse_referrer_context(raw: Any) -> tuple[str | None, str | None]:
 
 def derive_traffic_channel(*, utm_medium: str | None, referrer_domain: str | None) -> str:
     if utm_medium:
-        medium = utm_medium.lower()
-        if any(token in medium for token in PAID_MEDIUM_TOKENS):
-            return "paid"
-        if any(token in medium for token in EMAIL_MEDIUM_TOKENS):
-            return "email"
-        if any(token in medium for token in SOCIAL_MEDIUM_TOKENS):
-            return "social"
-        return "campaign"
+        return _channel_from_utm_medium(utm_medium)
     if not referrer_domain:
         return "direct"
-    lowered = referrer_domain.lower()
-    if any(domain in lowered for domain in SEARCH_ENGINE_DOMAINS):
+    if _is_search_engine_referrer(referrer_domain):
         return "organic"
     return "referral"
+
+
+def _channel_from_utm_medium(utm_medium: str) -> str:
+    medium = utm_medium.lower()
+    if _contains_any_token(medium, PAID_MEDIUM_TOKENS):
+        return "paid"
+    if _contains_any_token(medium, EMAIL_MEDIUM_TOKENS):
+        return "email"
+    if _contains_any_token(medium, SOCIAL_MEDIUM_TOKENS):
+        return "social"
+    return "campaign"
+
+
+def _is_search_engine_referrer(referrer_domain: str) -> bool:
+    return _contains_any_token(referrer_domain.lower(), SEARCH_ENGINE_DOMAINS)
+
+
+def _contains_any_token(value: str, tokens: tuple[str, ...]) -> bool:
+    return any(token in value for token in tokens)
