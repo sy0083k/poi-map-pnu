@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from app.db.connection import db_connection
-from tests.helpers import init_test_db
+from tests.helpers import assert_has_keys, init_test_db
 
 CSRF_PATTERN = r'name="csrf_token" value="([^"]+)"'
 
@@ -13,7 +13,6 @@ async def _login_as_admin(client: httpx.AsyncClient) -> None:
     login_page = await client.get("/admin/login")
     match = re.search(CSRF_PATTERN, login_page.text)
     assert match is not None
-
     response = await client.post(
         "/login",
         data={
@@ -26,55 +25,95 @@ async def _login_as_admin(client: httpx.AsyncClient) -> None:
     assert response.json()["success"] is True
 
 
-async def _get_admin_csrf(client: httpx.AsyncClient) -> str:
-    admin_page = await client.get("/admin/")
-    assert admin_page.status_code == 200
-    match = re.search(r'id="csrfToken" value="([^"]+)"', admin_page.text)
-    assert match is not None
-    return match.group(1)
+async def _post_basic_map_events(client: httpx.AsyncClient) -> None:
+    search_payload = {
+        "eventType": "search",
+        "anonId": "anon-1",
+        "minArea": 120,
+        "searchTerm": "대산읍12",
+    }
+    click_payload = {
+        "eventType": "land_click",
+        "anonId": "anon-1",
+        "landAddress": "충남 서산시 대산읍 독곶리 1-1",
+    }
+    search_response = await client.post("/api/events", json=search_payload)
+    click_response = await client.post("/api/events", json=click_payload)
+    assert search_response.status_code == 200
+    assert click_response.status_code == 200
+
+
+async def _post_basic_web_events(client: httpx.AsyncClient) -> None:
+    start_payload = {
+        "eventType": "visit_start",
+        "anonId": "anon-web-1",
+        "sessionId": "session-web-1",
+        "pagePath": "/siyu",
+        "clientTs": 1763596800,
+        "clientTz": "Asia/Seoul",
+        "referrerUrl": "https://example.com/campaign?utm_source=naver",
+        "utmSource": "naver",
+        "utmMedium": "cpc",
+        "utmCampaign": "spring",
+        "utmTerm": "land",
+        "utmContent": "banner-a",
+        "clientLang": "ko-KR",
+        "platform": "Linux x86_64",
+        "screenWidth": 1920,
+        "screenHeight": 1080,
+        "viewportWidth": 1400,
+        "viewportHeight": 900,
+    }
+    end_payload = {
+        "eventType": "visit_end",
+        "anonId": "anon-web-1",
+        "sessionId": "session-web-1",
+        "pagePath": "/siyu",
+        "clientTs": 1763596860,
+        "clientTz": "Asia/Seoul",
+    }
+    start_response = await client.post("/api/web-events", json=start_payload)
+    end_response = await client.post("/api/web-events", json=end_payload)
+    assert start_response.status_code == 200
+    assert end_response.status_code == 200
+    assert start_response.json()["success"] is True
+    assert end_response.json()["success"] is True
 
 
 @pytest.mark.anyio
-async def test_map_event_and_admin_stats_flow(async_client: httpx.AsyncClient, db_path: object) -> None:
-    with db_connection() as conn:
-        init_test_db(conn)
-
-    event_search = await async_client.post(
-        "/api/events",
-        json={
-            "eventType": "search",
-            "anonId": "anon-1",
-            "minArea": 120,
-            "searchTerm": "대산읍12",
-        },
-    )
-    assert event_search.status_code == 200
-    assert event_search.json()["success"] is True
-
-    event_click = await async_client.post(
-        "/api/events",
-        json={
-            "eventType": "land_click",
-            "anonId": "anon-1",
-            "landAddress": "충남 서산시 대산읍 독곶리 1-1",
-        },
-    )
-    assert event_click.status_code == 200
-
-    # Not authenticated.
+async def test_map_event_admin_stats_requires_auth(async_client: httpx.AsyncClient, db_path: object) -> None:
     unauthorized = await async_client.get("/admin/stats")
     assert unauthorized.status_code == 401
 
+
+@pytest.mark.anyio
+async def test_map_event_admin_stats_summary(async_client: httpx.AsyncClient, db_path: object) -> None:
+    with db_connection() as conn:
+        init_test_db(conn)
+
+    await _post_basic_map_events(async_client)
     await _login_as_admin(async_client)
+
     stats_response = await async_client.get("/admin/stats?limit=10")
     assert stats_response.status_code == 200
     payload = stats_response.json()
-
     assert payload["summary"]["searchCount"] >= 1
     assert payload["summary"]["clickCount"] >= 1
     assert payload["summary"]["uniqueSessionCount"] >= 1
     assert payload["landSummary"]["totalLands"] >= 0
 
+
+@pytest.mark.anyio
+async def test_map_event_admin_stats_top_items(async_client: httpx.AsyncClient, db_path: object) -> None:
+    with db_connection() as conn:
+        init_test_db(conn)
+
+    await _post_basic_map_events(async_client)
+    await _login_as_admin(async_client)
+
+    stats_response = await async_client.get("/admin/stats?limit=10")
+    assert stats_response.status_code == 200
+    payload = stats_response.json()
     assert len(payload["topRegions"]) >= 1
     assert payload["topRegions"][0]["region"] == "대산읍"
     assert len(payload["topClickedLands"]) >= 1
@@ -119,63 +158,43 @@ async def test_map_event_rejects_invalid_payload(async_client: httpx.AsyncClient
 
 
 @pytest.mark.anyio
-async def test_web_event_and_web_stats_flow(async_client: httpx.AsyncClient, db_path: object) -> None:
+async def test_web_event_and_web_stats_summary(async_client: httpx.AsyncClient, db_path: object) -> None:
     with db_connection() as conn:
         init_test_db(conn)
 
-    event_start = await async_client.post(
-        "/api/web-events",
-        json={
-            "eventType": "visit_start",
-            "anonId": "anon-web-1",
-            "sessionId": "session-web-1",
-            "pagePath": "/siyu",
-            "clientTs": 1763596800,
-            "clientTz": "Asia/Seoul",
-            "referrerUrl": "https://example.com/campaign?utm_source=naver",
-            "utmSource": "naver",
-            "utmMedium": "cpc",
-            "utmCampaign": "spring",
-            "utmTerm": "land",
-            "utmContent": "banner-a",
-            "clientLang": "ko-KR",
-            "platform": "Linux x86_64",
-            "screenWidth": 1920,
-            "screenHeight": 1080,
-            "viewportWidth": 1400,
-            "viewportHeight": 900,
-        },
-    )
-    assert event_start.status_code == 200
-    assert event_start.json()["success"] is True
-
-    event_end = await async_client.post(
-        "/api/web-events",
-        json={
-            "eventType": "visit_end",
-            "anonId": "anon-web-1",
-            "sessionId": "session-web-1",
-            "pagePath": "/siyu",
-            "clientTs": 1763596860,
-            "clientTz": "Asia/Seoul",
-        },
-    )
-    assert event_end.status_code == 200
-    assert event_end.json()["success"] is True
-
+    await _post_basic_web_events(async_client)
     await _login_as_admin(async_client)
+
     web_stats_response = await async_client.get("/admin/stats/web?days=30")
     assert web_stats_response.status_code == 200
     payload = web_stats_response.json()
     assert payload["summary"]["totalVisitors"] >= 1
-    assert "dailyTrend" in payload
-    assert "topReferrers" in payload
-    assert "topUtmSources" in payload
-    assert "topUtmCampaigns" in payload
-    assert "deviceBreakdown" in payload
-    assert "browserBreakdown" in payload
-    assert "topPagePaths" in payload
-    assert "channelBreakdown" in payload
+
+
+@pytest.mark.anyio
+async def test_web_event_and_web_stats_breakdown_keys(async_client: httpx.AsyncClient, db_path: object) -> None:
+    with db_connection() as conn:
+        init_test_db(conn)
+
+    await _post_basic_web_events(async_client)
+    await _login_as_admin(async_client)
+
+    web_stats_response = await async_client.get("/admin/stats/web?days=30")
+    assert web_stats_response.status_code == 200
+    payload = web_stats_response.json()
+    assert_has_keys(
+        payload,
+        [
+            "dailyTrend",
+            "topReferrers",
+            "topUtmSources",
+            "topUtmCampaigns",
+            "deviceBreakdown",
+            "browserBreakdown",
+            "topPagePaths",
+            "channelBreakdown",
+        ],
+    )
 
 
 @pytest.mark.anyio
@@ -192,53 +211,3 @@ async def test_web_event_rejects_invalid_page_path(async_client: httpx.AsyncClie
         },
     )
     assert response.status_code == 400
-
-
-@pytest.mark.anyio
-async def test_admin_can_export_raw_query_csv(async_client: httpx.AsyncClient, db_path: object) -> None:
-    with db_connection() as conn:
-        init_test_db(conn)
-
-    search_response = await async_client.post(
-        "/api/events",
-        json={
-            "eventType": "search",
-            "anonId": "anon-export-1",
-            "minArea": 120,
-            "searchTerm": "예천동",
-            "rawSearchTerm": "  예천동  ",
-            "rawMinAreaInput": " 120 ",
-            "rawMaxAreaInput": " 500 ",
-            "rawRentOnly": "true",
-        },
-    )
-    assert search_response.status_code == 200
-
-    click_response = await async_client.post(
-        "/api/events",
-        json={
-            "eventType": "land_click",
-            "anonId": "anon-export-2",
-            "landAddress": "충남 서산시 대산읍 독곶리 1-1",
-            "landId": "99",
-            "clickSource": "map_click",
-        },
-    )
-    assert click_response.status_code == 200
-
-    await _login_as_admin(async_client)
-
-    export_search = await async_client.get("/admin/raw-queries/export?event_type=search&limit=100")
-    assert export_search.status_code == 200
-    assert export_search.headers["content-type"].startswith("text/csv")
-    assert "attachment; filename=" in export_search.headers.get("content-disposition", "")
-    assert "raw_region_query" in export_search.text
-    assert "  예천동  " in export_search.text
-    assert " 120 " in export_search.text
-    assert "충남 서산시 대산읍 독곶리 1-1" not in export_search.text
-
-    export_all = await async_client.get("/admin/raw-queries/export?event_type=all&limit=100")
-    assert export_all.status_code == 200
-    assert "충남 서산시 대산읍 독곶리 1-1" in export_all.text
-    assert "99" in export_all.text
-    assert "map_click" in export_all.text

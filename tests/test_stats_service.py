@@ -1,7 +1,7 @@
 from app.db.connection import db_connection
 from app.repositories import land_repository, web_visit_repository
 from app.services import stats_service
-from tests.helpers import init_test_db
+from tests.helpers import assert_has_keys, init_test_db
 
 
 def test_stats_service_bucket_helpers() -> None:
@@ -32,7 +32,7 @@ def test_stats_service_referrer_and_channel_rules() -> None:
     assert stats_service.derive_traffic_channel(utm_medium=None, referrer_domain="example.com") == "referral"
 
 
-def test_stats_service_get_web_stats(db_path: object) -> None:
+def _seed_web_stats_events() -> None:
     with db_connection() as conn:
         init_test_db(conn)
         web_visit_repository.insert_web_visit_event(
@@ -82,17 +82,30 @@ def test_stats_service_get_web_stats(db_path: object) -> None:
         )
         conn.commit()
 
+
+def test_stats_service_get_web_stats_summary(db_path: object) -> None:
+    _seed_web_stats_events()
     result = stats_service.get_web_stats(days=30)
     assert "summary" in result
     assert result["summary"]["totalVisitors"] >= 2
     assert result["summary"]["sessionCount"] >= 2
-    assert "topReferrers" in result
-    assert "topUtmSources" in result
-    assert "topUtmCampaigns" in result
-    assert "deviceBreakdown" in result
-    assert "browserBreakdown" in result
-    assert "topPagePaths" in result
-    assert "channelBreakdown" in result
+
+
+def test_stats_service_get_web_stats_breakdown_keys(db_path: object) -> None:
+    _seed_web_stats_events()
+    result = stats_service.get_web_stats(days=30)
+    assert_has_keys(
+        result,
+        [
+            "topReferrers",
+            "topUtmSources",
+            "topUtmCampaigns",
+            "deviceBreakdown",
+            "browserBreakdown",
+            "topPagePaths",
+            "channelBreakdown",
+        ],
+    )
 
 
 def test_stats_service_get_land_stats(db_path: object) -> None:
