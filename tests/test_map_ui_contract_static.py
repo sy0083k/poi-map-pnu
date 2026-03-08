@@ -117,10 +117,23 @@ def test_lands_list_client_sends_theme_query() -> None:
 
 def test_select_highlight_render_contract() -> None:
     map_view_ts = Path("frontend/src/map/map-view.ts").read_text(encoding="utf-8")
-    assert_contains_all(
-        map_view_ts,
+    map_view_styles_ts = Path("frontend/src/map/map-view-styles.ts").read_text(encoding="utf-8")
+    map_view_info_panel_ts = Path("frontend/src/map/map-view-info-panel.ts").read_text(encoding="utf-8")
+    map_view_feature_layers_ts = Path("frontend/src/map/map-view-feature-layers.ts").read_text(encoding="utf-8")
+    map_view_basemap_ts = Path("frontend/src/map/map-view-basemap.ts").read_text(encoding="utf-8")
+    map_view_contract_text = "\n".join(
         [
-            "renderFeatureLayers();",
+            map_view_ts,
+            map_view_styles_ts,
+            map_view_info_panel_ts,
+            map_view_feature_layers_ts,
+            map_view_basemap_ts,
+        ]
+    )
+    assert_contains_all(
+        map_view_contract_text,
+        [
+            "selectFeatureId(index);",
             "map.renderSync();",
             "window.requestAnimationFrame(() => {",
             'White: "white"',
@@ -140,9 +153,9 @@ def test_select_highlight_render_contract() -> None:
             'if (manager === "산림공원과") {',
             'if (manager === "회계과") {',
             "return fallbackFeatureStyle;",
-            "const resetInfoPanelScroll = (): void => {",
+            "const resetScroll = (): void => {",
             "elements.infoPanelContent.scrollTop = 0;",
-            "resetInfoPanelScroll();",
+            "resetScroll();",
         ],
     )
 
