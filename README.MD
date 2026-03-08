@@ -170,8 +170,8 @@ uvicorn app.main:app --reload
 - `GET /api/config`
 - `GET /api/cadastral/fgb`
 - `POST /api/cadastral/highlights`
-  - 요청 본문: `theme`, `pnus[]`(19자리 PNU)
-  - 응답: 요청 PNU에 매칭된 하이라이트 `FeatureCollection` + `meta(requested/matched/scanned/source/fgbEtag)`
+  - 요청 본문: `theme`, `pnus[]`(19자리 PNU), 선택 `bbox[minX,minY,maxX,maxY]`, `bboxCrs`
+  - 응답: 요청 PNU(+bbox 조건)에 매칭된 하이라이트 `FeatureCollection` + `meta(requested/matched/scanned/bboxApplied/bboxFiltered/source/fgbEtag)`
 - `GET /api/lands`
 - `GET /api/lands/list`
   - `theme` 쿼리 지원: `city_owned` (미지정 시 기본 `city_owned`, `national_public`은 400)

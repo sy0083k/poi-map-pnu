@@ -106,6 +106,8 @@ export function createPhotoModeLandController(deps: Deps) {
         cadastralCrs: deps.config.cadastralCrs,
         uploadedPnus,
         theme: "national_public",
+        bbox: deps.map.getView().calculateExtent(deps.map.getSize()) as [number, number, number, number],
+        bboxCrs: deps.config.cadastralCrs,
         onProgress: (progress) => {
           if (!progress.done) {
             deps.setMapStatus(
