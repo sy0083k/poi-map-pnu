@@ -135,45 +135,57 @@ def _decode_source_fields(raw: Any) -> list[dict[str, str]]:
 
 
 def build_public_land_export_response(*, land_ids: list[int], theme: ThemeType) -> Response:
+    ordered_rows = _fetch_ordered_export_rows(land_ids=land_ids, theme=theme)
+    records, column_order = _build_export_records(ordered_rows)
+    if not column_order:
+        column_order = EXPORT_REQUIRED_COLUMNS.copy()
+        records = [_build_fallback_record(row) for row in ordered_rows]
+    return _build_excel_response(records=records, column_order=column_order, theme=theme)
+
+
+def _fetch_ordered_export_rows(*, land_ids: list[int], theme: ThemeType) -> list[Any]:
     with db_connection(row_factory=True) as conn:
         rows = land_repository.fetch_lands_by_ids(
             conn,
             ids=land_ids,
             table_name=_table_name_for_theme(theme),
         )
-
     rows_by_id = {int(row["id"]): row for row in rows}
     ordered_rows = [rows_by_id[item_id] for item_id in land_ids if item_id in rows_by_id]
     if not ordered_rows:
         raise ValueError("다운로드할 검색 결과가 없습니다.")
+    return ordered_rows
 
+
+def _build_export_records(rows: list[Any]) -> tuple[list[dict[str, str]], list[str]]:
     column_order: list[str] = []
     records: list[dict[str, str]] = []
-    for row in ordered_rows:
-        decoded = _decode_source_fields(row["source_fields_json"])
-        source_fields = decoded if decoded else _build_fallback_source_fields(row)
-
-        record: dict[str, str] = {}
-        for field in source_fields:
-            label = str(field.get("label", "")).strip()
-            if not label:
-                continue
-            if label not in column_order:
-                column_order.append(label)
-            record[label] = str(field.get("value", "")).strip()
+    for row in rows:
+        record = _record_from_source_fields(row, column_order)
         records.append(record)
+    return records, column_order
 
-    if not column_order:
-        column_order = EXPORT_REQUIRED_COLUMNS.copy()
-        records = [_build_fallback_record(row) for row in ordered_rows]
 
+def _record_from_source_fields(row: Any, column_order: list[str]) -> dict[str, str]:
+    decoded = _decode_source_fields(row["source_fields_json"])
+    source_fields = decoded if decoded else _build_fallback_source_fields(row)
+    record: dict[str, str] = {}
+    for field in source_fields:
+        label = str(field.get("label", "")).strip()
+        if not label:
+            continue
+        if label not in column_order:
+            column_order.append(label)
+        record[label] = str(field.get("value", "")).strip()
+    return record
+
+
+def _build_excel_response(*, records: list[dict[str, str]], column_order: list[str], theme: ThemeType) -> Response:
     frame = pd.DataFrame(records, columns=column_order).fillna("")
     output = BytesIO()
     frame.to_excel(output, index=False)
     filename = f"lands-search-result-{theme}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.xlsx"
-    headers = {
-        "Content-Disposition": f'attachment; filename="{filename}"',
-    }
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return Response(
         content=output.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

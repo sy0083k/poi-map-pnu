@@ -64,29 +64,54 @@ def validate_updates(updates: dict[str, str]) -> dict[str, str]:
     for key, value in updates.items():
         if key not in WHITELIST_KEYS:
             continue
-        raw = value.strip()
-        if raw == "":
+        normalized = _normalize_update_value(key=key, value=value)
+        if normalized is None:
             continue
-        if key in INT_KEYS:
-            if not raw.isdigit():
-                raise ValueError(f"{key} must be an integer.")
-        if key == "CADASTRAL_FGB_CRS":
-            normalized = raw.upper()
-            if normalized not in {"EPSG:3857", "EPSG:4326"}:
-                raise ValueError("CADASTRAL_FGB_CRS must be EPSG:3857 or EPSG:4326.")
-            raw = normalized
-        if key == "TRUSTED_PROXY_IPS":
-            for candidate in [item.strip() for item in raw.split(",") if item.strip()]:
-                try:
-                    ip_network(candidate, strict=False)
-                except ValueError as exc:
-                    raise ValueError(f"Invalid TRUSTED_PROXY_IPS entry: {candidate}") from exc
-        if key in BOOL_KEYS or key == "TRUST_PROXY_HEADERS":
-            if raw.lower() not in {"true", "false"}:
-                raise ValueError(f"{key} must be true or false.")
-            raw = raw.lower()
-        cleaned[key] = raw
+        cleaned[key] = normalized
     return cleaned
+
+
+def _normalize_update_value(*, key: str, value: str) -> str | None:
+    raw = value.strip()
+    if raw == "":
+        return None
+
+    if key in INT_KEYS:
+        _validate_integer_key(key=key, raw=raw)
+    if key == "CADASTRAL_FGB_CRS":
+        return _normalize_crs(raw)
+    if key == "TRUSTED_PROXY_IPS":
+        _validate_trusted_proxy_ips(raw)
+    if key in BOOL_KEYS or key == "TRUST_PROXY_HEADERS":
+        return _normalize_boolean_key(key=key, raw=raw)
+    return raw
+
+
+def _validate_integer_key(*, key: str, raw: str) -> None:
+    if not raw.isdigit():
+        raise ValueError(f"{key} must be an integer.")
+
+
+def _normalize_crs(raw: str) -> str:
+    normalized = raw.upper()
+    if normalized not in {"EPSG:3857", "EPSG:4326"}:
+        raise ValueError("CADASTRAL_FGB_CRS must be EPSG:3857 or EPSG:4326.")
+    return normalized
+
+
+def _validate_trusted_proxy_ips(raw: str) -> None:
+    for candidate in [item.strip() for item in raw.split(",") if item.strip()]:
+        try:
+            ip_network(candidate, strict=False)
+        except ValueError as exc:
+            raise ValueError(f"Invalid TRUSTED_PROXY_IPS entry: {candidate}") from exc
+
+
+def _normalize_boolean_key(*, key: str, raw: str) -> str:
+    normalized = raw.lower()
+    if normalized not in {"true", "false"}:
+        raise ValueError(f"{key} must be true or false.")
+    return normalized
 
 
 def update_env_file(base_dir: str, updates: dict[str, str]) -> None:
