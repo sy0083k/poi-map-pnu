@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.services import (
     cadastral_fgb_service,
+    cadastral_highlight_service,
     land_service,
     stats_service,
 )
@@ -54,6 +55,14 @@ def _parse_land_ids(raw_ids: Any) -> list[int]:
     return parsed
 
 
+def _parse_highlight_payload(payload: Any) -> tuple[str, list[str]]:
+    if not isinstance(payload, dict):
+        raise ValueError("payload must be an object")
+    theme = cadastral_highlight_service.parse_theme(payload.get("theme"))
+    pnus = cadastral_highlight_service.parse_requested_pnus(payload.get("pnus"))
+    return theme, pnus
+
+
 def _rate_limit_key(request: Request, payload: dict[str, Any]) -> str:
     client_ip = request.client.host if request.client else "unknown"
     anon_id = str(payload.get("anonId", "")).strip()
@@ -93,6 +102,24 @@ def create_router() -> APIRouter:
             base_dir=config.BASE_DIR,
             configured_path=config.CADASTRAL_FGB_PATH,
             range_header=request.headers.get("range"),
+        )
+
+    @router.post("/cadastral/highlights")
+    async def post_cadastral_highlights(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            theme, pnus = _parse_highlight_payload(payload)
+        except (HTTPException, ValueError) as exc:
+            if isinstance(exc, HTTPException):
+                raise
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        config = request.app.state.config
+        return cadastral_highlight_service.get_filtered_highlights(
+            base_dir=config.BASE_DIR,
+            configured_path=config.CADASTRAL_FGB_PATH,
+            pnu_field=config.CADASTRAL_FGB_PNU_FIELD,
+            theme=theme,
+            requested_pnus=pnus,
         )
 
     @router.get("/lands")
