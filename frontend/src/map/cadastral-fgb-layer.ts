@@ -26,12 +26,14 @@ export async function loadUploadedHighlights(
     cadastralCrs: CadastralCrs;
     uploadedPnus: string[];
     theme: ThemeType;
+    bbox?: [number, number, number, number];
+    bboxCrs?: CadastralCrs;
     signal?: AbortSignal;
     onFeatures?: (features: LandFeature[], progress: HighlightLoadProgress) => void;
     onProgress?: (progress: HighlightLoadProgress) => void;
   }
 ): Promise<LandFeatureCollection> {
-  const { fgbUrl, pnuField, cadastralCrs, uploadedPnus, theme, signal, onFeatures, onProgress } = params;
+  const { fgbUrl, pnuField, cadastralCrs, uploadedPnus, theme, bbox, bboxCrs, signal, onFeatures, onProgress } = params;
   const requestedPnuSet = new Set(uploadedPnus.map((item) => normalizePnu(item)).filter((item) => item.length === 19));
   if (requestedPnuSet.size === 0) {
     return { type: "FeatureCollection", features: [] };
@@ -40,7 +42,10 @@ export async function loadUploadedHighlights(
 
   const normalizedPnus = Array.from(requestedPnuSet);
   const fgbEtag = await getFgbEtag(fgbUrl, signal);
-  const cacheKey = await buildCacheKey(theme, normalizedPnus, fgbEtag);
+  const bboxKey = bbox
+    ? `bbox:${bbox[0].toFixed(2)},${bbox[1].toFixed(2)},${bbox[2].toFixed(2)},${bbox[3].toFixed(2)}:${bboxCrs ?? cadastralCrs}`
+    : "bbox:none";
+  const cacheKey = await buildCacheKey(theme, normalizedPnus, fgbEtag, bboxKey);
   const cached = await getCachedHighlights(cacheKey);
   if (cached) {
     const progress: HighlightLoadProgress = {
@@ -56,7 +61,7 @@ export async function loadUploadedHighlights(
   }
 
   return loadUploadedHighlightsFromWorker({
-    apiPayload: { theme, pnus: normalizedPnus },
+    apiPayload: { theme, pnus: normalizedPnus, bbox, bboxCrs: bboxCrs ?? cadastralCrs },
     fgbUrl,
     pnuField,
     cadastralCrs,
@@ -68,7 +73,7 @@ export async function loadUploadedHighlights(
   });
 }
 async function loadUploadedHighlightsFromWorker(params: {
-  apiPayload: { theme: ThemeType; pnus: string[] };
+  apiPayload: { theme: ThemeType; pnus: string[]; bbox?: [number, number, number, number]; bboxCrs: CadastralCrs };
   fgbUrl: string;
   pnuField: string;
   cadastralCrs: CadastralCrs;
@@ -83,6 +88,8 @@ async function loadUploadedHighlightsFromWorker(params: {
     const apiLoaded = await loadUploadedHighlightsFromApi({
       theme: apiPayload.theme,
       pnus: apiPayload.pnus,
+      bbox: apiPayload.bbox,
+      bboxCrs: apiPayload.bboxCrs,
       signal
     });
     const matched = apiLoaded.features.length;

@@ -55,12 +55,14 @@ def _parse_land_ids(raw_ids: Any) -> list[int]:
     return parsed
 
 
-def _parse_highlight_payload(payload: Any) -> tuple[str, list[str]]:
+def _parse_highlight_payload(payload: Any) -> tuple[str, list[str], tuple[float, float, float, float] | None, str]:
     if not isinstance(payload, dict):
         raise ValueError("payload must be an object")
     theme = cadastral_highlight_service.parse_theme(payload.get("theme"))
     pnus = cadastral_highlight_service.parse_requested_pnus(payload.get("pnus"))
-    return theme, pnus
+    bbox = cadastral_highlight_service.parse_bbox(payload.get("bbox"))
+    bbox_crs = cadastral_highlight_service.parse_bbox_crs(payload.get("bboxCrs"))
+    return theme, pnus, bbox, bbox_crs
 
 
 def _rate_limit_key(request: Request, payload: dict[str, Any]) -> str:
@@ -107,7 +109,7 @@ def create_router() -> APIRouter:
     @router.post("/cadastral/highlights")
     async def post_cadastral_highlights(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            theme, pnus = _parse_highlight_payload(payload)
+            theme, pnus, bbox, bbox_crs = _parse_highlight_payload(payload)
         except (HTTPException, ValueError) as exc:
             if isinstance(exc, HTTPException):
                 raise
@@ -118,8 +120,11 @@ def create_router() -> APIRouter:
             base_dir=config.BASE_DIR,
             configured_path=config.CADASTRAL_FGB_PATH,
             pnu_field=config.CADASTRAL_FGB_PNU_FIELD,
+            cadastral_crs=config.CADASTRAL_FGB_CRS,
             theme=theme,
             requested_pnus=pnus,
+            bbox=bbox,
+            bbox_crs=bbox_crs,
         )
 
     @router.get("/lands")

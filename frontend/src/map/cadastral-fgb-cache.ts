@@ -54,9 +54,14 @@ export async function getFgbEtag(fgbUrl: string, signal?: AbortSignal): Promise<
   }
 }
 
-export async function buildCacheKey(theme: ThemeType, pnus: string[], fgbEtag: string): Promise<string> {
+export async function buildCacheKey(
+  theme: ThemeType,
+  pnus: string[],
+  fgbEtag: string,
+  bboxKey: string = "bbox:none"
+): Promise<string> {
   const sorted = Array.from(new Set(pnus)).sort();
-  const payload = `${theme}:${fgbEtag}:${sorted.join(",")}`;
+  const payload = `${theme}:${fgbEtag}:${bboxKey}:${sorted.join(",")}`;
   if (typeof crypto !== "undefined" && crypto.subtle) {
     try {
       const bytes = new TextEncoder().encode(payload);
