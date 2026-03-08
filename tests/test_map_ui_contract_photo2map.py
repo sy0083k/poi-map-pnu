@@ -140,11 +140,14 @@ def test_photo_css_and_security_contract() -> None:
 
 def test_photo_legacy_cleanup_contract() -> None:
     local_upload_ts = Path("frontend/src/map/local-upload.ts").read_text(encoding="utf-8")
+    upload_client_ts = Path("frontend/src/map/file2map-upload-client.ts").read_text(encoding="utf-8")
     cadastral_layer_ts = Path("frontend/src/map/cadastral-fgb-layer.ts").read_text(encoding="utf-8")
     exif_parser_ts = Path("frontend/src/photo/exif-gps.ts").read_text(encoding="utf-8")
     vite_config_ts = Path("frontend/vite.config.ts").read_text(encoding="utf-8")
 
     assert "loadPersistedFile2MapUpload" in local_upload_ts
+    assert "parseFile2MapUploadOnServer" in local_upload_ts
+    assert '"/api/file2map/upload/parse"' in upload_client_ts
     assert "loadUploadedHighlights" in cadastral_layer_ts
     assert_contains_all(exif_parser_ts, ["TAG_GPS_LAT", "TAG_GPS_LON"])
     assert not Path("templates/photo2map.html").exists()

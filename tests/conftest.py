@@ -21,6 +21,8 @@ TEST_MARKER_BY_FILE: dict[str, str] = {
     "test_e2e_smoke.py": "e2e",
     "test_env_contract.py": "unit",
     "test_event_repository_split.py": "unit",
+    "test_file2map_upload_parse_api.py": "integration",
+    "test_file2map_upload_parse_service.py": "unit",
     "test_health.py": "integration",
     "test_land_repository_split.py": "unit",
     "test_map_event_service.py": "unit",

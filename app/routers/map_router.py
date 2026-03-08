@@ -1,10 +1,11 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from app.services import (
     cadastral_fgb_service,
     cadastral_highlight_service,
+    file2map_upload_parse_service,
     land_service,
     map_api_helpers,
     stats_service,
@@ -133,6 +134,10 @@ def create_router() -> APIRouter:
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @router.post("/file2map/upload/parse")
+    async def parse_file2map_upload(file: UploadFile = File(...)):  # noqa: B008
+        return file2map_upload_parse_service.parse_file2map_upload(file)
 
     @router.post("/events")
     async def post_map_event(request: Request, payload: dict[str, Any]):

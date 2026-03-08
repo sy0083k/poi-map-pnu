@@ -124,7 +124,8 @@ uvicorn app.main:app --reload
    - `시유지(/siyu)`에서 `재산관리관` 검색 결과의 고유값이 2개 이상이면 검색이 중단되고 상태 영역(`#map-status`)에 검출 목록이 표시된다.
    - `파일→지도(/file2map)` 유틸리티 사이드바 최상단에는 사용자 엑셀 업로드 UI가 표시된다.
    - 신규 브라우저에서 `/file2map` 최초 진입 시 목록은 비어 있으며, 파일 적용 전까지 토지 목록을 표시하지 않는다.
-   - `/file2map`에서는 업로드 파일이 지도/목록 데이터 소스를 대체하며 브라우저 IndexedDB에 저장되어 새로고침 시 복원된다.
+   - `/file2map`에서는 업로드 파일을 서버 parse API(`/api/file2map/upload/parse`)로 우선 검증/정규화하고, 실패 시 로컬 파서로 폴백한 뒤 지도/목록 데이터 소스로 적용한다.
+   - 적용된 업로드 데이터는 브라우저 IndexedDB에 저장되어 새로고침 시 복원된다.
    - `/file2map` 업로드 복원/검증/적용/초기화 메시지는 업로드 패널이 아니라 지도 상단 상태 영역(`#map-status`)에 표시된다.
    - `/file2map`에서는 `재산관리관`, `재산용도` 필터 UI를 노출하지 않고 `지역명·주소/지목/면적` 필터만 사용한다.
    - 초기 배경지도는 `영상 지도(Satellite)`로 시작한다.
@@ -180,6 +181,9 @@ uvicorn app.main:app --reload
   - 요청 본문: `theme`, `landIds[]`
   - 응답: 검색 결과 토지의 원본 업로드 컬럼 전체 속성 Excel(`.xlsx`)
 - `POST /api/events`
+- `POST /api/file2map/upload/parse`
+  - 요청 본문: `multipart/form-data` 파일(`.xlsx/.xls`) 1개
+  - 응답: `/file2map`용 정규화 `items[]` + `summary(fileName,rowCount,uniquePnuCount)`
 - `POST /api/web-events`
   - 필수 필드: `eventType`, `anonId`, `sessionId`, `pagePath`, `clientTs`, `clientTz`
   - 선택 필드: `pageQuery`, `referrerUrl`, `utm*`, `clientLang`, `platform`, `screen*/viewport*`

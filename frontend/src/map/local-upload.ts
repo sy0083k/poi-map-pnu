@@ -1,3 +1,4 @@
+import { parseFile2MapUploadOnServer } from "./file2map-upload-client";
 import { parseExcelFile } from "./local-upload-parser";
 import {
   clearUploadFromIndexedDb,
@@ -101,7 +102,13 @@ export async function setupFile2MapUpload(options: SetupFile2MapUploadOptions): 
     onStatusMessage("파일을 검증하는 중입니다...", "#1f2937");
     void (async () => {
       try {
-        const items = await parseExcelFile(file);
+        let items: LandListItem[] = [];
+        try {
+          const parsed = await parseFile2MapUploadOnServer(file);
+          items = parsed.items;
+        } catch {
+          items = await parseExcelFile(file);
+        }
         const savedAt = Date.now();
         const summary = buildSummary(file.name, items, savedAt);
         await saveUploadToIndexedDb({
