@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-07
+최종 수정일: 2026-03-08
 
 ## 환경 변수
 ### 필수
@@ -104,6 +104,13 @@
 7. `pytest -m integration -q`
 8. `pytest -m e2e -q`
 9. `pytest -q`
+10. `scripts/run_coverage.sh` (stale 데이터 재사용 방지를 위해 `coverage erase` 포함)
+
+## 커버리지 운영
+- 표준 실행: `scripts/run_coverage.sh`
+- 선택 출력: `scripts/run_coverage.sh --xml --html`
+- stale `.coverage` 정리(1회): `rm -f .coverage .coverage.*`
+- 주의: `coverage report -m` 단독 실행은 이전 `.coverage`를 재사용할 수 있으므로 지양한다.
 
 ## GitHub Actions 배포 절차
 1. GitHub Actions `Deploy` 워크플로를 `workflow_dispatch`로 수동 실행한다.
