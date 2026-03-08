@@ -19,6 +19,9 @@ from app.repositories.land_repository_queries import (
     update_geom,
     update_geom_by_pnu,
 )
+from app.repositories.land_repository_query_filters import (
+    fetch_lands_page_without_geom_filtered,
+)
 from app.repositories.land_repository_schema import (
     CACHE_TABLE_NAME,
     TABLE_NAME,
@@ -35,6 +38,7 @@ __all__ = [
     "fetch_lands_with_geom",
     "fetch_lands_with_geom_page",
     "fetch_lands_page_without_geom",
+    "fetch_lands_page_without_geom_filtered",
     "fetch_lands_by_ids",
     "delete_all",
     "insert_land",

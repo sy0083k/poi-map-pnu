@@ -1,4 +1,6 @@
 import json
+import math
+from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
 from typing import Any, Literal, cast
@@ -21,6 +23,16 @@ PUBLIC_LAND_FIELDS = {
 }
 ThemeType = Literal["city_owned"]
 EXPORT_REQUIRED_COLUMNS = ["고유번호", "소재지", "지목", "실면적", "재산관리관"]
+
+
+@dataclass(frozen=True)
+class LandListFilters:
+    search_term: str = ""
+    min_area: float = 0.0
+    max_area: float = math.inf
+    property_manager_term: str = ""
+    property_usage_term: str = ""
+    land_type_term: str = ""
 
 
 def _table_name_for_theme(_theme: ThemeType) -> str:
@@ -77,13 +89,26 @@ def get_public_land_features_page(
 
 
 def get_public_land_list_page(
-    *, cursor: int | None, limit: int, theme: ThemeType = "city_owned"
+    *,
+    cursor: int | None,
+    limit: int,
+    theme: ThemeType = "city_owned",
+    filters: LandListFilters | None = None,
 ) -> dict[str, Any]:
+    normalized_filters = filters or LandListFilters()
+    max_area = normalized_filters.max_area if math.isfinite(normalized_filters.max_area) else None
+
     with db_connection(row_factory=True) as conn:
-        rows = land_repository.fetch_lands_page_without_geom(
+        rows = land_repository.fetch_lands_page_without_geom_filtered(
             conn,
             after_id=cursor,
             limit=limit,
+            search_term=normalized_filters.search_term,
+            min_area=normalized_filters.min_area,
+            max_area=max_area,
+            property_manager_term=normalized_filters.property_manager_term,
+            property_usage_term=normalized_filters.property_usage_term,
+            land_type_term=normalized_filters.land_type_term,
             table_name=_table_name_for_theme(theme),
         )
 

@@ -4,6 +4,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from app.services import cadastral_highlight_service
+from app.services.land_service import LandListFilters
 
 THEME_CITY_OWNED: Literal["city_owned"] = "city_owned"
 
@@ -68,3 +69,34 @@ def build_rate_limited_response(retry_after: int) -> JSONResponse:
         content={"success": False, "message": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."},
         headers={"Retry-After": str(retry_after)},
     )
+
+
+def parse_land_list_filters(
+    *,
+    search_term: str | None,
+    min_area: str | None,
+    max_area: str | None,
+    property_manager: str | None,
+    property_usage: str | None,
+    land_type: str | None,
+) -> LandListFilters:
+    return LandListFilters(
+        search_term=(search_term or "").strip(),
+        min_area=_parse_float_or_default(min_area, default=0.0),
+        max_area=_parse_float_or_default(max_area, default=float("inf")),
+        property_manager_term=(property_manager or "").strip(),
+        property_usage_term=(property_usage or "").strip(),
+        land_type_term=(land_type or "").strip(),
+    )
+
+
+def _parse_float_or_default(raw: str | None, *, default: float) -> float:
+    if raw is None:
+        return default
+    value = raw.strip()
+    if value == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default

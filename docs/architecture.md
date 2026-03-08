@@ -62,6 +62,8 @@
 1. 클라이언트가 `/api/config`로 지도 설정을 조회한다.
 2. 테마별 목록 소스를 결정한다.
    - `/siyu(city_owned)`: `/api/lands/list?theme=city_owned`로 목록을 조회한다.
+     - 1차 전환 기준: 주소/면적/재산관리관/재산용도/지목 필터는 서버 query(`searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`)로 처리한다.
+     - 서버 필터 실패 시 프런트는 마지막 목록 스냅샷 기준 로컬 필터로 폴백한다.
    - `/file2map(national_public)`: 최초 진입 시 목록을 비워 두며, 사용자가 사이드바 상단에서 업로드한 엑셀 파일(또는 IndexedDB 복원본)이 있을 때만 목록을 표시한다.
    - 목록 항목에는 고정 필드 외에 업로드 원본 컬럼을 보존한 `sourceFields` 배열이 포함된다.
 3. 클라이언트는 목록 PNU만 대상으로 FlatGeobuf에서 1회 매칭해 하이라이트를 구성한다.

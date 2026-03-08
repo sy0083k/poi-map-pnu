@@ -35,6 +35,7 @@ def normalize_upload_rows(
         land_type = _to_str(row.get("지목"))
         area_raw = row.get("실면적")
         property_manager = _to_str(row.get("재산관리관"))
+        property_usage = _to_str(row.get("재산용도"))
 
         if not pnu:
             total_errors += 1
@@ -62,6 +63,7 @@ def normalize_upload_rows(
                 "land_type": land_type,
                 "area": area,
                 "property_manager": property_manager,
+                "property_usage": property_usage,
                 "source_fields": _build_source_fields(row, df.columns),
             }
         )

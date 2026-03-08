@@ -11,6 +11,7 @@ import { createLandWorkflow } from "./map/land-workflow";
 import { setupLayoutControls } from "./map/layout-controls";
 import { createListPanel } from "./map/list-panel";
 import { setupFile2MapUpload } from "./map/local-upload";
+import { loadAllLandListItems } from "./map/lands-list-client";
 import { createMapView } from "./map/map-view";
 import { bootstrapPhotoMode } from "./map/photo-mode";
 import { createSessionTracker } from "./map/session-tracker";
@@ -93,7 +94,8 @@ async function bootstrap(): Promise<void> {
     filters,
     downloadClient: createDownloadClient(),
     setMapStatus,
-    getThemeLabel
+    getThemeLabel,
+    loadLandListItems: loadAllLandListItems
   });
 
   const layoutControls = setupLayoutControls({
