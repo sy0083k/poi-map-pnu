@@ -255,7 +255,10 @@ RUN_HTTP_E2E=1 pytest -q tests/test_e2e_smoke.py
   - Vite manifest 검증
   - `compileall`, `mypy`, `pytest`
 - Deploy: `.github/workflows/deploy.yml`
-  - 현재 배포 명령은 TODO 상태이며 프로젝트 환경에 맞게 채워야 합니다.
+  - `workflow_dispatch`(수동 실행) 전용
+  - 배포 전 품질 게이트(`compileall`, `mypy`, `ruff`, `pytest`, frontend build) 수행
+  - SSH + Docker Compose 배포 후 `/health` 검증, 실패 시 이전 커밋 자동 롤백
+  - 필수 GitHub Secrets: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_PATH`
 
 ## 🐳 Docker 배포 (IP-only, no-domain)
 도메인 없이 서버 IP로 직접 접속하는 운영을 가정합니다.

@@ -2,16 +2,38 @@ name: Deploy
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'production' }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install mypy ruff
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -20,16 +42,89 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build frontend assets
+      - name: Frontend typecheck and build
         run: |
           cd frontend
           if [ ! -f package-lock.json ]; then npm install --package-lock-only; fi
           npm ci
+          npm run typecheck
           npm run build
+
+      - name: Python quality gates
+        run: |
+          python -m compileall -q app tests
+          mypy app tests create_hash.py
+          ruff check app tests
+          scripts/check_quality_warnings.sh
+          pytest -q -m unit
+          pytest -q -m integration
+          pytest -q -m e2e
+          pytest -q
 
       - name: Verify Vite manifest exists
         run: scripts/verify_vite_manifest.sh
 
-      - name: Deploy application
+      - name: Configure SSH key
         run: |
-          echo "TODO: add your deployment command (ssh/rsync/container rollout)."
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy application via SSH and Docker Compose
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_PORT"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_PATH"
+
+          ssh -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -p "$DEPLOY_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST" "DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+
+          PREV_SHA="$(git rev-parse --short HEAD)"
+          echo "previous sha: ${PREV_SHA}"
+
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          NEW_SHA="$(git rev-parse --short HEAD)"
+          echo "target sha: ${NEW_SHA}"
+
+          docker compose build --pull app
+          docker compose up -d app
+
+          HEALTH_URL="http://127.0.0.1:8000/health"
+          ATTEMPTS=12
+          SLEEP_SECONDS=5
+          HEALTH_OK=0
+
+          for _ in $(seq 1 "$ATTEMPTS"); do
+            if curl -fsS --max-time 3 "$HEALTH_URL" > /dev/null; then
+              HEALTH_OK=1
+              break
+            fi
+            sleep "$SLEEP_SECONDS"
+          done
+
+          if [ "$HEALTH_OK" -ne 1 ]; then
+            echo "health check failed. rolling back to ${PREV_SHA}"
+            git reset --hard "$PREV_SHA"
+            docker compose build --pull app
+            docker compose up -d app
+            exit 1
+          fi
+
+          echo "deployment completed: ${NEW_SHA}"
+          REMOTE

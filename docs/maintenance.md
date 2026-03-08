@@ -106,6 +106,16 @@
 8. `pytest -m e2e -q`
 9. `pytest -q`
 
+## GitHub Actions 배포 절차
+1. GitHub Actions `Deploy` 워크플로를 `workflow_dispatch`로 수동 실행한다.
+2. 워크플로는 배포 전 품질 게이트(컴파일/타입/린트/테스트 + 프론트 빌드)를 모두 통과해야 다음 단계로 진행한다.
+3. 배포는 SSH 접속 후 원격 서버에서 `git fetch/reset` + `docker compose build --pull app` + `docker compose up -d app` 순으로 수행한다.
+4. 배포 직후 `/health` 재시도 검증을 수행하고, 실패 시 이전 커밋으로 `git reset --hard` 후 Compose 재기동으로 자동 롤백한다.
+5. 운영 GitHub Secrets는 아래를 유지한다.
+   - `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`
+   - `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`
+   - `DEPLOY_PATH`
+
 ## API 운영
 - `/api/v1/*`는 `/api/*`와 동등 alias 계약 유지
 - 핵심 확인 경로:

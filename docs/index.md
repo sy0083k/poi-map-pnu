@@ -51,6 +51,7 @@
 - 웹 관측 확장: `/api/web-events`가 referrer/UTM/디바이스·브라우저 컨텍스트를 수집하고 `/admin/stats/web` breakdown으로 조회
 - 개인정보 최소화: referrer는 원문 URL을 저장하지 않고 `domain/path`만 저장(query/fragment 제거)
 - 채널 집계: `utm_medium` 우선, 미존재 시 `direct/organic/referral` 규칙으로 `channelBreakdown` 제공(기존 summary/dailyTrend는 유지)
+- 배포 자동화: GitHub Actions `Deploy`는 수동(`workflow_dispatch`) 실행 전용이며, 품질 게이트 통과 후 SSH+Compose 배포 및 `/health` 실패 자동 롤백을 수행
 
 ## 기능 변경 시 동시 갱신 대상
 - 구조/흐름 변경: `docs/architecture.md`
