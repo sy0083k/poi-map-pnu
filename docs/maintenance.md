@@ -94,6 +94,7 @@
 2. 하이라이트 매칭을 청크 단위로 점진 반영해 첫 가시 표시를 앞당겼다.
 3. IndexedDB 캐시(`theme+pnuSetHash+ETag`)를 도입해 재방문 시 재스캔을 줄였다.
 4. `/api/cadastral/fgb` 응답에 `ETag`를 추가해 캐시 무효화 기준을 명확화했다.
+5. `/api/cadastral/highlights` 서버 경로는 `flatgeobuf.Reader(..., bbox=...)`를 우선 사용해 bbox 부분 조회를 수행하고, Reader 경로 실패 시 `load(..., bbox=...)`로 폴백한다.
 
 ### 운영 점검 포인트
 1. 최초 진입 시 `#map-status`에 매칭 진행률(매칭/스캔 건수)이 갱신되는지 확인

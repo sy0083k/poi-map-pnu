@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -76,7 +77,7 @@ def test_cadastral_highlight_service_build_filtered_response(monkeypatch: pytest
     monkeypatch.setattr(
         cadastral_highlight_service,
         "load_features_from_fgb",
-        lambda _path: [
+        lambda _path, **_kwargs: [
             {"type": "Feature", "geometry": {"type": "Point", "coordinates": [0, 0]}, "properties": {"PNU": "1111111111111111111"}},
             {"type": "Feature", "geometry": {"type": "Point", "coordinates": [0, 1]}, "properties": {"PNU": "2222222222222222222"}},
         ],
@@ -102,7 +103,7 @@ def test_cadastral_highlight_service_applies_bbox_filter(monkeypatch: pytest.Mon
     monkeypatch.setattr(
         cadastral_highlight_service,
         "load_features_from_fgb",
-        lambda _path: [
+        lambda _path, **_kwargs: [
             {
                 "type": "Feature",
                 "geometry": {"type": "Point", "coordinates": [0.0, 0.0]},
@@ -127,3 +128,72 @@ def test_cadastral_highlight_service_applies_bbox_filter(monkeypatch: pytest.Mon
     assert len(response["features"]) == 1
     assert response["meta"]["bboxApplied"] is True
     assert response["meta"]["bboxFiltered"] == 1
+
+
+def test_iter_features_from_fgb_uses_reader_with_bbox(tmp_path: Path) -> None:
+    from app.services import cadastral_highlight_service
+
+    fgb_file = tmp_path / "sample.fgb"
+    fgb_file.write_bytes(b"fgb")
+    called: dict[str, Any] = {"bbox": None}
+
+    class FakeFlatGeobuf:
+        @staticmethod
+        def Reader(_handle: Any, *, bbox: tuple[float, float, float, float] | None = None):
+            called["bbox"] = bbox
+            return iter(
+                [
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [0.0, 0.0]},
+                        "properties": {"PNU": "1111111111111111111"},
+                    }
+                ]
+            )
+
+    features = list(
+        cadastral_highlight_service._iter_features_from_fgb(
+            file_path=fgb_file,
+            fgb_module=FakeFlatGeobuf,
+            bbox=(-1.0, -1.0, 1.0, 1.0),
+        )
+    )
+    assert called["bbox"] == (-1.0, -1.0, 1.0, 1.0)
+    assert len(features) == 1
+
+
+def test_iter_features_from_fgb_falls_back_to_load(tmp_path: Path) -> None:
+    from app.services import cadastral_highlight_service
+
+    fgb_file = tmp_path / "sample.fgb"
+    fgb_file.write_bytes(b"fgb")
+    called: dict[str, Any] = {"bbox": None}
+
+    class FakeFlatGeobuf:
+        @staticmethod
+        def Reader(_handle: Any, *, bbox: tuple[float, float, float, float] | None = None):
+            raise RuntimeError("reader unavailable")
+
+        @staticmethod
+        def load(_handle: Any, *, bbox: tuple[float, float, float, float] | None = None):
+            called["bbox"] = bbox
+            return {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [0.0, 0.0]},
+                        "properties": {"PNU": "1111111111111111111"},
+                    }
+                ],
+            }
+
+    features = list(
+        cadastral_highlight_service._iter_features_from_fgb(
+            file_path=fgb_file,
+            fgb_module=FakeFlatGeobuf,
+            bbox=(-2.0, -2.0, 2.0, 2.0),
+        )
+    )
+    assert called["bbox"] == (-2.0, -2.0, 2.0, 2.0)
+    assert len(features) == 1

@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-07
+최종 수정일: 2026-03-08
 
 ## 시스템 개요
 관심 필지 지도는 FastAPI + SQLite + Vite/OpenLayers 기반 애플리케이션이다.
@@ -71,6 +71,7 @@
    - 목록 항목에는 고정 필드 외에 업로드 원본 컬럼을 보존한 `sourceFields` 배열이 포함된다.
 3. 클라이언트는 목록 PNU만 대상으로 FlatGeobuf에서 1회 매칭해 하이라이트를 구성한다.
    - 기본 경로는 서버 API(`/api/cadastral/highlights`)에서 `PNU + bbox` 조건으로 필터링된 `FeatureCollection`을 받아 적용한다.
+   - 서버는 `flatgeobuf.Reader(..., bbox=...)`(또는 `load(..., bbox=...)` fallback)를 사용해 bbox 부분 조회를 우선 수행하고 전체 로드를 회피한다.
    - 서버 경로 실패 시 클라이언트 Web Worker 파싱으로 자동 폴백한다.
    - 폴백 경로의 매칭 파싱은 Web Worker에서 수행해 메인 스레드 블로킹을 줄인다.
    - 결과는 IndexedDB 캐시(`theme + pnuSetHash + bbox + fgb ETag`)로 저장해 재방문 시 재스캔을 회피한다.
