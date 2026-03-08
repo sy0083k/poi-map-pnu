@@ -8,9 +8,11 @@ from fastapi import HTTPException
 
 from app.services import cadastral_fgb_service
 from app.services.cadastral_highlight_cache import (
+    CACHE_KEY_VERSION,
+    LEGACY_CACHE_KEY_VERSION,
     build_cache_key,
     build_file_etag,
-    get_cached_response,
+    get_cached_response_with_fallback,
     set_cached_response,
 )
 from app.services.cadastral_highlight_geometry import (
@@ -99,8 +101,23 @@ def get_filtered_highlights(
         )
 
     fgb_etag = build_file_etag(file_path)
-    cache_key = build_cache_key(theme=theme, pnus=requested_pnus, fgb_etag=fgb_etag, bbox=bbox, bbox_crs=bbox_crs)
-    cached = get_cached_response(cache_key)
+    cache_key = build_cache_key(
+        theme=theme,
+        pnus=requested_pnus,
+        fgb_etag=fgb_etag,
+        bbox=bbox,
+        bbox_crs=bbox_crs,
+        version=CACHE_KEY_VERSION,
+    )
+    legacy_cache_key = build_cache_key(
+        theme=theme,
+        pnus=requested_pnus,
+        fgb_etag=fgb_etag,
+        bbox=bbox,
+        bbox_crs=bbox_crs,
+        version=LEGACY_CACHE_KEY_VERSION,
+    )
+    cached = get_cached_response_with_fallback([cache_key, legacy_cache_key])
     if cached:
         return cached
 
