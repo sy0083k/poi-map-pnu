@@ -31,8 +31,14 @@ def test_photo2map_entry_contract() -> None:
 
 def test_photo_mode_module_contract() -> None:
     photo_mode_ts = Path("frontend/src/map/photo-mode.ts").read_text(encoding="utf-8")
+    photo_mode_import_ts = Path("frontend/src/map/photo-mode-import.ts").read_text(encoding="utf-8")
+    photo_mode_photos_ts = Path("frontend/src/map/photo-mode-photos.ts").read_text(encoding="utf-8")
+    photo_mode_land_ts = Path("frontend/src/map/photo-mode-land.ts").read_text(encoding="utf-8")
+    photo_mode_contract_text = "\n".join(
+        [photo_mode_ts, photo_mode_import_ts, photo_mode_photos_ts, photo_mode_land_ts]
+    )
     assert_contains_all(
-        photo_mode_ts,
+        photo_mode_contract_text,
         [
             "parseJpegExifGps",
             "selectPhoto",
@@ -44,7 +50,7 @@ def test_photo_mode_module_contract() -> None:
             "currentIndex < 0",
             'selectPhoto(0, { shouldMoveMap: true, source: "nav" });',
             'button.className = "photo-list-btn list-item";',
-            'button.classList.add("selected");',
+            'button.classList.add("is-active", "selected");',
             "openSelectedPhotoInLightbox",
             "createPanelOverlapGuard",
             "overlapGuard.open()",
@@ -53,7 +59,7 @@ def test_photo_mode_module_contract() -> None:
             "loadPersistedFile2MapUpload",
             "loadUploadedHighlights",
             "land-info-panel",
-            "landInfoContent.scrollTop = 0;",
+            "content.scrollTop = 0;",
         ],
     )
     assert_not_contains_all(photo_mode_ts, ['id="photo-folder-input"', "createPhotoLightboxZoomController", 'event.key === "Escape"'])
