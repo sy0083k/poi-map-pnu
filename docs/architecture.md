@@ -18,6 +18,7 @@
 ## 공개 엔드포인트
 - `GET /api/config`
 - `GET /api/cadastral/fgb`
+- `POST /api/cadastral/highlights`
 - `GET /api/lands`
 - `GET /api/lands/list`
 - `POST /api/lands/export`
@@ -64,7 +65,9 @@
    - `/file2map(national_public)`: 최초 진입 시 목록을 비워 두며, 사용자가 사이드바 상단에서 업로드한 엑셀 파일(또는 IndexedDB 복원본)이 있을 때만 목록을 표시한다.
    - 목록 항목에는 고정 필드 외에 업로드 원본 컬럼을 보존한 `sourceFields` 배열이 포함된다.
 3. 클라이언트는 목록 PNU만 대상으로 FlatGeobuf에서 1회 매칭해 하이라이트를 구성한다.
-   - 매칭 파싱은 Web Worker에서 수행해 메인 스레드 블로킹을 줄인다.
+   - 기본 경로는 서버 API(`/api/cadastral/highlights`)에서 PNU 필터링된 `FeatureCollection`을 받아 적용한다.
+   - 서버 경로 실패 시 클라이언트 Web Worker 파싱으로 자동 폴백한다.
+   - 폴백 경로의 매칭 파싱은 Web Worker에서 수행해 메인 스레드 블로킹을 줄인다.
    - 결과는 IndexedDB 캐시(`theme + pnuSetHash + fgb ETag`)로 저장해 재방문 시 재스캔을 회피한다.
    - `/api/cadastral/fgb`는 `ETag` 헤더를 제공해 클라이언트 캐시 무효화 기준으로 사용한다.
 4. 지도 렌더링은 하이라이트 레이어만 사용하며, 비하이라이트 필지(배경 연속지적도)는 표시하지 않는다.

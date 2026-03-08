@@ -16,7 +16,7 @@
 - 지도 데이터 소스: FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)
 - 좌표계 기준: `CADASTRAL_FGB_CRS` (`EPSG:3857` 기본)
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
-- 하이라이트 성능: FlatGeobuf 파싱은 Web Worker에서 수행하고, 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용
+- 하이라이트 성능: 기본 경로는 `/api/cadastral/highlights` 서버 필터링 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용
 - 지도 표시 정책: 업로드 하이라이트 대상 필지만 렌더링(비하이라이트 배경 필지 미표시)
 - 상세 정보 UI: 선택 필지 정보를 우상단 패널의 2열(속성/값) 동적 필드(`sourceFields`)로 동일 라인 정렬해 표시하며, `X` 버튼으로 닫기 지원
 - 상세 패널 초기 상태: 웹앱 초기화 시 숨김, 필지 선택 시 자동 표시

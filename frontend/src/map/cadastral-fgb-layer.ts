@@ -7,59 +7,10 @@ import {
   setCachedHighlights,
   throwIfAborted
 } from "./cadastral-fgb-cache";
+import { loadUploadedHighlightsFromApi } from "./cadastral-highlights-client";
+import type { WorkerResponse, WorkerStartMessage } from "./cadastral-fgb-worker-types";
 
 import type { CadastralCrs, LandFeature, LandFeatureCollection, ThemeType } from "./types";
-
-type WorkerChunkPayload = {
-  features: LandFeature[];
-  scanned: number;
-  matched: number;
-  total: number;
-};
-
-type WorkerProgressPayload = {
-  scanned: number;
-  matched: number;
-  total: number;
-};
-
-type WorkerDonePayload = {
-  scanned: number;
-  matched: number;
-  total: number;
-};
-
-type WorkerErrorPayload = {
-  message: string;
-};
-
-type WorkerResponse =
-  | {
-      type: "chunk";
-      payload: WorkerChunkPayload;
-    }
-  | {
-      type: "progress";
-      payload: WorkerProgressPayload;
-    }
-  | {
-      type: "done";
-      payload: WorkerDonePayload;
-    }
-  | {
-      type: "error";
-      payload: WorkerErrorPayload;
-    };
-
-type WorkerStartMessage = {
-  type: "start";
-  payload: {
-    fgbUrl: string;
-    pnuField: string;
-    cadastralCrs: CadastralCrs;
-    uploadedPnus: string[];
-  };
-};
 
 export type HighlightLoadProgress = {
   scanned: number;
@@ -105,6 +56,7 @@ export async function loadUploadedHighlights(
   }
 
   return loadUploadedHighlightsFromWorker({
+    apiPayload: { theme, pnus: normalizedPnus },
     fgbUrl,
     pnuField,
     cadastralCrs,
@@ -116,6 +68,7 @@ export async function loadUploadedHighlights(
   });
 }
 async function loadUploadedHighlightsFromWorker(params: {
+  apiPayload: { theme: ThemeType; pnus: string[] };
   fgbUrl: string;
   pnuField: string;
   cadastralCrs: CadastralCrs;
@@ -125,7 +78,37 @@ async function loadUploadedHighlightsFromWorker(params: {
   onFeatures?: (features: LandFeature[], progress: HighlightLoadProgress) => void;
   onProgress?: (progress: HighlightLoadProgress) => void;
 }): Promise<LandFeatureCollection> {
-  const { fgbUrl, pnuField, cadastralCrs, normalizedPnus, cacheKey, signal, onFeatures, onProgress } = params;
+  const { apiPayload, fgbUrl, pnuField, cadastralCrs, normalizedPnus, cacheKey, signal, onFeatures, onProgress } = params;
+  try {
+    const apiLoaded = await loadUploadedHighlightsFromApi({
+      theme: apiPayload.theme,
+      pnus: apiPayload.pnus,
+      signal
+    });
+    const matched = apiLoaded.features.length;
+    const scanned = apiLoaded.meta?.scanned ?? 0;
+    const total = normalizedPnus.length;
+    const progress: HighlightLoadProgress = {
+      scanned,
+      matched,
+      total,
+      done: true,
+      fromCache: false
+    };
+    onFeatures?.(apiLoaded.features, progress);
+    onProgress?.(progress);
+    void setCachedHighlights({
+      key: cacheKey,
+      createdAt: Date.now(),
+      features: apiLoaded.features
+    });
+    return { type: "FeatureCollection", features: apiLoaded.features };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+  }
+
   const matchedByPnu = new Map<string, LandFeature>();
   const worker = new Worker(new URL("./cadastral-fgb-worker.ts", import.meta.url), { type: "module" });
   let abortListener: (() => void) | null = null;

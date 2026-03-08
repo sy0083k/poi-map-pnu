@@ -45,5 +45,5 @@ disallow_untyped_defs = false
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["requests", "pandas"]
+module = ["requests", "pandas", "flatgeobuf"]
 ignore_missing_imports = true

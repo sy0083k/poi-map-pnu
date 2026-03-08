@@ -5,7 +5,7 @@
 최종 수정일: 2026-03-07
 
 ## 범위
-- 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/lands`, `/api/lands/list`, `/api/events`, `/api/web-events`, `/api/v1/*`
+- 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/cadastral/highlights`, `/api/lands`, `/api/lands/list`, `/api/events`, `/api/web-events`, `/api/v1/*`
 - 공개 페이지: `/siyu`, `/file2map`, `/photo2map`
 - 관리자 API: `/admin/*`, `/login`, `/logout`(POST)
 - 저장소: `data/database.db`, `data/*.fgb`
@@ -40,6 +40,8 @@
 ### Denial of Service
 - 위협: 대용량 요청/이벤트 남용
 - 통제: 업로드 제한 + 이벤트 레이트리밋(인메모리)
+- 위협: 대량 PNU 하이라이트 조회 남용
+- 통제: `/api/cadastral/highlights` 입력 PNU 개수 상한(최대 10,000) + 서버 응답 캐시(TTL) + 클라이언트 폴백
 
 ### Elevation of Privilege
 - 위협: 관리자 경로 우회 접근
