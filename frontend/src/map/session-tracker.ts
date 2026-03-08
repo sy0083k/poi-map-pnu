@@ -18,7 +18,6 @@ type SessionTrackerDeps = {
   getOrCreateAnonId: () => string;
   postWebEvent: (payload: WebVisitEventPayload) => Promise<void>;
 };
-
 function getCookie(name: string): string | null {
   const encodedName = `${encodeURIComponent(name)}=`;
   const found = document.cookie
