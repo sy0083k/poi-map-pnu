@@ -33,3 +33,18 @@ def table_name_for_theme(theme: str) -> str:
     if theme == "city_owned":
         return land_repository.CITY_TABLE_NAME
     return land_repository.TABLE_NAME
+
+
+def assert_contains_all(text: str, expected: list[str]) -> None:
+    for snippet in expected:
+        assert snippet in text
+
+
+def assert_not_contains_all(text: str, forbidden: list[str]) -> None:
+    for snippet in forbidden:
+        assert snippet not in text
+
+
+def assert_has_keys(payload: dict[str, object], keys: list[str]) -> None:
+    for key in keys:
+        assert key in payload

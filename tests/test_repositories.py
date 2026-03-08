@@ -28,54 +28,65 @@ def test_land_repository_crud(db_path: object) -> None:
         assert land_repository.count_missing_geom(conn) == 0
 
 
-def test_map_event_repository_aggregations(db_path: object) -> None:
+def _seed_map_event_aggregations(conn) -> None:
+    event_repository.insert_map_event(
+        conn,
+        event_type="search",
+        anon_id="anon-a",
+        region_name="대산읍",
+        min_area_value=100.0,
+        min_area_bucket="100-199",
+        region_source="user_input",
+    )
+    event_repository.insert_map_event(
+        conn,
+        event_type="search",
+        anon_id="anon-b",
+        region_name="대산읍",
+        min_area_value=120.0,
+        min_area_bucket="100-199",
+        region_source="user_input",
+    )
+    event_repository.insert_map_event(
+        conn,
+        event_type="search",
+        anon_id="anon-c",
+        region_name="성연면",
+        min_area_value=50.0,
+        min_area_bucket="0-99",
+        region_source="derived_address",
+    )
+    event_repository.insert_map_event(
+        conn,
+        event_type="land_click",
+        anon_id="anon-a",
+        land_address="서산시 대산읍 대로 1",
+    )
+    event_repository.insert_map_event(
+        conn,
+        event_type="land_click",
+        anon_id="anon-a",
+        land_address="서산시 대산읍 대로 1",
+    )
+
+
+def test_map_event_repository_summary_aggregations(db_path: object) -> None:
     with db_connection(row_factory=True) as conn:
         init_test_db(conn)
-        event_repository.insert_map_event(
-            conn,
-            event_type="search",
-            anon_id="anon-a",
-            region_name="대산읍",
-            min_area_value=100.0,
-            min_area_bucket="100-199",
-            region_source="user_input",
-        )
-        event_repository.insert_map_event(
-            conn,
-            event_type="search",
-            anon_id="anon-b",
-            region_name="대산읍",
-            min_area_value=120.0,
-            min_area_bucket="100-199",
-            region_source="user_input",
-        )
-        event_repository.insert_map_event(
-            conn,
-            event_type="search",
-            anon_id="anon-c",
-            region_name="성연면",
-            min_area_value=50.0,
-            min_area_bucket="0-99",
-            region_source="derived_address",
-        )
-        event_repository.insert_map_event(
-            conn,
-            event_type="land_click",
-            anon_id="anon-a",
-            land_address="서산시 대산읍 대로 1",
-        )
-        event_repository.insert_map_event(
-            conn,
-            event_type="land_click",
-            anon_id="anon-a",
-            land_address="서산시 대산읍 대로 1",
-        )
+        _seed_map_event_aggregations(conn)
         conn.commit()
 
         summary = event_repository.fetch_event_summary(conn)
         assert int(summary["search_count"]) == 3
         assert int(summary["click_count"]) == 2
         assert int(summary["unique_session_count"]) == 3
+
+
+def test_map_event_repository_top_regions_and_buckets(db_path: object) -> None:
+    with db_connection(row_factory=True) as conn:
+        init_test_db(conn)
+        _seed_map_event_aggregations(conn)
+        conn.commit()
 
         top_regions = event_repository.fetch_top_regions(conn, limit=10)
         assert len(top_regions) == 1
@@ -85,6 +96,13 @@ def test_map_event_repository_aggregations(db_path: object) -> None:
         top_buckets = event_repository.fetch_top_min_area_buckets(conn, limit=10)
         assert len(top_buckets) == 2
         assert top_buckets[0]["min_area_bucket"] == "100-199"
+
+
+def test_map_event_repository_top_clicked_lands(db_path: object) -> None:
+    with db_connection(row_factory=True) as conn:
+        init_test_db(conn)
+        _seed_map_event_aggregations(conn)
+        conn.commit()
 
         top_lands = event_repository.fetch_top_clicked_lands(conn, limit=10)
         assert len(top_lands) == 1
