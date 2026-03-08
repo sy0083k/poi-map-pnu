@@ -36,6 +36,8 @@
 - `/file2map`에서 `재산관리관`, `재산용도` 필터 UI가 비노출인지 점검
 - 신규 브라우저(IndexedDB 비어 있음)에서 `/file2map` 최초 진입 시 목록이 비어 있는지 점검
 - `/file2map`에서 업로드 성공 시 지도/목록이 업로드 데이터로 대체되고, 새로고침 시 IndexedDB 복원 데이터가 재적용되는지 점검
+- `/file2map` 업로드 시 `/api/file2map/upload/parse` 서버 검증 경로가 우선 사용되는지 점검
+- `/api/file2map/upload/parse` 실패 시 로컬 파서 폴백으로 업로드가 계속 가능한지 점검
 - `/file2map`에서 업로드 복원/검증/적용/초기화 메시지가 업로드 패널이 아니라 `#map-status`에 표시되는지 점검
 - `/file2map`에서 `검색 결과 다운로드`가 서버 API(`/api/lands/export`)가 아니라 클라이언트 Excel 생성 방식으로 동작하는지 점검
 - `/photo2map`에서 폴더 선택(`webkitdirectory`) 후 JPEG GPS EXIF가 있는 사진만 마커가 생성되는지 점검
