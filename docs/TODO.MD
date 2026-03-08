@@ -35,6 +35,7 @@
 | RISK-006 | P1 | 루트 pytest 수집 충돌(복제본 tests 중복) | done | team | 2026-03-02 | 루트 `pytest -q`가 `tests/`만 수집하고 `IdlePublicProperty/`와의 `conftest` 충돌 없이 통과한다. | 관련: `pyproject.toml` (`testpaths`, `norecursedirs`) |
 | RISK-007 | P1 | 관리자 세션 쿠키 앱 간 교차 인식 | done | team | 2026-03-02 | 세션 쿠키명/네임스페이스 분리와 인증 검증 강화로 동일 도메인 다중 앱 간 세션 재사용이 차단된다. | 관련: `app/main.py`, `app/dependencies.py`, `app/services/auth_service.py` |
 | RISK-008 | P1 | 확장 웹 로그(Referrer/UTM/디바이스) 보존·파기 정책 미정 | doing | team | 2026-03-14 | 수집 필드별 보존 기간/파기 절차/반출 통제 정책이 문서화되고 운영 점검 항목에 반영된다. 채널 분류 규칙과 개인정보 최소화(원문 referrer 미저장) 기준이 명시된다. | 관련: `app/services/web_stats_service.py`, `app/repositories/web_visit_repository.py`, `docs/maintenance.md` |
+| RISK-009 | P0 | Deploy 워크플로 마지막 단계 TODO 미구현 | done | team | 2026-03-07 | `.github/workflows/deploy.yml`이 수동 배포 트리거/품질 게이트/SSH+Compose 배포/헬스체크 실패 자동 롤백을 포함해 실행 가능한 상태가 된다. | 관련: `.github/workflows/deploy.yml`, `README.MD`, `docs/maintenance.md` |
 
 ## 주간 리뷰 로그
 - 2026-02-23 | reviewer: team | 초기 백로그 문서 생성 및 5개 리스크 등록 | 다음 액션: RISK-001, RISK-002 우선 설계안 작성
@@ -108,3 +109,4 @@
 - 2026-03-07 | reviewer: team | 웹 방문 이벤트 수집을 Referrer/UTM/디바이스·브라우저 컨텍스트까지 확장하고 `/admin/stats/web` breakdown(유입/채널/디바이스/브라우저/페이지) 집계를 추가 | 다음 액션: 로그 보존·파기 자동화 정책(RISK-008) 설계 및 운영 반출 통제 점검
 - 2026-03-07 | reviewer: team | `web_visit_event`를 ALTER TABLE 기반 idempotent 보강 패턴으로 정리하고, referrer 원문 미저장 + 채널 분류 규칙 + 운영 점검 항목(길이 제한/증가 추이)을 문서화 | 다음 액션: RISK-008 완료를 위해 자동 파기 주기와 실행 스크립트 확정
 - 2026-03-07 | reviewer: team | 사진 미리보기 패널 클릭 동작을 새창 열기에서 Viewer.js 이미지 뷰어로 교체하고 `/photo2map`·`/file2map`·`/siyu` 공통 경로로 통합 | 다음 액션: 모바일 터치 제스처/메모리 사용량 회귀 모니터링
+- 2026-03-07 | reviewer: team | Deploy 워크플로를 `workflow_dispatch` 수동 실행 + 품질 게이트 + SSH/Compose 배포 + `/health` 실패 자동 롤백으로 구현하고 관련 운영 문서를 동기화 | 다음 액션: 운영 저장소에 `DEPLOY_*` GitHub Secrets 등록 및 첫 수동 배포 리허설 수행
