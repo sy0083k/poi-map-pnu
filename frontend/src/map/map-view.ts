@@ -66,7 +66,7 @@ export function createMapView(elements: MapViewElements) {
     featureLayers = createMapViewFeatureLayers({
       map,
       defaultStyleSelector: styles.defaultStyleSelector,
-      selectedFeatureStyle: styles.selectedFeatureStyle
+      selectedStyleSelector: styles.selectedStyleSelector
     });
 
     map.on("singleclick", (evt) => {
