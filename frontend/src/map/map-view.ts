@@ -34,6 +34,16 @@ function asVectorFeature(feature: unknown): Feature<Geometry> | null {
   return feature instanceof Feature ? feature : null;
 }
 
+function intersectsViewport(geometry: Geometry, extent: number[]): boolean {
+  const candidate = geometry as Geometry & { intersectsExtent?: (target: number[]) => boolean };
+  if (typeof candidate.intersectsExtent === "function") {
+    return candidate.intersectsExtent(extent);
+  }
+  const [aMinX, aMinY, aMaxX, aMaxY] = geometry.getExtent();
+  const [bMinX, bMinY, bMaxX, bMaxY] = extent;
+  return aMinX <= bMaxX && aMaxX >= bMinX && aMinY <= bMaxY && aMaxY >= bMinY;
+}
+
 export function createMapView(elements: MapViewElements) {
   let map: Map | null = null;
   let basemapLayers: ReturnType<typeof createBasemapLayers> | null = null;
@@ -201,6 +211,28 @@ export function createMapView(elements: MapViewElements) {
     init,
     getCurrentExtent: (): number[] | null => (map ? map.getView().calculateExtent(map.getSize()) : null),
     getMap: (): Map | null => map,
+    getVisibleListIndexes: (): number[] => {
+      if (!map || !featureLayers) {
+        return [];
+      }
+      const size = map.getSize();
+      if (!size) {
+        return [];
+      }
+      const extent = map.getView().calculateExtent(size);
+      const indexes: number[] = [];
+      for (const feature of featureLayers.getAllFeatures()) {
+        const geometry = feature.getGeometry();
+        const featureId = feature.getId();
+        if (!geometry || typeof featureId !== "number") {
+          continue;
+        }
+        if (intersectsViewport(geometry, extent)) {
+          indexes.push(featureId);
+        }
+      }
+      return indexes;
+    },
     getCurrentZoom: (): number | null => (map && typeof map.getView().getZoom() === "number" ? (map.getView().getZoom() as number) : null),
     renderFeatures,
     resize: (): void => map?.updateSize(),

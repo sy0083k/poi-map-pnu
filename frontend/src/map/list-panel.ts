@@ -92,10 +92,13 @@ export function createListPanel(elements: ListPanelElements) {
     setSelected(currentIndex);
   };
 
-  const scrollTo = (index: number): void => {
+  const scrollTo = (index: number, options?: { alignToTop?: boolean }): void => {
     const selectedEl = document.getElementById(`item-${index}`);
     if (selectedEl) {
-      selectedEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      selectedEl.scrollIntoView({
+        behavior: "smooth",
+        block: options?.alignToTop ? "start" : "nearest"
+      });
     }
   };
 

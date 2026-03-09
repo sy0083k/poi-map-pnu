@@ -48,6 +48,7 @@
 - 레거시 정리: `python scripts/remove_legacy_national_table.py`로 구 테이블(`poi`) 제거 가능(`--dry-run` 지원)
 - 지도 목록 조회: `/api/lands`, `/api/lands/list`는 `theme` 쿼리 `city_owned`만 지원(미지정 시 기본 `city_owned`)
 - `/siyu` 목록 필터(주소/면적/재산관리관/재산용도/지목)는 `/api/lands/list` 서버 쿼리(`searchTerm/minArea/maxArea/propertyManager/propertyUsage/landType`)로 처리하고, 실패 시 클라이언트 로컬 폴백을 사용
+- 유틸리티 사이드바 결과 목록은 `PNU` 오름차순 정렬을 유지하며, `조건에 맞는 토지 찾기` 후 화면 내 토지가 있으면 `PNU` 최소 항목이 목록 상단에 보이도록 자동 스크롤한다
 - 검색 결과 다운로드: `/siyu`는 `/api/lands/export` 서버 다운로드, `/file2map` 로컬 업로드 모드는 브라우저 Excel 생성 다운로드
 - 헤더 메뉴 정렬: 데스크톱에서 `시작/배경지도/주제도` 시작 x좌표를 사이드바 끝점 고정 오프셋으로 배치
 - 헤더 메뉴 구분자: `시작 | 배경지도 | 주제도` 사이 짧은 세로 바 표시
