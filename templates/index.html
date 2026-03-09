@@ -267,10 +267,11 @@
         {% endif %}
     </div>
 
-    <aside id="land-info-panel" class="is-hidden" aria-live="polite" aria-label="선택 토지 상세 정보">
+    {% set land_info_title = "재산 상세 정보" if initial_theme == "city_owned" else "상세 정보" %}
+    <aside id="land-info-panel" class="is-hidden" aria-live="polite" aria-label="선택 토지 {{ land_info_title }}">
         <header class="land-info-header">
-            <h3>상세 정보</h3>
-            <button id="land-info-close" class="land-info-close" type="button" aria-label="상세 정보 닫기">✕</button>
+            <h3 id="land-info-title">{{ land_info_title }}</h3>
+            <button id="land-info-close" class="land-info-close" type="button" aria-label="{{ land_info_title }} 닫기">✕</button>
         </header>
         <div id="land-info-content" class="land-info-content">
             <div class="land-info-empty">토지를 선택하면 상세 정보가 표시됩니다.</div>

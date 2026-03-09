@@ -86,6 +86,7 @@
    - `/file2map(national_public)` + 로컬 업로드 모드: 현재 검색 결과를 브라우저에서 직접 Excel(`.xlsx`)로 생성해 다운로드한다.
 7. OpenLayers `GeoJSON.readFeatures`에는 `dataProjection=CADASTRAL_FGB_CRS`, `featureProjection=EPSG:3857`을 명시해 투영 오인으로 인한 미표시를 방지한다.
 8. 토지 선택 시 상세정보는 지도 팝업이 아니라 우상단 패널에서 동적으로 렌더링하며, 패널은 2열(속성/값) 그리드로 속성/값 Pair를 동일 라인(y축)에 정렬한다.
+   - `/siyu(city_owned)`에서는 상세 패널 제목을 `재산 상세 정보`로 표시한다.
    - 웹앱 초기화 시 상세 패널은 숨김 상태로 시작한다.
    - 패널 헤더의 `X` 버튼으로 닫을 수 있으며, 필지를 다시 선택하면 자동 재표시된다.
 9. 배경지도 기본 레이어는 `Satellite`이며, 상단 헤더 `배경지도` 메뉴에서 `일반지도(Base)`, `백지도(White)`, `영상지도(Satellite)`, `하이브리드(Hybrid)` 전환을 지원한다.
