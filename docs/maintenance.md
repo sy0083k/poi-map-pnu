@@ -66,6 +66,7 @@
 - `/api/lands/list` 서버 필터 실패 상황에서 `/siyu`가 마지막 목록 스냅샷 기준 로컬 폴백으로 동작하는지 점검
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검
 - `/api/cadastral/highlights` 호출 시 요청 `PNU+bbox` 기준 `matched/scanned/bboxApplied/bboxFiltered/source` 메타가 정상 응답되는지 점검
+- 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩 시 `bbox` 없이 전체 업로드 PNU 매칭이 적용되어, 초기 화면 밖 필지도 줌 아웃/이동 시 누락 없이 표시되는지 점검
 - `/api/cadastral/highlights` 실패 시 클라이언트 워커 폴백으로 하이라이트가 계속 표시되는지 점검
 - `/admin/stats/web`에 `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`, `channelBreakdown`가 정상 집계되는지 점검
 - `referrerUrl` 원문이 DB에 저장되지 않고(`referrer_domain`/`referrer_path`만 저장), `referrer_path`에 query/fragment가 포함되지 않는지 점검
