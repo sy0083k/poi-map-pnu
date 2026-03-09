@@ -2,12 +2,22 @@ import { loadUploadedHighlights } from "./cadastral-fgb-layer";
 
 import type { LandFeatureCollection, LandListItem, MapConfig, ThemeType } from "./types";
 
+type FeatureIndexEntry = {
+  featuresByPnu: Map<string, unknown>;
+  sourceFeatureCount: number;
+};
+
 type HighlightDeps = {
   getConfig: () => MapConfig | null;
   getCurrentTheme: () => ThemeType;
   getCurrentItems: () => LandListItem[];
   getUploadedHighlightFeatures: () => LandFeatureCollection;
   setUploadedHighlightFeatures: (value: LandFeatureCollection) => void;
+  getUploadedHighlightDatasetKey: () => string;
+  setUploadedHighlightDatasetKey: (value: string) => void;
+  getFeaturesByPnuIndex: (datasetKey: string) => FeatureIndexEntry | undefined;
+  setFeaturesByPnuIndex: (datasetKey: string, entry: FeatureIndexEntry) => void;
+  deleteFeaturesByPnuIndex: (datasetKey: string) => void;
   getUploadedHighlightsRequestSeq: () => number;
   setUploadedHighlightsRequestSeq: (value: number) => void;
   getHighlightLoadAbortController: () => AbortController | null;
@@ -21,6 +31,34 @@ type HighlightDeps = {
   updateNavigation: () => void;
 };
 
+const normalizePnu = (raw: unknown): string => String(raw ?? "").replace(/\D/g, "");
+
+const getRuntimeDatasetKey = (deps: HighlightDeps): string => {
+  const active = deps.getUploadedHighlightDatasetKey();
+  if (active.trim() !== "") {
+    return active;
+  }
+  return `runtime:${deps.getCurrentTheme()}`;
+};
+
+const getFeaturesByPnu = (deps: HighlightDeps, datasetKey: string): Map<string, unknown> => {
+  const uploadedFeatures = deps.getUploadedHighlightFeatures().features;
+  const existing = deps.getFeaturesByPnuIndex(datasetKey);
+  if (existing && existing.sourceFeatureCount === uploadedFeatures.length) {
+    return existing.featuresByPnu;
+  }
+
+  const rebuilt = new Map<string, unknown>();
+  uploadedFeatures.forEach((feature) => {
+    const pnu = normalizePnu(feature.properties.pnu);
+    if (pnu) {
+      rebuilt.set(pnu, feature.geometry);
+    }
+  });
+  deps.setFeaturesByPnuIndex(datasetKey, { featuresByPnu: rebuilt, sourceFeatureCount: uploadedFeatures.length });
+  return rebuilt;
+};
+
 export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> {
   const config = deps.getConfig();
   if (!config) {
@@ -28,18 +66,19 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
   }
 
   const currentItems = deps.getCurrentItems();
-  const featuresByPnu = new Map<string, unknown>();
-  deps.getUploadedHighlightFeatures().features.forEach((feature) => {
-    const pnu = String(feature.properties.pnu || "");
-    if (pnu) {
-      featuresByPnu.set(pnu, feature.geometry);
-    }
-  });
+  if (currentItems.length === 0) {
+    deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
+    deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
+    deps.updateNavigation();
+    return;
+  }
+
+  const featuresByPnu = getFeaturesByPnu(deps, getRuntimeDatasetKey(deps));
 
   const withProperties: LandFeatureCollection = {
     type: "FeatureCollection",
     features: currentItems.flatMap((item, idx) => {
-      const geometry = featuresByPnu.get(item.pnu);
+      const geometry = featuresByPnu.get(normalizePnu(item.pnu));
       if (!geometry) {
         return [];
       }
@@ -66,11 +105,13 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
   const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu)));
   if (uploadedPnus.length === 0) {
     deps.setUploadedHighlightFeatures({ type: "FeatureCollection", features: [] });
+    deps.setUploadedHighlightDatasetKey("empty");
     return;
   }
 
   const seq = deps.getUploadedHighlightsRequestSeq() + 1;
   deps.setUploadedHighlightsRequestSeq(seq);
+  deps.setUploadedHighlightDatasetKey(`loading:${deps.getCurrentTheme()}:${seq}`);
   const controller = new AbortController();
   deps.setHighlightLoadAbortController(controller);
   let firstVisibleApplied = false;
@@ -92,6 +133,7 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
           type: "FeatureCollection",
           features: [...deps.getUploadedHighlightFeatures().features, ...features]
         });
+        deps.deleteFeaturesByPnuIndex(getRuntimeDatasetKey(deps));
         if (!firstVisibleApplied) {
           firstVisibleApplied = true;
           void reloadCadastralLayers(deps);
@@ -108,7 +150,8 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
     if (seq !== deps.getUploadedHighlightsRequestSeq()) {
       return;
     }
-    deps.setUploadedHighlightFeatures(loaded);
+    deps.setUploadedHighlightDatasetKey(loaded.datasetKey);
+    deps.setUploadedHighlightFeatures(loaded.collection);
     await reloadCadastralLayers(deps);
   } catch (error) {
     if (!(error instanceof DOMException && error.name === "AbortError")) {

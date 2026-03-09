@@ -102,6 +102,8 @@
 5. `/api/cadastral/highlights` 서버 경로는 `flatgeobuf.Reader(..., bbox=...)`를 우선 사용해 bbox 부분 조회를 수행하고, Reader 경로 실패 시 `load(..., bbox=...)`로 폴백한다.
 6. 하이라이트 캐시는 키 버전 `v2`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 서버 메모리 캐시는 `HIGHLIGHT_CACHE_TTL_SECONDS`/`HIGHLIGHT_CACHE_MAX_ENTRIES`로 TTL/최대 엔트리를 조정한다.
 7. 브라우저 IndexedDB 하이라이트 캐시는 스키마 버전 2를 사용하며 만료(기본 7일)와 최대 건수(기본 1000건)를 초과한 레코드를 자동 정리한다.
+8. `/siyu` 검색/재조회 렌더 단계는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스 캐시(LRU 최대 5개)를 사용해 반복 검색 시 전체 재구축을 피한다.
+9. 검색 결과가 0건일 때는 하이라이트 조합을 조기 종료(early return)해 불필요한 인덱스 순회를 방지한다.
 
 ### 운영 점검 포인트
 1. 최초 진입 시 `#map-status`에 매칭 진행률(매칭/스캔 건수)이 갱신되는지 확인
@@ -109,6 +111,7 @@
 3. FGB 교체 후 `ETag`가 변경되고, 캐시가 새 데이터로 갱신되는지 확인
 4. `HIGHLIGHT_CACHE_TTL_SECONDS`/`HIGHLIGHT_CACHE_MAX_ENTRIES` 조정 시 캐시 hit율/메모리 사용량 변화를 함께 관측
 5. 브라우저 장기 사용 세션에서 IndexedDB 캐시 정리(만료/최대건수)가 정상 동작하는지 확인
+6. `/siyu`에서 동일 조건 검색 반복 시 메인 스레드 프리징이 악화되지 않는지(특히 0건 결과) 확인
 
 ## 배포 전 체크리스트
 1. `python -m compileall -q app tests`

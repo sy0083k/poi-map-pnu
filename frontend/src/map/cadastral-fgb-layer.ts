@@ -14,6 +14,11 @@ import type { WorkerResponse, WorkerStartMessage } from "./cadastral-fgb-worker-
 
 import type { CadastralCrs, LandFeature, LandFeatureCollection, ThemeType } from "./types";
 
+export type HighlightLoadResult = {
+  collection: LandFeatureCollection;
+  datasetKey: string;
+};
+
 export type HighlightLoadProgress = {
   scanned: number;
   matched: number;
@@ -34,11 +39,11 @@ export async function loadUploadedHighlights(
     onFeatures?: (features: LandFeature[], progress: HighlightLoadProgress) => void;
     onProgress?: (progress: HighlightLoadProgress) => void;
   }
-): Promise<LandFeatureCollection> {
+): Promise<HighlightLoadResult> {
   const { fgbUrl, pnuField, cadastralCrs, uploadedPnus, theme, bbox, bboxCrs, signal, onFeatures, onProgress } = params;
   const requestedPnuSet = new Set(uploadedPnus.map((item) => normalizePnu(item)).filter((item) => item.length === 19));
   if (requestedPnuSet.size === 0) {
-    return { type: "FeatureCollection", features: [] };
+    return { collection: { type: "FeatureCollection", features: [] }, datasetKey: "empty" };
   }
   throwIfAborted(signal);
 
@@ -58,7 +63,7 @@ export async function loadUploadedHighlights(
     };
     onFeatures?.(cached.features, progress);
     onProgress?.(progress);
-    return { type: "FeatureCollection", features: cached.features };
+    return { collection: { type: "FeatureCollection", features: cached.features }, datasetKey: cacheKey };
   }
 
   return loadUploadedHighlightsFromWorker({
@@ -83,7 +88,7 @@ async function loadUploadedHighlightsFromWorker(params: {
   signal?: AbortSignal;
   onFeatures?: (features: LandFeature[], progress: HighlightLoadProgress) => void;
   onProgress?: (progress: HighlightLoadProgress) => void;
-}): Promise<LandFeatureCollection> {
+}): Promise<HighlightLoadResult> {
   const { apiPayload, fgbUrl, pnuField, cadastralCrs, normalizedPnus, cacheKey, signal, onFeatures, onProgress } = params;
   try {
     const apiLoaded = await loadUploadedHighlightsFromApi({
@@ -110,7 +115,7 @@ async function loadUploadedHighlightsFromWorker(params: {
       createdAt: Date.now(),
       features: apiLoaded.features
     });
-    return { type: "FeatureCollection", features: apiLoaded.features };
+    return { collection: { type: "FeatureCollection", features: apiLoaded.features }, datasetKey: cacheKey };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;
@@ -129,7 +134,7 @@ async function loadUploadedHighlightsFromWorker(params: {
     worker.terminate();
   };
 
-  return new Promise<LandFeatureCollection>((resolve, reject) => {
+  return new Promise<HighlightLoadResult>((resolve, reject) => {
     abortListener = () => {
       terminateWorker();
       reject(new DOMException("Aborted", "AbortError"));
@@ -183,7 +188,7 @@ async function loadUploadedHighlightsFromWorker(params: {
           features
         });
         terminateWorker();
-        resolve({ type: "FeatureCollection", features });
+        resolve({ collection: { type: "FeatureCollection", features }, datasetKey: cacheKey });
         return;
       }
 
