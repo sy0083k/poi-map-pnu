@@ -1294,7 +1294,7 @@ body.photo-panel-open #land-info-panel {
     #sidebar-handle {
         display: block;
         position: absolute;
-        left: calc(var(--sidebar-width) - 8px);
+        left: calc(var(--sidebar-width) + 2px);
         top: 50%;
         transform: translateY(-50%);
         width: 22px;
