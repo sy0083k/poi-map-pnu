@@ -240,7 +240,7 @@ uvicorn app.main:app --reload
 - `POST /admin/upload/cadastral-fgb` 성공 시 기존 운영 경로 FGB 파일은 정리(삭제)되므로, 필요 시 사전 백업 후 진행하세요.
 - 하이라이트는 Web Worker + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 브라우저 저장소 제한/삭제 여부와 `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
 
-### 🗺️ 연속지적도 Shapefile → FlatGeobuf 변환(ogr2ogr)
+### 연속지적도 Shapefile → FlatGeobuf 변환(ogr2ogr)
 다음 명령으로 Shapefile(`LSMD_CONT_LDREG_44210_202602.shp`)을 서비스용 FlatGeobuf(`LSMD_CONT_LDREG_44210_202602.fgb`)로 변환할 수 있습니다.
 
 ```bash
