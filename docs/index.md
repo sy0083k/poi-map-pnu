@@ -11,6 +11,7 @@
 4. 어떻게 운영하는가: [`maintenance.md`](maintenance.md)
 5. 어떤 보안 위협을 관리하는가: [`stride-lite.md`](stride-lite.md)
 6. 어떤 리스크를 우선 개선하는가: [`TODO.MD`](TODO.MD)
+7. 어떻게 소개/시연하는가: [`video-intro-storyboard.md`](video-intro-storyboard.md)
 
 ## 현행 기준 요약
 - 지도 데이터 소스: FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)
