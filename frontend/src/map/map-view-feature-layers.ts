@@ -65,39 +65,108 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
     return true;
   };
 
-  const render = (): void => {
+  const getSources = (): { baseSource: VectorSource<Feature<Geometry>>; selectedSource: VectorSource<Feature<Geometry>> } | null => {
     if (!ensureLayers()) {
-      return;
+      return null;
     }
     const baseSource = vectorLayer?.getSource();
     const selectedSource = selectedVectorLayer?.getSource();
     if (!baseSource || !selectedSource) {
+      return null;
+    }
+    return { baseSource, selectedSource };
+  };
+
+  const addFeatureToActiveSource = (
+    featureId: number,
+    feature: Feature<Geometry>,
+    sources: { baseSource: VectorSource<Feature<Geometry>>; selectedSource: VectorSource<Feature<Geometry>> }
+  ): void => {
+    if (selectedFeatureId !== null && featureId === selectedFeatureId) {
+      sources.selectedSource.addFeature(feature);
       return;
     }
+    sources.baseSource.addFeature(feature);
+  };
+
+  const removeFeatureFromSources = (
+    feature: Feature<Geometry>,
+    sources: { baseSource: VectorSource<Feature<Geometry>>; selectedSource: VectorSource<Feature<Geometry>> }
+  ): void => {
+    sources.baseSource.removeFeature(feature);
+    sources.selectedSource.removeFeature(feature);
+  };
+
+  const render = (): void => {
+    const sources = getSources();
+    if (!sources) {
+      return;
+    }
+    const { baseSource, selectedSource } = sources;
     baseSource.clear();
     selectedSource.clear();
 
     for (const [featureId, feature] of featuresById.entries()) {
-      if (selectedFeatureId !== null && featureId === selectedFeatureId) {
-        selectedSource.addFeature(feature);
-      } else {
-        baseSource.addFeature(feature);
-      }
+      addFeatureToActiveSource(featureId, feature, sources);
     }
   };
 
   const setFeatures = (next: globalThis.Map<number, Feature<Geometry>>): void => {
+    const sources = getSources();
+    if (!sources) {
+      featuresById = next;
+      return;
+    }
+
+    for (const [featureId, existingFeature] of featuresById.entries()) {
+      const nextFeature = next.get(featureId);
+      if (!nextFeature || nextFeature !== existingFeature) {
+        removeFeatureFromSources(existingFeature, sources);
+      }
+    }
+
+    for (const [featureId, nextFeature] of next.entries()) {
+      const existingFeature = featuresById.get(featureId);
+      if (!existingFeature || existingFeature !== nextFeature) {
+        addFeatureToActiveSource(featureId, nextFeature, sources);
+      }
+    }
+
     featuresById = next;
     if (selectedFeatureId !== null && !featuresById.has(selectedFeatureId)) {
       selectedFeatureId = null;
     }
-    render();
     syncSelectionPulseState();
   };
 
   const selectFeatureId = (featureId: number | null): void => {
+    if (selectedFeatureId === featureId) {
+      return;
+    }
+    const sources = getSources();
+    if (!sources) {
+      selectedFeatureId = featureId;
+      return;
+    }
+
+    if (selectedFeatureId !== null) {
+      const previousFeature = featuresById.get(selectedFeatureId);
+      if (previousFeature) {
+        sources.selectedSource.removeFeature(previousFeature);
+        sources.baseSource.addFeature(previousFeature);
+      }
+    }
+
     selectedFeatureId = featureId;
-    render();
+    if (selectedFeatureId !== null) {
+      const nextFeature = featuresById.get(selectedFeatureId);
+      if (nextFeature) {
+        sources.baseSource.removeFeature(nextFeature);
+        sources.selectedSource.addFeature(nextFeature);
+      } else {
+        selectedFeatureId = null;
+      }
+    }
     syncSelectionPulseState();
   };
 

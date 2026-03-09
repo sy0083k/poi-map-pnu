@@ -122,3 +122,4 @@
 - 2026-03-08 | reviewer: team | `/file2map` 업로드 파싱을 공개 API(`/api/file2map/upload/parse`) 서버 우선 경로로 추가하고 실패 시 기존 로컬 파서 폴백을 유지 | 다음 액션: 서버 parse 성공률/지연/폴백 발생률 관측 후 로컬 파서 제거 가능성 판단
 - 2026-03-09 | reviewer: team | 관리자 연속지적도 업로드 경로(`POST /admin/upload/cadastral-fgb`)를 추가해 `.fgb` 검증 후 `CADASTRAL_FGB_PATH`를 즉시 반영하고 이전 운영 FGB 파일 정리 정책을 반영 | 다음 액션: 운영에서 업로드 실패율/파일 검증 시간/즉시 반영 안정성 관측
 - 2026-03-09 | reviewer: team | `/siyu` 검색/재조회 렌더에 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스 캐시(LRU 5)와 0건 early return을 적용해 반복 검색 프리징 병목을 완화 | 다음 액션: 동일 조건 반복 검색/0건 검색 시 Long Task 및 응답시간 개선폭 관측
+- 2026-03-09 | reviewer: team | 추가 완화로 피처 레이어 반영을 ID 기반 diff 갱신으로 전환하고, 0건 검색 시 상세 패널만 정리해 선택 해제 중복 전체 재렌더를 제거 | 다음 액션: 0건 검색 직후 UI 입력(줌/팬/커서) 반응성과 Long Task 길이 비교 계측

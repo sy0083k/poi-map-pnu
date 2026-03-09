@@ -196,6 +196,10 @@ export function createMapView(elements: MapViewElements) {
     infoPanel.clear();
   };
 
+  const clearInfoPanelContentOnly = (): void => {
+    infoPanel.clear();
+  };
+
   const setTheme = (theme: ThemeType): void => {
     currentTheme = theme;
     featureLayers?.refreshTheme();
@@ -207,6 +211,7 @@ export function createMapView(elements: MapViewElements) {
   return {
     changeLayer,
     clearInfoPanel,
+    clearInfoPanelContentOnly,
     fitToFeatures,
     init,
     getCurrentExtent: (): number[] | null => (map ? map.getView().calculateExtent(map.getSize()) : null),
