@@ -77,6 +77,15 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
     return { baseSource, selectedSource };
   };
 
+  const swapSourcesForEmptyState = (): { baseSource: VectorSource<Feature<Geometry>>; selectedSource: VectorSource<Feature<Geometry>> } | null => {
+    if (!ensureLayers() || !vectorLayer || !selectedVectorLayer) {
+      return null;
+    }
+    vectorLayer.setSource(new VectorSource<Feature<Geometry>>());
+    selectedVectorLayer.setSource(new VectorSource<Feature<Geometry>>());
+    return getSources();
+  };
+
   const addFeatureToActiveSource = (
     featureId: number,
     feature: Feature<Geometry>,
@@ -115,6 +124,14 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
     const sources = getSources();
     if (!sources) {
       featuresById = next;
+      return;
+    }
+
+    if (next.size === 0) {
+      swapSourcesForEmptyState();
+      featuresById = next;
+      selectedFeatureId = null;
+      syncSelectionPulseState();
       return;
     }
 
