@@ -105,7 +105,7 @@
 8. `/siyu` 검색/재조회 렌더 단계는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스 캐시(LRU 최대 5개)를 사용해 반복 검색 시 전체 재구축을 피한다.
 9. 검색 결과가 0건일 때는 하이라이트 조합을 조기 종료(early return)해 불필요한 인덱스 순회를 방지한다.
 10. 피처 레이어 반영은 ID 기반 diff 갱신을 사용하고, `0건` 검색 시에는 패널만 정리해 선택 해제에 따른 중복 전체 재렌더를 피한다.
-11. `0건` 전환 시에는 `VectorSource.clear(true)` 일괄 삭제 fast-path를 사용해 대량 `removeFeature` 루프를 회피한다.
+11. `0건` 전환 시에는 레이어 source를 새 `VectorSource`로 교체(swap)해 대량 `removeFeature` 루프와 즉시 해제 비용을 회피한다.
 
 ### 운영 점검 포인트
 1. 최초 진입 시 `#map-status`에 매칭 진행률(매칭/스캔 건수)이 갱신되는지 확인
