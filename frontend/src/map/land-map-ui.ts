@@ -94,6 +94,22 @@ export function applyThemeUiState(theme: "national_public" | "city_owned"): void
   document.body.classList.toggle("theme-city-owned", theme === "city_owned");
   document.body.classList.toggle("theme-national-public", theme === "national_public");
   document.body.classList.toggle("file2map-mode", theme === "national_public");
+
+  const landInfoTitleText = theme === "city_owned" ? "재산 상세 정보" : "상세 정보";
+  const landInfoTitle = document.getElementById("land-info-title");
+  if (landInfoTitle instanceof HTMLElement) {
+    landInfoTitle.textContent = landInfoTitleText;
+  }
+
+  const landInfoPanel = document.getElementById("land-info-panel");
+  if (landInfoPanel instanceof HTMLElement) {
+    landInfoPanel.setAttribute("aria-label", `선택 토지 ${landInfoTitleText}`);
+  }
+
+  const landInfoCloseButton = document.getElementById("land-info-close");
+  if (landInfoCloseButton instanceof HTMLElement) {
+    landInfoCloseButton.setAttribute("aria-label", `${landInfoTitleText} 닫기`);
+  }
 }
 
 export function closePhotoPanelUi(): void {
