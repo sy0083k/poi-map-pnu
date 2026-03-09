@@ -182,7 +182,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       if (uniqueManagers.length >= 2) {
         deps.state.setCurrentItems([]);
         deps.listPanel.render([], () => {});
-        deps.mapView.clearInfoPanel();
+        deps.mapView.clearInfoPanelContentOnly();
         updateNavigation();
         if (config) {
           deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
@@ -194,7 +194,11 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
 
     deps.state.setCurrentItems(sortedItems);
     deps.listPanel.render(sortedItems, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
-    deps.mapView.clearInfoPanel();
+    if (sortedItems.length === 0) {
+      deps.mapView.clearInfoPanelContentOnly();
+    } else {
+      deps.mapView.clearInfoPanel();
+    }
     updateNavigation();
     await reloadCadastralLayers(highlightDeps);
     if (trackEvent) {
