@@ -17,6 +17,11 @@ _cache_lock = threading.Lock()
 _response_cache: OrderedDict[str, tuple[float, dict[str, Any]]] = OrderedDict()
 
 
+def clear_cached_responses() -> None:
+    with _cache_lock:
+        _response_cache.clear()
+
+
 def _read_int_env(name: str, default: int) -> int:
     raw = os.getenv(name)
     if raw is None:

@@ -346,8 +346,14 @@
                                 <button class="btn upload-btn" id="uploadBtnCity" type="button">시유지 DB 업데이트</button>
                                 <div id="statusCity"></div>
                             </div>
+                            <div>
+                                <div class="hint">연속지적도 FlatGeobuf(.fgb) 파일</div>
+                                <input class="file-input" type="file" id="fgbFile" accept=".fgb">
+                                <button class="btn upload-btn" id="uploadBtnFgb" type="button">연속지적도 FGB 업데이트</button>
+                                <div id="statusFgb"></div>
+                            </div>
                         </div>
-                        <div class="hint">업로드 후 지도는 FlatGeobuf 연속지적도와 PNU 매칭으로 표시됩니다.</div>
+                        <div class="hint">FGB 업로드는 즉시 반영되며 기존 운영 경로 파일은 교체 후 정리됩니다.</div>
                     </div>
                 </div>
             </section>

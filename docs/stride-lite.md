@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-07
+최종 수정일: 2026-03-09
 
 ## 범위
 - 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/cadastral/highlights`, `/api/lands`, `/api/lands/list`, `/api/file2map/upload/parse`, `/api/events`, `/api/web-events`, `/api/v1/*`
@@ -25,7 +25,7 @@
 
 ### Tampering
 - 위협: FGB 파일 변조
-- 통제: 운영 파일 권한/배포 절차/무결성 점검
+- 통제: 운영 파일 권한/배포 절차/무결성 점검 + 관리자 업로드(`POST /admin/upload/cadastral-fgb`)의 내부망/세션/CSRF 검증 + FlatGeobuf 파서 검증
 
 ### Information Disclosure
 - 위협: 비밀 설정 노출
@@ -44,6 +44,8 @@
 - 통제: 파일 확장자 검증 + 서버 파싱 예외 처리 + 클라이언트 로컬 폴백
 - 위협: 대량 PNU 하이라이트 조회 남용
 - 통제: `/api/cadastral/highlights` 입력 PNU 개수 상한(최대 10,000) + bbox 형식/범위 검증 + 서버 응답 캐시(TTL) + 클라이언트 폴백
+- 위협: 관리자 FGB 초대형 파일 업로드로 디스크/처리 시간 소모
+- 통제: 확장자/콘텐츠타입/파일크기 상한(1GB)/파서 검증 후 교체, 실패 시 기존 운영 파일 유지
 
 ### Elevation of Privilege
 - 위협: 관리자 경로 우회 접근
