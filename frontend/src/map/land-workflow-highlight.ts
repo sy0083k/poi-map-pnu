@@ -76,8 +76,6 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
   let firstVisibleApplied = false;
 
   try {
-    const extent = deps.mapView.getCurrentExtent();
-    const bbox = extent && extent.length === 4 ? ([extent[0], extent[1], extent[2], extent[3]] as [number, number, number, number]) : undefined;
     deps.setMapStatus("업로드 하이라이트를 준비하는 중입니다...");
     const loaded = await loadUploadedHighlights({
       fgbUrl: config.cadastralFgbUrl,
@@ -85,8 +83,6 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
       cadastralCrs: config.cadastralCrs,
       uploadedPnus,
       theme: deps.getCurrentTheme(),
-      bbox,
-      bboxCrs: config.cadastralCrs,
       signal: controller.signal,
       onFeatures: (features, progress) => {
         if (seq !== deps.getUploadedHighlightsRequestSeq() || features.length === 0) {
