@@ -117,7 +117,7 @@ export function createPhotoModeLandController(deps: Deps) {
       });
 
       const geometryByPnu = new Map<string, unknown>();
-      loaded.features.forEach((feature) => {
+      loaded.collection.features.forEach((feature) => {
         const pnu = String(feature.properties.pnu || "").replace(/\D/g, "");
         if (pnu) {
           geometryByPnu.set(pnu, feature.geometry);

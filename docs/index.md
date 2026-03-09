@@ -19,6 +19,7 @@
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
 - 하이라이트 성능: 기본 경로는 `/api/cadastral/highlights`의 `PNU+bbox` 서버 필터링 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
 - 하이라이트 캐시 정책: 캐시 키 버전 `v2`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 `v1`는 읽기 호환으로 유지
+- `/siyu` 렌더 최적화: 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스를 재사용하고, 0건 검색은 조기 종료
 - 지도 표시 정책: 업로드 하이라이트 대상 필지만 렌더링(비하이라이트 배경 필지 미표시)
 - 상세 정보 UI: 선택 필지 정보를 우상단 패널의 2열(속성/값) 동적 필드(`sourceFields`)로 동일 라인 정렬해 표시하며, `X` 버튼으로 닫기 지원
 - 상세 패널 제목 정책: `/siyu`는 `재산 상세 정보`, `/file2map`·`/photo2map`은 `상세 정보`

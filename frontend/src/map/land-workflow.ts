@@ -28,11 +28,14 @@ type LandWorkflowDeps = {
 };
 
 export function createLandWorkflow(deps: LandWorkflowDeps) {
+  const MAX_DATASET_INDEX_CACHE_SIZE = 5;
   let config: MapConfig | null = null;
   let uploadedHighlightFeatures: LandFeatureCollection = { type: "FeatureCollection", features: [] };
+  let uploadedHighlightDatasetKey = "";
   let uploadedHighlightsRequestSeq = 0;
   let themeLoadRequestSeq = 0;
   let highlightLoadAbortController: AbortController | null = null;
+  const featuresByPnuIndexByDataset = new Map<string, { featuresByPnu: Map<string, unknown>; sourceFeatureCount: number }>();
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
   const serverFilterTheme: ThemeType = "city_owned";
 
@@ -92,6 +95,27 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     getUploadedHighlightFeatures: () => uploadedHighlightFeatures,
     setUploadedHighlightFeatures: (value: LandFeatureCollection) => {
       uploadedHighlightFeatures = value;
+    },
+    getUploadedHighlightDatasetKey: () => uploadedHighlightDatasetKey,
+    setUploadedHighlightDatasetKey: (value: string) => {
+      uploadedHighlightDatasetKey = value;
+    },
+    getFeaturesByPnuIndex: (datasetKey: string) => featuresByPnuIndexByDataset.get(datasetKey),
+    setFeaturesByPnuIndex: (datasetKey: string, entry: { featuresByPnu: Map<string, unknown>; sourceFeatureCount: number }) => {
+      if (featuresByPnuIndexByDataset.has(datasetKey)) {
+        featuresByPnuIndexByDataset.delete(datasetKey);
+      }
+      featuresByPnuIndexByDataset.set(datasetKey, entry);
+      while (featuresByPnuIndexByDataset.size > MAX_DATASET_INDEX_CACHE_SIZE) {
+        const oldestKey = featuresByPnuIndexByDataset.keys().next().value;
+        if (!oldestKey) {
+          break;
+        }
+        featuresByPnuIndexByDataset.delete(oldestKey);
+      }
+    },
+    deleteFeaturesByPnuIndex: (datasetKey: string) => {
+      featuresByPnuIndexByDataset.delete(datasetKey);
     },
     getUploadedHighlightsRequestSeq: () => uploadedHighlightsRequestSeq,
     setUploadedHighlightsRequestSeq: (value: number) => {
@@ -200,6 +224,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.mapView.clearInfoPanel();
       updateNavigation();
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
+      uploadedHighlightDatasetKey = "empty";
       if (config) {
         deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
       }
