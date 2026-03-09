@@ -240,6 +240,19 @@ uvicorn app.main:app --reload
 - `POST /admin/upload/cadastral-fgb` 성공 시 기존 운영 경로 FGB 파일은 정리(삭제)되므로, 필요 시 사전 백업 후 진행하세요.
 - 하이라이트는 Web Worker + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 브라우저 저장소 제한/삭제 여부와 `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
 
+### 연속지적도 Shapefile → FlatGeobuf 변환(ogr2ogr)
+다음 명령으로 Shapefile(`LSMD_CONT_LDREG_44210_202602.shp`)을 서비스용 FlatGeobuf(`LSMD_CONT_LDREG_44210_202602.fgb`)로 변환할 수 있습니다.
+
+```bash
+ogr2ogr -f FlatGeobuf -s_srs EPSG:5186 -t_srs EPSG:3857 -nlt PROMOTE_TO_MULTI -select PNU -lco SPATIAL_INDEX=YES LSMD_CONT_LDREG_44210_202602.fgb LSMD_CONT_LDREG_44210_202602.shp
+```
+
+- `-s_srs EPSG:5186` / `-t_srs EPSG:3857`: 원본 좌표계를 웹 지도 좌표계로 변환
+- `-nlt PROMOTE_TO_MULTI`: 단일/멀티 폴리곤을 멀티 지오메트리로 정규화
+- `-select PNU`: 서비스 매칭에 필요한 `PNU` 필드만 추출
+- `-lco SPATIAL_INDEX=YES`: 공간 인덱스 포함 출력
+- 변환 완료 후 `data/`에 파일을 배치하고 `/admin/upload/cadastral-fgb`로 업로드하거나, `.env`의 `CADASTRAL_FGB_PATH`를 새 파일 경로로 설정해 적용합니다.
+
 ## ✅ 테스트 및 품질 체크
 루트 저장소의 기본 테스트 수집 대상은 `tests/`입니다.  
 `IdlePublicProperty/`는 레거시 복제본(참조용)으로 루트 `pytest -q` 수집 대상에서 제외됩니다.
