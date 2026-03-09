@@ -65,6 +65,8 @@
 - `/api/lands`, `/api/lands/list` 호출 시 `theme=city_owned` 정상 응답, `theme=national_public` 400 응답 여부 점검
 - `/api/lands/list` 서버 필터 query(`searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`)가 `/siyu` UI 결과와 일치하는지 점검
 - `/api/lands/list` 서버 필터 실패 상황에서 `/siyu`가 마지막 목록 스냅샷 기준 로컬 폴백으로 동작하는지 점검
+- `조건에 맞는 토지 찾기` 결과 목록이 항상 `PNU` 오름차순인지 점검
+- `조건에 맞는 토지 찾기` 결과에 현재 화면 내 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 자동 스크롤되는지 점검
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검
 - `/api/cadastral/highlights` 호출 시 요청 `PNU+bbox` 기준 `matched/scanned/bboxApplied/bboxFiltered/source` 메타가 정상 응답되는지 점검
 - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩 시 `bbox` 없이 전체 업로드 PNU 매칭이 적용되어, 초기 화면 밖 필지도 줌 아웃/이동 시 누락 없이 표시되는지 점검

@@ -40,6 +40,51 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     deps.listPanel.updateNavigation(deps.state.getCurrentIndex(), deps.state.getCurrentItems().length);
   };
 
+  const normalizePnuForSort = (raw: string): string => raw.replace(/\D/g, "");
+
+  const comparePnuAscending = (left: string, right: string): number => {
+    if (left === right) {
+      return 0;
+    }
+    if (left === "") {
+      return 1;
+    }
+    if (right === "") {
+      return -1;
+    }
+    return left.localeCompare(right, "ko", { numeric: true });
+  };
+
+  const sortItemsByPnuAscending = (items: LandListItem[]): LandListItem[] =>
+    [...items].sort((a, b) => {
+      const pnuCompare = comparePnuAscending(normalizePnuForSort(a.pnu), normalizePnuForSort(b.pnu));
+      if (pnuCompare !== 0) {
+        return pnuCompare;
+      }
+      return a.id - b.id;
+    });
+
+  const findMinVisiblePnuIndex = (items: LandListItem[]): number | null => {
+    const visibleIndexes = deps.mapView.getVisibleListIndexes();
+    if (visibleIndexes.length === 0) {
+      return null;
+    }
+
+    let bestIndex: number | null = null;
+    let bestPnu = "";
+    for (const index of visibleIndexes) {
+      if (index < 0 || index >= items.length) {
+        continue;
+      }
+      const normalized = normalizePnuForSort(items[index].pnu);
+      if (bestIndex === null || comparePnuAscending(normalized, bestPnu) < 0) {
+        bestIndex = index;
+        bestPnu = normalized;
+      }
+    }
+    return bestIndex;
+  };
+
   const highlightDeps = {
     getConfig: () => config,
     getCurrentTheme: () => deps.state.getCurrentTheme(),
@@ -100,15 +145,16 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       isServerFilterEnabled: shouldUseServerFilters,
       localFilter: deps.filters.filterItems,
     });
+    const sortedItems = sortItemsByPnuAscending(filteredItems);
     if (shouldUseServerFilters) {
-      deps.state.setOriginalItems(filteredItems);
+      deps.state.setOriginalItems(sortedItems);
     }
     if (trackEvent) {
       deps.telemetry.trackSearchEvent(values.minArea, values.searchTerm, values.rawSearchTerm, values.rawMinAreaInput, values.rawMaxAreaInput, "false");
     }
 
     if (values.propertyManagerTerm !== "") {
-      const uniqueManagers = hasMultipleManagers(filteredItems);
+      const uniqueManagers = hasMultipleManagers(sortedItems);
       if (uniqueManagers.length >= 2) {
         deps.state.setCurrentItems([]);
         deps.listPanel.render([], () => {});
@@ -122,11 +168,17 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       }
     }
 
-    deps.state.setCurrentItems(filteredItems);
-    deps.listPanel.render(filteredItems, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
+    deps.state.setCurrentItems(sortedItems);
+    deps.listPanel.render(sortedItems, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
     deps.mapView.clearInfoPanel();
     updateNavigation();
     await reloadCadastralLayers(highlightDeps);
+    if (trackEvent) {
+      const topVisibleIndex = findMinVisiblePnuIndex(deps.state.getCurrentItems());
+      if (topVisibleIndex !== null) {
+        deps.listPanel.scrollTo(topVisibleIndex, { alignToTop: true });
+      }
+    }
   };
 
   const loadThemeData = async (theme: ThemeType): Promise<void> => {
@@ -160,13 +212,14 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       if (seq !== themeLoadRequestSeq) {
         return;
       }
-      deps.state.setOriginalItems(items);
-      deps.state.setCurrentItems(items);
-      deps.listPanel.render(items, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
+      const sortedItems = sortItemsByPnuAscending(items);
+      deps.state.setOriginalItems(sortedItems);
+      deps.state.setCurrentItems(sortedItems);
+      deps.listPanel.render(sortedItems, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
       deps.mapView.clearInfoPanel();
       updateNavigation();
       await reloadCadastralLayers(highlightDeps);
-      void prepareUploadedHighlights(highlightDeps, items);
+      void prepareUploadedHighlights(highlightDeps, sortedItems);
     } catch (error) {
       if (seq !== themeLoadRequestSeq) {
         return;
