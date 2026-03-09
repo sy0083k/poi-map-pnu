@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-08
+최종 수정일: 2026-03-09
 
 ## 시스템 개요
 관심 필지 지도는 FastAPI + SQLite + Vite/OpenLayers 기반 애플리케이션이다.
@@ -41,6 +41,7 @@
 - `POST /logout`
 - `GET /admin`
 - `POST /admin/upload/city`
+- `POST /admin/upload/cadastral-fgb`
 - `POST /admin/settings`
 - `POST /admin/password`
 - `GET /admin/stats`
@@ -142,7 +143,8 @@
 - `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`, `SESSION_HTTPS_ONLY`
 
 ## 운영 참고
-- FlatGeobuf 파일 교체 후 앱 재시작이 필요할 수 있다.
+- 관리자 FGB 업로드(`POST /admin/upload/cadastral-fgb`)는 검증 성공 시 `.env`의 `CADASTRAL_FGB_PATH`와 런타임 경로를 즉시 갱신한다.
+- 업로드 실패 시 기존 운영 FGB 경로/파일은 유지되며, 성공 후에는 이전 운영 경로 파일을 정리한다.
 - `/api/v1/*` alias 계약은 계속 유지한다.
 - 로그인/이벤트 레이트리밋은 인메모리라 멀티 인스턴스에 한계가 있다.
 - `/photo2map`은 브라우저 보안 제약으로 로컬 경로 문자열 입력을 지원하지 않고 폴더 선택 UI만 지원한다.

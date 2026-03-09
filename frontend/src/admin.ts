@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const csrfInput = requireElement("csrfToken", HTMLInputElement);
   const uploadCityButton = document.getElementById("uploadBtnCity");
+  const uploadFgbButton = document.getElementById("uploadBtnFgb");
   const settingsForm = document.getElementById("settingsForm");
   const refreshStatsButton = document.getElementById("refreshStatsBtn");
 
@@ -20,6 +21,18 @@ document.addEventListener("DOMContentLoaded", () => {
         endpoint: "/admin/upload/city",
         emptyFileMessage: "시유지 파일을 선택해주세요.",
         loadingMessage: "시유지 파일 업로드 중..."
+      });
+    });
+  }
+
+  if (uploadFgbButton && csrfInput) {
+    uploadFgbButton.addEventListener("click", () => {
+      void handleThemeUpload(csrfInput.value, {
+        fileInputId: "fgbFile",
+        statusId: "statusFgb",
+        endpoint: "/admin/upload/cadastral-fgb",
+        emptyFileMessage: "연속지적도 FGB 파일을 선택해주세요.",
+        loadingMessage: "연속지적도 FGB 파일 업로드 중..."
       });
     });
   }

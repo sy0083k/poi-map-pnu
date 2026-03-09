@@ -110,6 +110,7 @@ uvicorn app.main:app --reload
 1. `/admin/login`에서 로그인
 2. `/admin`에서 엑셀 업로드
    - 시유지용: `/admin/upload/city`
+   - 연속지적도용: `/admin/upload/cadastral-fgb` (`.fgb`, 업로드 파일명 유지)
    - 필수 컬럼: `고유번호`, `소재지`, `지목`, `실면적`, `재산관리관`
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩은 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(초기 화면 밖 필지 누락 고정 방지).
@@ -205,6 +206,7 @@ uvicorn app.main:app --reload
 - `POST /logout`
 - `GET /admin`
 - `POST /admin/upload/city`
+- `POST /admin/upload/cadastral-fgb`
 - `POST /admin/settings`
 - `POST /admin/password`
 - `GET /admin/stats`
@@ -231,10 +233,11 @@ uvicorn app.main:app --reload
 
 ## ⚠️ 운영 주의사항
 - 관리자 화면에서 `.env`를 갱신해도 실행 중 프로세스의 설정 객체는 즉시 교체되지 않습니다. 운영 환경에서는 설정/비밀번호 변경 후 앱 재시작 절차를 함께 운영하세요.
+- 예외: `POST /admin/upload/cadastral-fgb`는 성공 시 `.env`의 `CADASTRAL_FGB_PATH`와 런타임 경로를 즉시 갱신해 재시작 없이 반영합니다.
 - 관리자 설정 저장 시 `.env`의 동일 변수 중복 라인은 자동 정리되며, 마지막 값을 기준으로 키당 1줄만 유지됩니다.
 - 로그인 실패 제한과 이벤트 레이트리밋은 현재 인메모리 구현입니다. 다중 인스턴스 운영 시 인스턴스 간 상태가 공유되지 않으므로 별도 공유 스토어 기반 정책을 고려하세요.
 - API 버전 정책(`/api` vs `/api/v1`)의 운영 절차는 `docs/architecture.md`와 `docs/maintenance.md`를 기준으로 관리하세요.
-- 연속지적도 파일 교체 시 `CADASTRAL_FGB_PATH` 설정과 파일 권한을 확인하고 앱을 재시작하세요.
+- `POST /admin/upload/cadastral-fgb` 성공 시 기존 운영 경로 FGB 파일은 정리(삭제)되므로, 필요 시 사전 백업 후 진행하세요.
 - 하이라이트는 Web Worker + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 브라우저 저장소 제한/삭제 여부와 `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
 
 ## ✅ 테스트 및 품질 체크

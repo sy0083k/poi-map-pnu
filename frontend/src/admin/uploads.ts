@@ -9,6 +9,8 @@ type UploadResponse = {
     totalRows: number;
     uniquePnu: number;
   };
+  appliedPath?: string;
+  fileSizeBytes?: number;
 };
 
 type ThemeUploadOptions = {
@@ -52,6 +54,11 @@ export async function handleThemeUpload(csrfToken: string, options: ThemeUploadO
       status.innerText =
         `업로드 완료: ${result.message}\n` +
         `업로드 결과: ${result.pnuSummary.totalRows}건 / 고유 PNU ${result.pnuSummary.uniquePnu}건`;
+    } else if (result.appliedPath && typeof result.fileSizeBytes === "number") {
+      status.innerText =
+        `업로드 완료: ${result.message}\n` +
+        `적용 경로: ${result.appliedPath}\n` +
+        `파일 크기: ${result.fileSizeBytes.toLocaleString()} bytes`;
     } else {
       status.innerText = `업로드 완료: ${result.message}`;
     }

@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-23  
-최종 수정일: 2026-03-08  
+최종 수정일: 2026-03-09  
 운영 주기: 매주 1회 (월요일 기준)
 
 ## 목적
@@ -120,3 +120,4 @@
 - 2026-03-08 | reviewer: team | 하이라이트 캐시 키를 `v2`(bbox 2자리 정규화 + CRS)로 승격하고 서버 메모리 캐시 LRU/TTL 제어 및 IndexedDB v2(만료/최대건수 자동 정리) 정책을 반영 | 다음 액션: 캐시 hit율/메모리 사용량/응답 지연 개선폭 관측 후 v1 읽기 호환 제거 시점 결정
 - 2026-03-08 | reviewer: team | `/siyu` 목록 필터를 `/api/lands/list` 서버 처리(`searchTerm/minArea/maxArea/propertyManager/propertyUsage/landType`)로 전환하고 서버 실패 시 클라이언트 로컬 폴백을 유지 | 다음 액션: 대량 데이터에서 필터 응답시간/폴백 발생률 관측 후 `/file2map` 단계 전환 범위 확정
 - 2026-03-08 | reviewer: team | `/file2map` 업로드 파싱을 공개 API(`/api/file2map/upload/parse`) 서버 우선 경로로 추가하고 실패 시 기존 로컬 파서 폴백을 유지 | 다음 액션: 서버 parse 성공률/지연/폴백 발생률 관측 후 로컬 파서 제거 가능성 판단
+- 2026-03-09 | reviewer: team | 관리자 연속지적도 업로드 경로(`POST /admin/upload/cadastral-fgb`)를 추가해 `.fgb` 검증 후 `CADASTRAL_FGB_PATH`를 즉시 반영하고 이전 운영 FGB 파일 정리 정책을 반영 | 다음 액션: 운영에서 업로드 실패율/파일 검증 시간/즉시 반영 안정성 관측

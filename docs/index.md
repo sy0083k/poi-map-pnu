@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-22  
-최종 수정일: 2026-03-08
+최종 수정일: 2026-03-09
 
 ## 빠른 시작 경로
 1. 왜 만드는가: [`goals.md`](goals.md)
@@ -42,6 +42,7 @@
 - 지도 상태 영역: `#map-status`는 필터/목록 사이가 아니라 지도 캔버스 상단 1줄 오버레이로 표시되며, 데스크톱에서는 줌 UI 비가림을 피하도록 폭이 제한되고 `X` 버튼으로 임시 닫기 지원
 - 다중 검출 정책: `/siyu`의 `재산관리관` 검색 결과 고유값이 2개 이상이면 검색을 중단하고 상태 영역(지도 캔버스 상단 1줄 오버레이)에 검출값 안내를 표시
 - 관리자 업로드: `시유지(/admin/upload/city)` 단일 운영
+- 연속지적도 운영 파일 업로드: `POST /admin/upload/cadastral-fgb` (업로드 파일명 유지 저장 + `CADASTRAL_FGB_PATH` 즉시 갱신 + 이전 운영 파일 정리)
 - 레거시 정리: `python scripts/remove_legacy_national_table.py`로 구 테이블(`poi`) 제거 가능(`--dry-run` 지원)
 - 지도 목록 조회: `/api/lands`, `/api/lands/list`는 `theme` 쿼리 `city_owned`만 지원(미지정 시 기본 `city_owned`)
 - `/siyu` 목록 필터(주소/면적/재산관리관/재산용도/지목)는 `/api/lands/list` 서버 쿼리(`searchTerm/minArea/maxArea/propertyManager/propertyUsage/landType`)로 처리하고, 실패 시 클라이언트 로컬 폴백을 사용

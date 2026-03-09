@@ -23,6 +23,7 @@ from app.dependencies import (
 from app.logging_utils import RequestIdFilter
 from app.services import (
     admin_settings_service,
+    cadastral_fgb_upload_service,
     stats_service,
     upload_service,
 )
@@ -62,6 +63,19 @@ async def upload_city_excel(
         csrf_token=csrf_token,
         file=file,
         theme="city_owned",
+    )
+
+
+@router.post("/upload/cadastral-fgb", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
+async def upload_cadastral_fgb(
+    request: Request,
+    csrf_token: str = Form(default=""),
+    file: UploadFile = File(...),  # noqa: B008
+):
+    return cadastral_fgb_upload_service.handle_cadastral_fgb_upload(
+        request,
+        csrf_token=csrf_token,
+        file=file,
     )
 
 
