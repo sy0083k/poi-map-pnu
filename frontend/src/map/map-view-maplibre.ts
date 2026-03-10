@@ -40,6 +40,7 @@ type InvalidGeometrySample = {
   featureId: number;
   reason: string;
   geometryType: string;
+  coordinateSample?: unknown;
 };
 
 type MapDebugHelpers = {
@@ -193,12 +194,35 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, number] | null {
-  if (!Array.isArray(value) || value.length < 2) {
+function isCoordinateContainer(value: unknown): value is Iterable<unknown> {
+  return Array.isArray(value) || ArrayBuffer.isView(value) || (!!value && typeof value === "object" && Symbol.iterator in value);
+}
+
+function toCoordinateArray(value: unknown): unknown[] | null {
+  if (!isCoordinateContainer(value)) {
     return null;
   }
-  const rawX = value[0];
-  const rawY = value[1];
+  return Array.from(value);
+}
+
+function summarizeCoordinateSample(value: unknown, depth = 0): unknown {
+  if (depth >= 2) {
+    return value;
+  }
+  const items = toCoordinateArray(value);
+  if (!items) {
+    return value;
+  }
+  return items.slice(0, 3).map((item) => summarizeCoordinateSample(item, depth + 1));
+}
+
+function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, number] | null {
+  const items = toCoordinateArray(value);
+  if (!items || items.length < 2) {
+    return null;
+  }
+  const rawX = items[0];
+  const rawY = items[1];
   if (!isFiniteNumber(rawX) || !isFiniteNumber(rawY)) {
     return null;
   }
@@ -216,11 +240,12 @@ function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, numb
 }
 
 function normalizePositionArray(value: unknown, sourceCrs: CadastralCrs): [number, number][] | null {
-  if (!Array.isArray(value)) {
+  const items = toCoordinateArray(value);
+  if (!items) {
     return null;
   }
   const out: [number, number][] = [];
-  for (const item of value) {
+  for (const item of items) {
     const normalized = toWgs84Position(item, sourceCrs);
     if (!normalized) {
       return null;
@@ -256,11 +281,12 @@ function normalizeLineString(value: unknown, sourceCrs: CadastralCrs): [number, 
 }
 
 function normalizePolygon(value: unknown, sourceCrs: CadastralCrs): [number, number][][] | null {
-  if (!Array.isArray(value) || value.length === 0) {
+  const ringsRaw = toCoordinateArray(value);
+  if (!ringsRaw || ringsRaw.length === 0) {
     return null;
   }
   const rings: [number, number][][] = [];
-  for (const rawRing of value) {
+  for (const rawRing of ringsRaw) {
     const ring = normalizePositionArray(rawRing, sourceCrs);
     if (!ring) {
       return null;
@@ -303,11 +329,12 @@ function normalizeGeometryToWgs84(
   }
 
   if (candidate.type === "MultiLineString") {
-    if (!Array.isArray(candidate.coordinates) || candidate.coordinates.length === 0) {
+    const linesRaw = toCoordinateArray(candidate.coordinates);
+    if (!linesRaw || linesRaw.length === 0) {
       return { geometry: null, reason: "invalid_multilinestring" };
     }
     const lines: [number, number][][] = [];
-    for (const rawLine of candidate.coordinates) {
+    for (const rawLine of linesRaw) {
       const line = normalizeLineString(rawLine, sourceCrs);
       if (!line) {
         return { geometry: null, reason: "invalid_multilinestring" };
@@ -323,11 +350,12 @@ function normalizeGeometryToWgs84(
   }
 
   if (candidate.type === "MultiPolygon") {
-    if (!Array.isArray(candidate.coordinates) || candidate.coordinates.length === 0) {
+    const polygonsRaw = toCoordinateArray(candidate.coordinates);
+    if (!polygonsRaw || polygonsRaw.length === 0) {
       return { geometry: null, reason: "invalid_multipolygon" };
     }
     const polygons: [number, number][][][] = [];
-    for (const rawPolygon of candidate.coordinates) {
+    for (const rawPolygon of polygonsRaw) {
       const polygon = normalizePolygon(rawPolygon, sourceCrs);
       if (!polygon) {
         return { geometry: null, reason: "invalid_multipolygon" };
@@ -338,11 +366,12 @@ function normalizeGeometryToWgs84(
   }
 
   if (candidate.type === "GeometryCollection") {
-    if (!Array.isArray(candidate.geometries) || candidate.geometries.length === 0) {
+    const geometriesRaw = toCoordinateArray(candidate.geometries);
+    if (!geometriesRaw || geometriesRaw.length === 0) {
       return { geometry: null, reason: "invalid_geometry_collection" };
     }
     const geometries: GeoJSON.Geometry[] = [];
-    for (const child of candidate.geometries) {
+    for (const child of geometriesRaw) {
       const normalizedChild = normalizeGeometryToWgs84(child, sourceCrs);
       if (!normalizedChild.geometry) {
         return { geometry: null, reason: `invalid_geometry_collection_member:${normalizedChild.reason}` };
@@ -625,14 +654,15 @@ export function createMapLibreMapView(elements: MapViewElements) {
     invalidGeometrySamples = [];
   };
 
-  const addGeometryDrop = (featureId: number, reason: string, geometryType: string): void => {
+  const addGeometryDrop = (featureId: number, reason: string, geometryType: string, coordinateSample?: unknown): void => {
     geometryValidationStats.dropped += 1;
     geometryValidationStats.dropReasons[reason] = (geometryValidationStats.dropReasons[reason] ?? 0) + 1;
     if (invalidGeometrySamples.length < MAX_INVALID_GEOMETRY_SAMPLES) {
       invalidGeometrySamples.push({
         featureId,
         reason,
-        geometryType
+        geometryType,
+        coordinateSample
       });
     }
   };
@@ -754,7 +784,11 @@ export function createMapLibreMapView(elements: MapViewElements) {
         : "unknown";
       const normalizedGeometry = normalizeGeometryToWgs84(rawFeature.geometry, sourceProjection);
       if (!normalizedGeometry.geometry) {
-        addGeometryDrop(nextId, normalizedGeometry.reason, geometryType);
+        const coordinateSample =
+          rawFeature.geometry && typeof rawFeature.geometry === "object" && "coordinates" in rawFeature.geometry
+            ? summarizeCoordinateSample((rawFeature.geometry as { coordinates?: unknown }).coordinates)
+            : undefined;
+        addGeometryDrop(nextId, normalizedGeometry.reason, geometryType, coordinateSample);
         return;
       }
       const bbox = geometryBbox(normalizedGeometry.geometry);

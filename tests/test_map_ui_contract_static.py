@@ -242,5 +242,14 @@ def test_siyu_maplibre_route_split_contract() -> None:
     assert "outputCrs," in layer_ts
     assert "function closeRingIfNeeded(" in maplibre_view_ts
     assert "const closedRing = closeRingIfNeeded(ring);" in maplibre_view_ts
+    assert "ArrayBuffer.isView(value)" in maplibre_view_ts
+    assert "Symbol.iterator in value" in maplibre_view_ts
+    assert "function toCoordinateArray(value: unknown): unknown[] | null {" in maplibre_view_ts
+    assert "coordinateSample?: unknown;" in maplibre_view_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326"' in workflow_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs' in highlight_ts
+    worker_ts = Path("frontend/src/map/cadastral-fgb-worker.ts").read_text(encoding="utf-8")
+    assert "ArrayBuffer.isView(value)" in worker_ts
+    assert "function toPlainCoordinateArray(value: unknown): unknown[] | null {" in worker_ts
+    assert "if (sourceCrs === outputCrs) {" in worker_ts
+    assert "return [...items];" in worker_ts

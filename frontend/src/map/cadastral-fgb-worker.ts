@@ -101,21 +101,33 @@ function mercatorToWgs84(x: number, y: number): [number, number] {
   return [lon, lat];
 }
 
-function transformCoordinates(node: unknown, sourceCrs: CadastralCrs, outputCrs: CadastralCrs): unknown {
-  if (sourceCrs === outputCrs) {
-    return node;
-  }
-  if (!Array.isArray(node)) {
+function isCoordinateContainer(value: unknown): value is Iterable<unknown> {
+  return Array.isArray(value) || ArrayBuffer.isView(value) || (!!value && typeof value === "object" && Symbol.iterator in value);
+}
+
+function toPlainCoordinateArray(value: unknown): unknown[] | null {
+  if (!isCoordinateContainer(value)) {
     return null;
   }
-  if (node.length >= 2 && typeof node[0] === "number" && typeof node[1] === "number") {
+  return Array.from(value);
+}
+
+function transformCoordinates(node: unknown, sourceCrs: CadastralCrs, outputCrs: CadastralCrs): unknown {
+  const items = toPlainCoordinateArray(node);
+  if (!items) {
+    return null;
+  }
+  if (items.length >= 2 && typeof items[0] === "number" && typeof items[1] === "number") {
+    if (sourceCrs === outputCrs) {
+      return [...items];
+    }
     if (sourceCrs === "EPSG:3857" && outputCrs === "EPSG:4326") {
-      const [lon, lat] = mercatorToWgs84(node[0], node[1]);
-      return [lon, lat, ...node.slice(2)];
+      const [lon, lat] = mercatorToWgs84(items[0], items[1]);
+      return [lon, lat, ...items.slice(2)];
     }
     return null;
   }
-  const transformedChildren = node.map((item) => transformCoordinates(item, sourceCrs, outputCrs));
+  const transformedChildren = items.map((item) => transformCoordinates(item, sourceCrs, outputCrs));
   return transformedChildren.some((item) => item === null) ? null : transformedChildren;
 }
 
@@ -127,14 +139,12 @@ function transformGeometry(geometry: unknown, sourceCrs: CadastralCrs, outputCrs
   if (typeof candidate.type !== "string") {
     return null;
   }
-  if (sourceCrs === outputCrs) {
-    return candidate as Record<string, unknown>;
-  }
   if (candidate.type === "GeometryCollection") {
-    if (!Array.isArray(candidate.geometries)) {
+    const geometriesRaw = toPlainCoordinateArray(candidate.geometries);
+    if (!geometriesRaw) {
       return null;
     }
-    const geometries = candidate.geometries.map((item) => transformGeometry(item, sourceCrs, outputCrs));
+    const geometries = geometriesRaw.map((item) => transformGeometry(item, sourceCrs, outputCrs));
     return geometries.some((item) => item === null) ? null : { type: candidate.type, geometries };
   }
   const coordinates = transformCoordinates(candidate.coordinates, sourceCrs, outputCrs);
