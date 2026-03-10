@@ -158,6 +158,8 @@
 - `CADASTRAL_FGB_PATH` 실제 경로/권한 확인(하이라이트 준비 시 사용)
 - `CADASTRAL_FGB_PNU_FIELD` 필드명 설정 확인
 - `CADASTRAL_FGB_CRS` 값(EPSG:3857/EPSG:4326)과 실제 파일 CRS 정합 확인
+- `/siyu`에서 렌더 원인 확인이 필요하면 `?debugMap=1` 쿼리로 접속 후 콘솔 `window.__mapDebug.getLandsSourceData()`/`window.__mapDebug.listLandsLayers()`로 source/layer 상태를 점검
+- 디버깅 종료 후에는 일반 URL(`/siyu`)로 재접속해 전역 디버그 훅 노출 상태가 아닌지 확인
 - 브라우저 콘솔 `업로드 하이라이트 준비 실패` 메시지 확인(FlatGeobuf 모듈/네트워크)
 - `/api/lands/list` 실패 시 하이라이트가 비어 보일 수 있음
 

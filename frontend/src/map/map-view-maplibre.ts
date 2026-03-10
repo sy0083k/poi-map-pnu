@@ -29,6 +29,27 @@ type FeatureRecord = {
   bbox: [number, number, number, number] | null;
 };
 
+type GeometryValidationStats = {
+  received: number;
+  accepted: number;
+  dropped: number;
+  dropReasons: Record<string, number>;
+};
+
+type InvalidGeometrySample = {
+  featureId: number;
+  reason: string;
+  geometryType: string;
+};
+
+type MapDebugHelpers = {
+  getLandsSourceData: () => GeoJSON.FeatureCollection | null;
+  getSelectedSourceData: () => GeoJSON.FeatureCollection | null;
+  listLandsLayers: () => string[];
+  getGeometryStats: () => GeometryValidationStats;
+  getInvalidGeometrySamples: (limit?: number) => InvalidGeometrySample[];
+};
+
 const DEFAULT_LINE_COLOR = "#ff3333";
 const DEFAULT_FILL_COLOR = "rgba(255, 51, 51, 0.2)";
 
@@ -73,6 +94,58 @@ const LAND_FILL_LAYER_ID = "lands-fill";
 const LAND_LINE_LAYER_ID = "lands-line";
 const LAND_SELECTED_FILL_LAYER_ID = "lands-selected-fill";
 const LAND_SELECTED_LINE_LAYER_ID = "lands-selected-line";
+const MAX_INVALID_GEOMETRY_SAMPLES = 50;
+
+function isMapDebugEnabled(): boolean {
+  return new URLSearchParams(window.location.search).get("debugMap") === "1";
+}
+
+function getSourceData(map: MapLibreMap, sourceId: string): GeoJSON.FeatureCollection | null {
+  const source = map.getSource(sourceId) as GeoJSONSource | undefined;
+  if (!source) {
+    return null;
+  }
+  const data = (source as GeoJSONSource & { _data?: unknown })._data ?? source.serialize().data;
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+  const candidate = data as { type?: unknown; features?: unknown };
+  if (candidate.type !== "FeatureCollection" || !Array.isArray(candidate.features)) {
+    return null;
+  }
+  return data as GeoJSON.FeatureCollection;
+}
+
+function installMapDebugHooks(
+  map: MapLibreMap,
+  deps: {
+    getGeometryStats: () => GeometryValidationStats;
+    getInvalidGeometrySamples: (limit?: number) => InvalidGeometrySample[];
+  }
+): void {
+  if (!isMapDebugEnabled()) {
+    return;
+  }
+  const target = globalThis as typeof globalThis & { __map?: MapLibreMap; __mapDebug?: MapDebugHelpers };
+  target.__map = map;
+  target.__mapDebug = {
+    getLandsSourceData: () => getSourceData(map, LAND_SOURCE_ID),
+    getSelectedSourceData: () => getSourceData(map, LAND_SELECTED_SOURCE_ID),
+    listLandsLayers: () =>
+      map
+        .getStyle()
+        .layers.filter((layer) => layer.id.includes("lands"))
+        .map((layer) => layer.id),
+    getGeometryStats: () => deps.getGeometryStats(),
+    getInvalidGeometrySamples: (limit?: number) => deps.getInvalidGeometrySamples(limit)
+  };
+}
+
+function uninstallMapDebugHooks(): void {
+  const target = globalThis as typeof globalThis & { __map?: MapLibreMap; __mapDebug?: MapDebugHelpers };
+  delete target.__map;
+  delete target.__mapDebug;
+}
 
 function buildVworldTileUrl(vworldKey: string, type: "Base" | "white" | "Satellite" | "Hybrid"): string {
   const ext = type === "Satellite" ? "jpeg" : "png";
@@ -83,45 +156,161 @@ function isPosition(value: unknown): value is [number, number] {
   return Array.isArray(value) && value.length >= 2 && typeof value[0] === "number" && typeof value[1] === "number";
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function mercatorToWgs84(coord: [number, number]): [number, number] {
   const lon = (coord[0] / 20037508.34) * 180;
   const lat = (Math.atan(Math.sinh((coord[1] / 20037508.34) * Math.PI)) * 180) / Math.PI;
   return [lon, lat];
 }
 
-function transformCoordinates(value: unknown, sourceCrs: CadastralCrs): unknown {
-  if (isPosition(value)) {
-    if (sourceCrs === "EPSG:4326") {
-      return [value[0], value[1]];
-    }
-    return mercatorToWgs84([value[0], value[1]]);
+function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, number] | null {
+  if (!Array.isArray(value) || value.length < 2) {
+    return null;
   }
-  if (Array.isArray(value)) {
-    return value.map((item) => transformCoordinates(item, sourceCrs));
+  const rawX = value[0];
+  const rawY = value[1];
+  if (!isFiniteNumber(rawX) || !isFiniteNumber(rawY)) {
+    return null;
   }
-  return value;
+  const converted = sourceCrs === "EPSG:4326" ? [rawX, rawY] as [number, number] : mercatorToWgs84([rawX, rawY]);
+  if (!Number.isFinite(converted[0]) || !Number.isFinite(converted[1])) {
+    return null;
+  }
+  if (converted[0] < -180 || converted[0] > 180 || converted[1] < -90 || converted[1] > 90) {
+    return null;
+  }
+  return converted;
 }
 
-function transformGeometryToWgs84(geometry: unknown, sourceCrs: CadastralCrs): unknown {
-  if (!geometry || typeof geometry !== "object") {
-    return geometry;
+function normalizePositionArray(value: unknown, sourceCrs: CadastralCrs): [number, number][] | null {
+  if (!Array.isArray(value)) {
+    return null;
   }
+  const out: [number, number][] = [];
+  for (const item of value) {
+    const normalized = toWgs84Position(item, sourceCrs);
+    if (!normalized) {
+      return null;
+    }
+    out.push(normalized);
+  }
+  return out;
+}
+
+function isClosedRing(ring: [number, number][]): boolean {
+  if (ring.length < 4) {
+    return false;
+  }
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  return first[0] === last[0] && first[1] === last[1];
+}
+
+function normalizeLineString(value: unknown, sourceCrs: CadastralCrs): [number, number][] | null {
+  const normalized = normalizePositionArray(value, sourceCrs);
+  if (!normalized || normalized.length < 2) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizePolygon(value: unknown, sourceCrs: CadastralCrs): [number, number][][] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+  const rings: [number, number][][] = [];
+  for (const rawRing of value) {
+    const ring = normalizePositionArray(rawRing, sourceCrs);
+    if (!ring || !isClosedRing(ring)) {
+      return null;
+    }
+    rings.push(ring);
+  }
+  return rings;
+}
+
+function normalizeGeometryToWgs84(
+  geometry: unknown,
+  sourceCrs: CadastralCrs
+): { geometry: GeoJSON.Geometry | null; reason: string } {
+  if (!geometry || typeof geometry !== "object") {
+    return { geometry: null, reason: "geometry_not_object" };
+  }
+
   const candidate = geometry as { type?: unknown; coordinates?: unknown; geometries?: unknown[] };
   if (typeof candidate.type !== "string") {
-    return geometry;
+    return { geometry: null, reason: "geometry_type_missing" };
   }
+
+  if (candidate.type === "Point") {
+    const point = toWgs84Position(candidate.coordinates, sourceCrs);
+    return point ? { geometry: { type: "Point", coordinates: point }, reason: "ok" } : { geometry: null, reason: "invalid_point" };
+  }
+
+  if (candidate.type === "MultiPoint") {
+    const points = normalizePositionArray(candidate.coordinates, sourceCrs);
+    return points ? { geometry: { type: "MultiPoint", coordinates: points }, reason: "ok" } : { geometry: null, reason: "invalid_multipoint" };
+  }
+
+  if (candidate.type === "LineString") {
+    const line = normalizeLineString(candidate.coordinates, sourceCrs);
+    return line ? { geometry: { type: "LineString", coordinates: line }, reason: "ok" } : { geometry: null, reason: "invalid_linestring" };
+  }
+
+  if (candidate.type === "MultiLineString") {
+    if (!Array.isArray(candidate.coordinates) || candidate.coordinates.length === 0) {
+      return { geometry: null, reason: "invalid_multilinestring" };
+    }
+    const lines: [number, number][][] = [];
+    for (const rawLine of candidate.coordinates) {
+      const line = normalizeLineString(rawLine, sourceCrs);
+      if (!line) {
+        return { geometry: null, reason: "invalid_multilinestring" };
+      }
+      lines.push(line);
+    }
+    return { geometry: { type: "MultiLineString", coordinates: lines }, reason: "ok" };
+  }
+
+  if (candidate.type === "Polygon") {
+    const polygon = normalizePolygon(candidate.coordinates, sourceCrs);
+    return polygon ? { geometry: { type: "Polygon", coordinates: polygon }, reason: "ok" } : { geometry: null, reason: "invalid_polygon" };
+  }
+
+  if (candidate.type === "MultiPolygon") {
+    if (!Array.isArray(candidate.coordinates) || candidate.coordinates.length === 0) {
+      return { geometry: null, reason: "invalid_multipolygon" };
+    }
+    const polygons: [number, number][][][] = [];
+    for (const rawPolygon of candidate.coordinates) {
+      const polygon = normalizePolygon(rawPolygon, sourceCrs);
+      if (!polygon) {
+        return { geometry: null, reason: "invalid_multipolygon" };
+      }
+      polygons.push(polygon);
+    }
+    return { geometry: { type: "MultiPolygon", coordinates: polygons }, reason: "ok" };
+  }
+
   if (candidate.type === "GeometryCollection") {
-    return {
-      type: "GeometryCollection",
-      geometries: Array.isArray(candidate.geometries)
-        ? candidate.geometries.map((item) => transformGeometryToWgs84(item, sourceCrs))
-        : []
-    };
+    if (!Array.isArray(candidate.geometries) || candidate.geometries.length === 0) {
+      return { geometry: null, reason: "invalid_geometry_collection" };
+    }
+    const geometries: GeoJSON.Geometry[] = [];
+    for (const child of candidate.geometries) {
+      const normalizedChild = normalizeGeometryToWgs84(child, sourceCrs);
+      if (!normalizedChild.geometry) {
+        return { geometry: null, reason: `invalid_geometry_collection_member:${normalizedChild.reason}` };
+      }
+      geometries.push(normalizedChild.geometry);
+    }
+    return { geometry: { type: "GeometryCollection", geometries }, reason: "ok" };
   }
-  return {
-    type: candidate.type,
-    coordinates: transformCoordinates(candidate.coordinates, sourceCrs)
-  };
+
+  return { geometry: null, reason: "unsupported_geometry_type" };
 }
 
 function foldBboxFromCoordinates(coordinates: unknown, bbox: [number, number, number, number] | null): [number, number, number, number] | null {
@@ -310,6 +499,35 @@ export function createMapLibreMapView(elements: MapViewElements) {
     infoPanelContent: elements.infoPanelContent
   });
   let selectedFeatureId: number | null = null;
+  let geometryValidationStats: GeometryValidationStats = {
+    received: 0,
+    accepted: 0,
+    dropped: 0,
+    dropReasons: {}
+  };
+  let invalidGeometrySamples: InvalidGeometrySample[] = [];
+
+  const resetGeometryValidationStats = (received: number): void => {
+    geometryValidationStats = {
+      received,
+      accepted: 0,
+      dropped: 0,
+      dropReasons: {}
+    };
+    invalidGeometrySamples = [];
+  };
+
+  const addGeometryDrop = (featureId: number, reason: string, geometryType: string): void => {
+    geometryValidationStats.dropped += 1;
+    geometryValidationStats.dropReasons[reason] = (geometryValidationStats.dropReasons[reason] ?? 0) + 1;
+    if (invalidGeometrySamples.length < MAX_INVALID_GEOMETRY_SAMPLES) {
+      invalidGeometrySamples.push({
+        featureId,
+        reason,
+        geometryType
+      });
+    }
+  };
 
   const syncSourceData = (): void => {
     if (!map || !isLoaded) {
@@ -353,6 +571,18 @@ export function createMapLibreMapView(elements: MapViewElements) {
       updateLandPaints(map, currentTheme);
       setBasemapVisibility(map, currentBasemap);
       syncSourceData();
+      installMapDebugHooks(map, {
+        getGeometryStats: () => ({
+          received: geometryValidationStats.received,
+          accepted: geometryValidationStats.accepted,
+          dropped: geometryValidationStats.dropped,
+          dropReasons: { ...geometryValidationStats.dropReasons }
+        }),
+        getInvalidGeometrySamples: (limit?: number) => {
+          const normalizedLimit = typeof limit === "number" && limit > 0 ? Math.floor(limit) : 20;
+          return invalidGeometrySamples.slice(0, normalizedLimit);
+        }
+      });
     });
 
     map.on("click", (event) => {
@@ -403,23 +633,43 @@ export function createMapLibreMapView(elements: MapViewElements) {
 
   const renderFeatures = (data: LandFeatureCollection, options?: RenderOptions): number => {
     const sourceProjection = options?.dataProjection ?? "EPSG:4326";
+    resetGeometryValidationStats(data.features.length);
     featureRecordsById.clear();
     data.features.forEach((rawFeature, idx) => {
       const nextId = typeof rawFeature.properties.list_index === "number" ? rawFeature.properties.list_index : idx;
-      const transformedGeometry = transformGeometryToWgs84(rawFeature.geometry, sourceProjection);
+      const geometryType = typeof (rawFeature.geometry as { type?: unknown })?.type === "string"
+        ? String((rawFeature.geometry as { type?: unknown }).type)
+        : "unknown";
+      const normalizedGeometry = normalizeGeometryToWgs84(rawFeature.geometry, sourceProjection);
+      if (!normalizedGeometry.geometry) {
+        addGeometryDrop(nextId, normalizedGeometry.reason, geometryType);
+        return;
+      }
+      const bbox = geometryBbox(normalizedGeometry.geometry);
+      if (!bbox) {
+        addGeometryDrop(nextId, "bbox_unavailable", geometryType);
+        return;
+      }
       const nextFeature: LandFeature = {
         type: "Feature",
-        geometry: transformedGeometry,
+        geometry: normalizedGeometry.geometry,
         properties: rawFeature.properties
       };
       featureRecordsById.set(nextId, {
         id: nextId,
         feature: nextFeature,
-        bbox: geometryBbox(transformedGeometry)
+        bbox
       });
+      geometryValidationStats.accepted += 1;
     });
+    if (geometryValidationStats.dropped > 0) {
+      console.warn(
+        `[maplibre] geometry validation dropped ${geometryValidationStats.dropped}/${geometryValidationStats.received} features`,
+        geometryValidationStats.dropReasons
+      );
+    }
     syncSourceData();
-    return data.features.length;
+    return geometryValidationStats.accepted;
   };
 
   const selectFeatureByIndex = (index: number, options: SelectOptions): boolean => {
@@ -512,6 +762,9 @@ export function createMapLibreMapView(elements: MapViewElements) {
   };
 
   elements.infoPanelCloseButton?.addEventListener("click", () => infoPanel.dismiss());
+  window.addEventListener("beforeunload", () => {
+    uninstallMapDebugHooks();
+  });
   infoPanel.clear();
 
   return {
