@@ -45,7 +45,13 @@ type InvalidGeometrySample = {
 type MapDebugHelpers = {
   getLandsSourceData: () => GeoJSON.FeatureCollection | null;
   getSelectedSourceData: () => GeoJSON.FeatureCollection | null;
+  getDebugMarkerData: () => GeoJSON.FeatureCollection | null;
+  getDebugMarkerCoordinate: () => [number, number];
+  getDebugMarkerScreenPoint: () => { x: number; y: number };
+  getMapCenterZoom: () => { center: [number, number]; zoom: number };
+  isDebugMarkerInViewport: () => boolean;
   listLandsLayers: () => string[];
+  listDebugLayers: () => string[];
   getGeometryStats: () => GeometryValidationStats;
   getInvalidGeometrySamples: (limit?: number) => InvalidGeometrySample[];
 };
@@ -94,10 +100,17 @@ const LAND_FILL_LAYER_ID = "lands-fill";
 const LAND_LINE_LAYER_ID = "lands-line";
 const LAND_SELECTED_FILL_LAYER_ID = "lands-selected-fill";
 const LAND_SELECTED_LINE_LAYER_ID = "lands-selected-line";
+const DEBUG_REFERENCE_MARKER_SOURCE_ID = "debug-reference-marker-source";
+const DEBUG_REFERENCE_MARKER_LAYER_ID = "debug-reference-marker-layer";
 const MAX_INVALID_GEOMETRY_SAMPLES = 50;
+const DEBUG_REFERENCE_LNG_LAT: [number, number] = [126.45208, 36.783454];
 
 function isMapDebugEnabled(): boolean {
   return new URLSearchParams(window.location.search).get("debugMap") === "1";
+}
+
+function isDebugRecenterEnabled(): boolean {
+  return new URLSearchParams(window.location.search).get("debugRecenter") === "1";
 }
 
 function getSourceData(map: MapLibreMap, sourceId: string): GeoJSON.FeatureCollection | null {
@@ -131,10 +144,30 @@ function installMapDebugHooks(
   target.__mapDebug = {
     getLandsSourceData: () => getSourceData(map, LAND_SOURCE_ID),
     getSelectedSourceData: () => getSourceData(map, LAND_SELECTED_SOURCE_ID),
+    getDebugMarkerData: () => getSourceData(map, DEBUG_REFERENCE_MARKER_SOURCE_ID),
+    getDebugMarkerCoordinate: () => [...DEBUG_REFERENCE_LNG_LAT],
+    getDebugMarkerScreenPoint: () => {
+      const projected = map.project(DEBUG_REFERENCE_LNG_LAT);
+      return { x: projected.x, y: projected.y };
+    },
+    getMapCenterZoom: () => {
+      const center = map.getCenter();
+      return { center: [center.lng, center.lat], zoom: map.getZoom() };
+    },
+    isDebugMarkerInViewport: () => {
+      const projected = map.project(DEBUG_REFERENCE_LNG_LAT);
+      const canvas = map.getCanvas();
+      return projected.x >= 0 && projected.y >= 0 && projected.x <= canvas.clientWidth && projected.y <= canvas.clientHeight;
+    },
     listLandsLayers: () =>
       map
         .getStyle()
         .layers.filter((layer) => layer.id.includes("lands"))
+        .map((layer) => layer.id),
+    listDebugLayers: () =>
+      map
+        .getStyle()
+        .layers.filter((layer) => layer.id.includes("debug-reference-marker"))
         .map((layer) => layer.id),
     getGeometryStats: () => deps.getGeometryStats(),
     getInvalidGeometrySamples: (limit?: number) => deps.getInvalidGeometrySamples(limit)
@@ -454,6 +487,72 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
   }
 }
 
+function ensureDebugReferenceMarker(map: MapLibreMap): void {
+  if (!isMapDebugEnabled()) {
+    return;
+  }
+
+  const existingDomMarker = document.getElementById("debug-reference-dom-marker");
+  if (!existingDomMarker) {
+    const markerElement = document.createElement("div");
+    markerElement.id = "debug-reference-dom-marker";
+    markerElement.style.width = "22px";
+    markerElement.style.height = "22px";
+    markerElement.style.borderRadius = "9999px";
+    markerElement.style.background = "#22c55e";
+    markerElement.style.border = "3px solid #ffffff";
+    markerElement.style.boxSizing = "border-box";
+    markerElement.style.boxShadow = "0 0 0 2px rgba(15, 23, 42, 0.45)";
+    markerElement.style.pointerEvents = "none";
+    new maplibregl.Marker({ element: markerElement }).setLngLat(DEBUG_REFERENCE_LNG_LAT).addTo(map);
+  }
+
+  if (!map.getSource(DEBUG_REFERENCE_MARKER_SOURCE_ID)) {
+    map.addSource(DEBUG_REFERENCE_MARKER_SOURCE_ID, {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: DEBUG_REFERENCE_LNG_LAT
+                },
+                properties: {
+                  name: "debug-reference-marker",
+                  lng: DEBUG_REFERENCE_LNG_LAT[0],
+                  lat: DEBUG_REFERENCE_LNG_LAT[1]
+                }
+              }
+            ]
+      }
+    });
+  }
+
+  if (!map.getLayer(DEBUG_REFERENCE_MARKER_LAYER_ID)) {
+    map.addLayer({
+      id: DEBUG_REFERENCE_MARKER_LAYER_ID,
+      type: "circle",
+      source: DEBUG_REFERENCE_MARKER_SOURCE_ID,
+      paint: {
+        "circle-radius": 9,
+        "circle-color": "#22c55e",
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 2
+      }
+    });
+  }
+
+  if (isDebugRecenterEnabled()) {
+    map.jumpTo({ center: DEBUG_REFERENCE_LNG_LAT, zoom: 16 });
+  }
+
+  console.info(
+    `[maplibre] debug marker ready: lng=${DEBUG_REFERENCE_LNG_LAT[0].toFixed(6)} lat=${DEBUG_REFERENCE_LNG_LAT[1].toFixed(6)}`
+  );
+}
+
 function updateLandPaints(map: MapLibreMap, theme: ThemeType): void {
   if (!map.getLayer(LAND_FILL_LAYER_ID) || !map.getLayer(LAND_LINE_LAYER_ID)) {
     return;
@@ -565,6 +664,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
       }
       isLoaded = true;
       ensureLandLayers(map, currentTheme);
+      ensureDebugReferenceMarker(map);
       updateLandPaints(map, currentTheme);
       setBasemapVisibility(map, currentBasemap);
       syncSourceData();
