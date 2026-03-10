@@ -9,10 +9,11 @@ export type CachedHighlightRecord = {
 };
 
 const INDEXED_DB_NAME = "poi_map_cache";
-const INDEXED_DB_VERSION = 3;
+const INDEXED_DB_VERSION = 4;
 const INDEXED_DB_STORE = "cadastral_highlights";
 const INDEXED_DB_CREATED_AT_INDEX = "createdAt";
-const CACHE_KEY_VERSION = 3;
+// Invalidate stale highlight caches created before API-first loading and geometry normalization changes.
+const CACHE_KEY_VERSION = 4;
 const CACHE_MAX_RECORDS = 1000;
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 

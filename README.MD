@@ -115,6 +115,7 @@ uvicorn app.main:app --reload
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩은 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(초기 화면 밖 필지 누락 고정 방지).
    - FlatGeobuf 파싱은 Web Worker에서 수행하고, 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.
+   - `/siyu?debugFgb=1`에서는 검색과 무관하게 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 probe overlay로 1회 로드해 원본 파일 자체의 렌더 가능 여부를 점검한다.
    - `/siyu` 검색/재조회 렌더에서는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`) 단위 `Map<pnu, geometry>` 인덱스 캐시를 재사용해 반복 검색 시 전체 재구축을 피한다.
    - 검색 결과가 0건일 때는 하이라이트 조합을 조기 종료해 불필요한 순회를 줄인다.
    - 지도 피처 반영은 ID 기반 diff 갱신을 사용하고, 0건 경로에서는 상세 패널만 정리해 선택 해제에 따른 중복 전체 재렌더를 줄인다.
@@ -179,6 +180,7 @@ uvicorn app.main:app --reload
 ### 공개 API (`/api`)
 - `GET /api/config`
 - `GET /api/cadastral/fgb`
+- `GET /api/cadastral/debug-probe`
 - `POST /api/cadastral/highlights`
   - 요청 본문: `theme`, `pnus[]`(19자리 PNU), 선택 `bbox[minX,minY,maxX,maxY]`, `bboxCrs`
   - 응답: 요청 PNU(+bbox 조건)에 매칭된 하이라이트 `FeatureCollection` + `meta(requested/matched/scanned/bboxApplied/bboxFiltered/source/fgbEtag)`

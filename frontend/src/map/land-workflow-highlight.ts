@@ -1,4 +1,4 @@
-import { loadUploadedHighlights } from "./cadastral-fgb-layer";
+import { loadUploadedHighlights, type HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
 
 import type { LandFeatureCollection, LandListItem, MapConfig, ThemeType } from "./types";
 
@@ -26,6 +26,7 @@ type HighlightDeps = {
     renderFeatures: (data: LandFeatureCollection, options: { dataProjection: MapConfig["cadastralCrs"] }) => number;
     getCurrentExtent: () => number[] | null;
     getEngine: () => "openlayers" | "maplibre";
+    setHighlightDebugInfo?: (info: HighlightLoadDebugInfo | null) => void;
   };
   setMapStatus: (message: string, color?: string) => void;
   getThemeLabel: (theme: ThemeType) => string;
@@ -71,6 +72,7 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
   const currentItems = deps.getCurrentItems();
   if (currentItems.length === 0) {
     deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection(deps, config) });
+    deps.mapView.setHighlightDebugInfo?.(null);
     deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
     deps.updateNavigation();
     return;
@@ -109,6 +111,7 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
   if (uploadedPnus.length === 0) {
     deps.setUploadedHighlightFeatures({ type: "FeatureCollection", features: [] });
     deps.setUploadedHighlightDatasetKey("empty");
+    deps.mapView.setHighlightDebugInfo?.(null);
     return;
   }
 
@@ -156,6 +159,7 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
     }
     deps.setUploadedHighlightDatasetKey(loaded.datasetKey);
     deps.setUploadedHighlightFeatures(loaded.collection);
+    deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);
     await reloadCadastralLayers(deps);
   } catch (error) {
     if (!(error instanceof DOMException && error.name === "AbortError")) {

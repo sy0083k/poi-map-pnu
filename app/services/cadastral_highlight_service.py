@@ -18,12 +18,16 @@ from app.services.cadastral_highlight_cache import (
 from app.services.cadastral_highlight_geometry import (
     extract_pnu_from_properties,
     geometry_intersects_bbox,
+    transform_bbox_to_crs,
     transform_geometry_to_wgs84,
 )
 
 MAX_REQUEST_PNUS = 10000
 SUPPORTED_THEMES = {"city_owned", "national_public"}
 SUPPORTED_CRS = {"EPSG:3857", "EPSG:4326"}
+DEBUG_PROBE_FGB_PATH = "data/LSMD_CONT_LDREG_44210_202602.fgb"
+DEFAULT_DEBUG_PROBE_LIMIT = 1000
+MAX_DEBUG_PROBE_LIMIT = 5000
 
 
 def normalize_pnu(raw: Any) -> str:
@@ -76,6 +80,27 @@ def parse_bbox_crs(raw_bbox_crs: Any) -> str:
     if bbox_crs not in SUPPORTED_CRS:
         raise HTTPException(status_code=400, detail="bboxCrs must be EPSG:3857 or EPSG:4326")
     return bbox_crs
+
+
+def parse_debug_probe_bbox(raw_bbox: Any) -> tuple[float, float, float, float]:
+    if not isinstance(raw_bbox, str) or raw_bbox.strip() == "":
+        raise HTTPException(status_code=400, detail="bbox query is required")
+    parts = [part.strip() for part in raw_bbox.split(",")]
+    if len(parts) != 4:
+        raise HTTPException(status_code=400, detail="bbox must be minX,minY,maxX,maxY")
+    return parse_bbox(parts)
+
+
+def parse_debug_probe_limit(raw_limit: Any) -> int:
+    if raw_limit is None or str(raw_limit).strip() == "":
+        return DEFAULT_DEBUG_PROBE_LIMIT
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="limit must be an integer") from exc
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit must be > 0")
+    return min(limit, MAX_DEBUG_PROBE_LIMIT)
 
 
 def get_filtered_highlights(
@@ -133,6 +158,81 @@ def get_filtered_highlights(
     )
     set_cached_response(cache_key, response)
     return response
+
+
+def get_debug_probe_geojson_response(
+    *,
+    base_dir: str,
+    pnu_field: str,
+    cadastral_crs: str,
+    bbox: tuple[float, float, float, float],
+    bbox_crs: str,
+    limit: int,
+) -> dict[str, Any]:
+    file_path = cadastral_fgb_service.resolve_fgb_path_for_health(
+        base_dir=base_dir,
+        configured_path=DEBUG_PROBE_FGB_PATH,
+    )
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="디버그 대상 FGB 파일을 찾을 수 없습니다.")
+
+    try:
+        source_bbox = transform_bbox_to_crs(bbox, source_crs=bbox_crs, target_crs=cadastral_crs)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        loaded = load_features_from_fgb(file_path, bbox=source_bbox)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    features: list[dict[str, Any]] = []
+    scanned = 0
+    transformed = 0
+    truncated = False
+
+    for feature in loaded:
+        scanned += 1
+        geometry = feature.get("geometry") if isinstance(feature, dict) else None
+        if geometry is None:
+            continue
+        transformed_geometry = transform_geometry_to_wgs84(geometry, source_crs=cadastral_crs)
+        if transformed_geometry is None:
+            continue
+
+        properties = feature.get("properties", {}) if isinstance(feature, dict) else {}
+        geometry_type = transformed_geometry.get("type") if isinstance(transformed_geometry, dict) else None
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": transformed_geometry,
+                "properties": {
+                    "pnu": normalize_pnu(extract_pnu_from_properties(properties, pnu_field)),
+                    "geometry_type": geometry_type,
+                },
+            }
+        )
+        transformed += 1
+        if len(features) >= limit:
+            truncated = True
+            break
+
+    return {
+        "type": "FeatureCollection",
+        "features": features,
+        "meta": {
+            "scanned": scanned,
+            "returned": len(features),
+            "transformed": transformed,
+            "truncated": truncated,
+            "limit": limit,
+            "bboxApplied": True,
+            "bboxCrs": bbox_crs,
+            "sourceCrs": cadastral_crs,
+            "outputCrs": "EPSG:4326",
+            "sourceFile": DEBUG_PROBE_FGB_PATH,
+        },
+    }
 
 
 def build_filtered_geojson_response(

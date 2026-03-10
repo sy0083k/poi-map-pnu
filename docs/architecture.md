@@ -19,6 +19,7 @@
 ## 공개 엔드포인트
 - `GET /api/config`
 - `GET /api/cadastral/fgb`
+- `GET /api/cadastral/debug-probe`
 - `POST /api/cadastral/highlights`
 - `GET /api/lands`
 - `GET /api/lands/list`
@@ -82,6 +83,7 @@
    - 결과는 IndexedDB 캐시(`theme + pnuSetHash + bbox + fgb ETag`)로 저장해 재방문 시 재스캔을 회피한다.
    - 하이라이트 캐시 키는 `bbox`를 소수점 2자리 + CRS로 정규화한 `v2`를 기본 사용하고, 구버전(`v1`) 키는 읽기 호환으로만 유지한다.
    - `/api/cadastral/fgb`는 `ETag` 헤더를 제공해 클라이언트 캐시 무효화 기준으로 사용한다.
+   - `/siyu?debugFgb=1` 진단 모드에서는 현재 화면 bbox를 `GET /api/cadastral/debug-probe?bbox=...&bboxCrs=EPSG:4326&limit=1000`으로 조회해 검색 결과와 무관한 원본 FGB 오버레이를 별도 source/layer로 렌더링한다.
    - `/siyu` 검색/재조회 렌더 단계에서는 위 캐시 키(`theme+pnuSetHash+bbox+ETag`)를 데이터셋 식별자로 재사용해 `Map<pnu, geometry>` 인덱스를 데이터셋 단위로 재사용하고, 동일 데이터셋 반복 검색 시 전체 재구축을 피한다.
 4. 지도 렌더링은 하이라이트 레이어만 사용하며, 비하이라이트 필지(배경 연속지적도)는 표시하지 않는다.
    - 피처 반영은 `clear+전체 재추가` 대신 ID 기반 diff(추가/삭제/교체)로 처리해 대량 렌더 블로킹을 완화한다.
@@ -117,6 +119,10 @@
 12. 데스크톱에서는 지도-사이드바 경계의 핸들을 클릭해 사이드바를 슬라이드로 접기/펼치기 할 수 있으며, 상태는 로컬 스토리지로 복원한다.
     - 핸들은 청록색 배경과 방향 힌트(`>`/`<`)로 확장/축소 가능성을 직관적으로 노출한다.
     - 모바일(`<=768px`)은 기존 `mobile-home/search/results` 바텀시트 레이아웃을 우선한다.
+13. `/siyu` 디버그 쿼리 정책:
+    - `debugMap=1`: 기존 MapLibre source/layer/geometry 검증 상태를 `window.__mapDebug`로 노출한다.
+    - `debugFgb=1`: 하이라이트와 별도의 원본 FGB probe overlay를 현재 화면 bbox 기준으로 1회 로드한다.
+    - 권장 진단 URL은 `/siyu?debugMap=1&debugFgb=1`이다.
 
 ## 사진 지도 흐름 (`/photo2map`)
 0. `/photo2map`은 별도 템플릿이 아니라 공통 지도 셸(`index.html`)을 사용하고, 프런트 `map.ts`가 `map_mode=photo` 분기로 사진 모드 컨트롤러를 초기화한다.

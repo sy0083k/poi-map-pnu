@@ -92,7 +92,14 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
         ],
     )
     assert_contains_all(events_ts, ["void deps.workflow.loadThemeData(nextTheme);", "applyLegendUiState(nextTheme);"])
-    assert_contains_all(init_ts, ["await deps.workflow.loadThemeData(deps.state.getCurrentTheme());", "applyLegendUiState(initialTheme);"])
+    assert_contains_all(
+        init_ts,
+        [
+            "await deps.mapView.loadDebugProbe(config, deps.setMapStatus);",
+            "await deps.workflow.loadThemeData(deps.state.getCurrentTheme());",
+            "applyLegendUiState(initialTheme);",
+        ],
+    )
 
     workflow_contract_text = "\n".join([workflow_ts, workflow_download_ts])
     assert_contains_all(
@@ -202,14 +209,20 @@ def test_siyu_maplibre_route_split_contract() -> None:
         [
             'import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";',
             "LAND_SOURCE_ID = \"lands-source\"",
+            'const DEBUG_PROBE_SOURCE_ID = "debug-fgb-probe-source";',
+            'const DEBUG_PROBE_FILL_LAYER_ID = "debug-fgb-probe-fill";',
+            'const DEBUG_PROBE_LINE_LAYER_ID = "debug-fgb-probe-line";',
             "getEngine: (): \"maplibre\" => \"maplibre\"",
             "map.queryRenderedFeatures(event.point",
             'new URLSearchParams(window.location.search).get("debugMap") === "1"',
+            'new URLSearchParams(window.location.search).get("debugFgb") === "1"',
             'new URLSearchParams(window.location.search).get("debugRecenter") === "1"',
             "target.__map = map;",
             "target.__mapDebug = {",
             "getLandsSourceData: () => getSourceData(map, LAND_SOURCE_ID),",
+            "getDebugProbeSourceData: () => getSourceData(map, DEBUG_PROBE_SOURCE_ID),",
             "getDebugMarkerData: () => getSourceData(map, DEBUG_REFERENCE_MARKER_SOURCE_ID),",
+            "getDebugProbeMeta: () => deps.getDebugProbeMeta(),",
             "getDebugMarkerCoordinate: () => [...DEBUG_REFERENCE_LNG_LAT],",
             "getDebugMarkerScreenPoint: () => {",
             "getMapCenterZoom: () => {",
@@ -217,6 +230,7 @@ def test_siyu_maplibre_route_split_contract() -> None:
             "listDebugLayers: () =>",
             "getGeometryStats: () => deps.getGeometryStats(),",
             "getInvalidGeometrySamples: (limit?: number) => deps.getInvalidGeometrySamples(limit)",
+            "getLastHighlightLoad: () => deps.getLastHighlightLoad()",
             "function normalizeGeometryToWgs84(",
             'expected EPSG:4326 GeoJSON',
             "geometryValidationStats.dropReasons",
@@ -224,6 +238,7 @@ def test_siyu_maplibre_route_split_contract() -> None:
             'const DEBUG_REFERENCE_MARKER_SOURCE_ID = "debug-reference-marker-source";',
             'const DEBUG_REFERENCE_MARKER_LAYER_ID = "debug-reference-marker-layer";',
             "const DEBUG_REFERENCE_LNG_LAT: [number, number] = [126.45208, 36.783454];",
+            "function ensureDebugProbeLayers(map: MapLibreMap): void {",
             "function ensureDebugReferenceMarker(map: MapLibreMap): void {",
             'const existingDomMarker = document.getElementById("debug-reference-dom-marker");',
             'new maplibregl.Marker({ element: markerElement }).setLngLat(DEBUG_REFERENCE_LNG_LAT).addTo(map);',
@@ -232,13 +247,16 @@ def test_siyu_maplibre_route_split_contract() -> None:
             '"circle-color": "#22c55e"',
             "map.jumpTo({ center: DEBUG_REFERENCE_LNG_LAT, zoom: 16 });",
             'debug marker ready: lng=${DEBUG_REFERENCE_LNG_LAT[0].toFixed(6)} lat=${DEBUG_REFERENCE_LNG_LAT[1].toFixed(6)}',
+            'await fetchJson<DebugProbeApiResponse>(',
+            'bboxCrs=EPSG:4326&limit=1000',
         ],
     )
-    assert 'const INDEXED_DB_VERSION = 3;' in cache_ts
-    assert 'const CACHE_KEY_VERSION = 3;' in cache_ts
+    assert 'const INDEXED_DB_VERSION = 4;' in cache_ts
+    assert 'const CACHE_KEY_VERSION = 4;' in cache_ts
     assert "db.deleteObjectStore(INDEXED_DB_STORE);" in cache_ts
     assert "const MAX_API_REQUEST_PNUS = 10000;" in layer_ts
-    assert "if (normalizedPnus.length <= MAX_API_REQUEST_PNUS) {" in layer_ts
+    assert "const apiLoaded = await loadUploadedHighlightsFromApi({" in layer_ts
+    assert "for (let start = 0; start < normalizedPnus.length; start += MAX_API_REQUEST_PNUS)" in layer_ts
     assert "outputCrs," in layer_ts
     assert "function closeRingIfNeeded(" in maplibre_view_ts
     assert "const closedRing = closeRingIfNeeded(ring);" in maplibre_view_ts
@@ -246,8 +264,11 @@ def test_siyu_maplibre_route_split_contract() -> None:
     assert "Symbol.iterator in value" in maplibre_view_ts
     assert "function toCoordinateArray(value: unknown): unknown[] | null {" in maplibre_view_ts
     assert "coordinateSample?: unknown;" in maplibre_view_ts
+    assert "let lastHighlightLoad: HighlightLoadDebugInfo | null = null;" in maplibre_view_ts
+    assert "const setHighlightDebugInfo = (info: HighlightLoadDebugInfo | null): void => {" in maplibre_view_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326"' in workflow_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs' in highlight_ts
+    assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in highlight_ts
     worker_ts = Path("frontend/src/map/cadastral-fgb-worker.ts").read_text(encoding="utf-8")
     assert "ArrayBuffer.isView(value)" in worker_ts
     assert "function toPlainCoordinateArray(value: unknown): unknown[] | null {" in worker_ts

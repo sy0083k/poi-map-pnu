@@ -58,6 +58,32 @@ def mercator_to_wgs84(x: float, y: float) -> tuple[float, float]:
     return (lon, lat)
 
 
+def wgs84_to_mercator(lon: float, lat: float) -> tuple[float, float]:
+    bounded_lat = max(min(lat, 89.999999), -89.999999)
+    x = (lon * WEB_MERCATOR_HALF_WORLD) / 180
+    y = WEB_MERCATOR_HALF_WORLD * math.log(math.tan((math.pi / 4) + math.radians(bounded_lat) / 2)) / math.pi
+    return (x, y)
+
+
+def transform_bbox_to_crs(
+    bbox: tuple[float, float, float, float],
+    *,
+    source_crs: str,
+    target_crs: str,
+) -> tuple[float, float, float, float]:
+    if source_crs == target_crs:
+        return bbox
+    if source_crs == "EPSG:4326" and target_crs == "EPSG:3857":
+        min_x, min_y = wgs84_to_mercator(bbox[0], bbox[1])
+        max_x, max_y = wgs84_to_mercator(bbox[2], bbox[3])
+        return (min(min_x, max_x), min(min_y, max_y), max(min_x, max_x), max(min_y, max_y))
+    if source_crs == "EPSG:3857" and target_crs == "EPSG:4326":
+        min_x, min_y = mercator_to_wgs84(bbox[0], bbox[1])
+        max_x, max_y = mercator_to_wgs84(bbox[2], bbox[3])
+        return (min(min_x, max_x), min(min_y, max_y), max(min_x, max_x), max(min_y, max_y))
+    raise ValueError(f"Unsupported CRS transform: {source_crs} -> {target_crs}")
+
+
 def transform_geometry_to_wgs84(geometry: Any, *, source_crs: str) -> dict[str, Any] | None:
     if not isinstance(geometry, dict):
         return None

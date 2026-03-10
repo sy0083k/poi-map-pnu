@@ -1,5 +1,7 @@
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";
 
+import { fetchJson } from "../http";
+import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
 
 import type { BaseType, CadastralCrs, LandFeature, LandFeatureCollection, LandFeatureProperties, MapConfig, ThemeType } from "./types";
@@ -46,6 +48,7 @@ type InvalidGeometrySample = {
 type MapDebugHelpers = {
   getLandsSourceData: () => GeoJSON.FeatureCollection | null;
   getSelectedSourceData: () => GeoJSON.FeatureCollection | null;
+  getDebugProbeSourceData: () => GeoJSON.FeatureCollection | null;
   getDebugMarkerData: () => GeoJSON.FeatureCollection | null;
   getDebugMarkerCoordinate: () => [number, number];
   getDebugMarkerScreenPoint: () => { x: number; y: number };
@@ -53,8 +56,29 @@ type MapDebugHelpers = {
   isDebugMarkerInViewport: () => boolean;
   listLandsLayers: () => string[];
   listDebugLayers: () => string[];
+  getDebugProbeMeta: () => DebugProbeMeta | null;
   getGeometryStats: () => GeometryValidationStats;
   getInvalidGeometrySamples: (limit?: number) => InvalidGeometrySample[];
+  getLastHighlightLoad: () => HighlightLoadDebugInfo | null;
+};
+
+type DebugProbeMeta = {
+  scanned: number;
+  returned: number;
+  transformed: number;
+  truncated: boolean;
+  limit: number;
+  bboxApplied: boolean;
+  bboxCrs: "EPSG:3857" | "EPSG:4326";
+  sourceCrs: CadastralCrs;
+  outputCrs: "EPSG:4326";
+  sourceFile: string;
+};
+
+type DebugProbeApiResponse = {
+  type: "FeatureCollection";
+  features: GeoJSON.Feature[];
+  meta: DebugProbeMeta;
 };
 
 const DEFAULT_LINE_COLOR = "#ff3333";
@@ -101,6 +125,9 @@ const LAND_FILL_LAYER_ID = "lands-fill";
 const LAND_LINE_LAYER_ID = "lands-line";
 const LAND_SELECTED_FILL_LAYER_ID = "lands-selected-fill";
 const LAND_SELECTED_LINE_LAYER_ID = "lands-selected-line";
+const DEBUG_PROBE_SOURCE_ID = "debug-fgb-probe-source";
+const DEBUG_PROBE_FILL_LAYER_ID = "debug-fgb-probe-fill";
+const DEBUG_PROBE_LINE_LAYER_ID = "debug-fgb-probe-line";
 const DEBUG_REFERENCE_MARKER_SOURCE_ID = "debug-reference-marker-source";
 const DEBUG_REFERENCE_MARKER_LAYER_ID = "debug-reference-marker-layer";
 const MAX_INVALID_GEOMETRY_SAMPLES = 50;
@@ -112,6 +139,10 @@ function isMapDebugEnabled(): boolean {
 
 function isDebugRecenterEnabled(): boolean {
   return new URLSearchParams(window.location.search).get("debugRecenter") === "1";
+}
+
+function isDebugFgbEnabled(): boolean {
+  return new URLSearchParams(window.location.search).get("debugFgb") === "1";
 }
 
 function getSourceData(map: MapLibreMap, sourceId: string): GeoJSON.FeatureCollection | null {
@@ -135,6 +166,8 @@ function installMapDebugHooks(
   deps: {
     getGeometryStats: () => GeometryValidationStats;
     getInvalidGeometrySamples: (limit?: number) => InvalidGeometrySample[];
+    getDebugProbeMeta: () => DebugProbeMeta | null;
+    getLastHighlightLoad: () => HighlightLoadDebugInfo | null;
   }
 ): void {
   if (!isMapDebugEnabled()) {
@@ -145,6 +178,7 @@ function installMapDebugHooks(
   target.__mapDebug = {
     getLandsSourceData: () => getSourceData(map, LAND_SOURCE_ID),
     getSelectedSourceData: () => getSourceData(map, LAND_SELECTED_SOURCE_ID),
+    getDebugProbeSourceData: () => getSourceData(map, DEBUG_PROBE_SOURCE_ID),
     getDebugMarkerData: () => getSourceData(map, DEBUG_REFERENCE_MARKER_SOURCE_ID),
     getDebugMarkerCoordinate: () => [...DEBUG_REFERENCE_LNG_LAT],
     getDebugMarkerScreenPoint: () => {
@@ -168,10 +202,12 @@ function installMapDebugHooks(
     listDebugLayers: () =>
       map
         .getStyle()
-        .layers.filter((layer) => layer.id.includes("debug-reference-marker"))
+        .layers.filter((layer) => layer.id.includes("debug-reference-marker") || layer.id.includes("debug-fgb-probe"))
         .map((layer) => layer.id),
+    getDebugProbeMeta: () => deps.getDebugProbeMeta(),
     getGeometryStats: () => deps.getGeometryStats(),
-    getInvalidGeometrySamples: (limit?: number) => deps.getInvalidGeometrySamples(limit)
+    getInvalidGeometrySamples: (limit?: number) => deps.getInvalidGeometrySamples(limit),
+    getLastHighlightLoad: () => deps.getLastHighlightLoad()
   };
 }
 
@@ -528,6 +564,39 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
   }
 }
 
+function ensureDebugProbeLayers(map: MapLibreMap): void {
+  if (!map.getSource(DEBUG_PROBE_SOURCE_ID)) {
+    map.addSource(DEBUG_PROBE_SOURCE_ID, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] }
+    });
+  }
+
+  if (!map.getLayer(DEBUG_PROBE_FILL_LAYER_ID)) {
+    map.addLayer({
+      id: DEBUG_PROBE_FILL_LAYER_ID,
+      type: "fill",
+      source: DEBUG_PROBE_SOURCE_ID,
+      paint: {
+        "fill-color": "rgba(14, 165, 233, 0.08)",
+        "fill-opacity": 1
+      }
+    });
+  }
+
+  if (!map.getLayer(DEBUG_PROBE_LINE_LAYER_ID)) {
+    map.addLayer({
+      id: DEBUG_PROBE_LINE_LAYER_ID,
+      type: "line",
+      source: DEBUG_PROBE_SOURCE_ID,
+      paint: {
+        "line-color": "#0ea5e9",
+        "line-width": 1.5
+      }
+    });
+  }
+}
+
 function ensureDebugReferenceMarker(map: MapLibreMap): void {
   if (!isMapDebugEnabled()) {
     return;
@@ -643,6 +712,12 @@ export function createMapLibreMapView(elements: MapViewElements) {
     dropReasons: {}
   };
   let invalidGeometrySamples: InvalidGeometrySample[] = [];
+  let lastHighlightLoad: HighlightLoadDebugInfo | null = null;
+  let debugProbeMeta: DebugProbeMeta | null = null;
+  let resolveMapReady: (() => void) | null = null;
+  const mapReadyPromise = new Promise<void>((resolve) => {
+    resolveMapReady = resolve;
+  });
 
   const resetGeometryValidationStats = (received: number): void => {
     geometryValidationStats = {
@@ -706,6 +781,9 @@ export function createMapLibreMapView(elements: MapViewElements) {
       }
       isLoaded = true;
       ensureLandLayers(map, currentTheme);
+      if (isDebugFgbEnabled()) {
+        ensureDebugProbeLayers(map);
+      }
       ensureDebugReferenceMarker(map);
       updateLandPaints(map, currentTheme);
       setBasemapVisibility(map, currentBasemap);
@@ -720,8 +798,12 @@ export function createMapLibreMapView(elements: MapViewElements) {
         getInvalidGeometrySamples: (limit?: number) => {
           const normalizedLimit = typeof limit === "number" && limit > 0 ? Math.floor(limit) : 20;
           return invalidGeometrySamples.slice(0, normalizedLimit);
-        }
+        },
+        getDebugProbeMeta: () => debugProbeMeta,
+        getLastHighlightLoad: () => lastHighlightLoad
       });
+      resolveMapReady?.();
+      resolveMapReady = null;
     });
 
     map.on("click", (event) => {
@@ -907,6 +989,49 @@ export function createMapLibreMapView(elements: MapViewElements) {
     updateLandPaints(map, theme);
   };
 
+  const loadDebugProbe = async (
+    _config: MapConfig,
+    setMapStatus: (message: string, color?: string) => void
+  ): Promise<void> => {
+    if (!isDebugFgbEnabled()) {
+      return;
+    }
+    await mapReadyPromise;
+    if (!map || !isLoaded) {
+      return;
+    }
+    ensureDebugProbeLayers(map);
+    const source = map.getSource(DEBUG_PROBE_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!source) {
+      return;
+    }
+    const bounds = map.getBounds();
+    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()] as [number, number, number, number];
+    try {
+      const payload = await fetchJson<DebugProbeApiResponse>(
+        `/api/cadastral/debug-probe?bbox=${bbox.join(",")}&bboxCrs=EPSG:4326&limit=1000`,
+        { timeoutMs: 30000 }
+      );
+      source.setData({ type: payload.type, features: payload.features });
+      debugProbeMeta = payload.meta;
+      const message = payload.meta.truncated
+        ? `원본 FGB 진단 레이어 ${payload.meta.returned}건 표시(제한 ${payload.meta.limit}건, 절단됨)`
+        : `원본 FGB 진단 레이어 ${payload.meta.returned}건 표시`;
+      setMapStatus(message, "#0f766e");
+      if (isMapDebugEnabled()) {
+        console.info("[maplibre] debug FGB probe loaded", payload.meta);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? `원본 FGB 진단 레이어 로딩 실패: ${error.message}` : "원본 FGB 진단 레이어 로딩 실패";
+      console.warn("[maplibre]", message);
+      setMapStatus(message, "#b45309");
+    }
+  };
+
+  const setHighlightDebugInfo = (info: HighlightLoadDebugInfo | null): void => {
+    lastHighlightLoad = info;
+  };
+
   elements.infoPanelCloseButton?.addEventListener("click", () => infoPanel.dismiss());
   window.addEventListener("beforeunload", () => {
     uninstallMapDebugHooks();
@@ -943,10 +1068,12 @@ export function createMapLibreMapView(elements: MapViewElements) {
       return indexes;
     },
     getEngine: (): "maplibre" => "maplibre",
+    loadDebugProbe,
     renderFeatures,
     resize: (): void => {
       map?.resize();
     },
+    setHighlightDebugInfo,
     selectFeatureByIndex,
     setFeatureClickHandler: (handler: (payload: FeatureClickPayload) => void): void => {
       onFeatureClick = handler;

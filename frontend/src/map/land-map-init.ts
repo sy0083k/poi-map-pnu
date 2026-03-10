@@ -21,6 +21,7 @@ type InitDeps = {
   };
   mapView: {
     init: (config: MapConfig) => void;
+    loadDebugProbe: (config: MapConfig, setMapStatus: (message: string, color?: string) => void) => Promise<void>;
     setTheme: (theme: "national_public" | "city_owned") => void;
   };
   state: {
@@ -57,6 +58,7 @@ export async function initializeLandMapPage(deps: InitDeps): Promise<void> {
         showToast: deps.showToast
       });
     }
+    await deps.mapView.loadDebugProbe(config, deps.setMapStatus);
 
     deps.layoutControls.applySidebarCollapsed(readInitialSidebarCollapsed(), false);
 

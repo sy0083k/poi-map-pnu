@@ -9,6 +9,7 @@ import { applyBasemapType, createBasemapLayers } from "./map-view-basemap";
 import { createMapViewFeatureLayers } from "./map-view-feature-layers";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
 import { createMapViewStyles } from "./map-view-styles";
+import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
 import type { BaseType, CadastralCrs, LandFeatureCollection, MapConfig, ThemeType } from "./types";
 
 type MapViewElements = {
@@ -205,6 +206,12 @@ export function createMapView(elements: MapViewElements) {
     featureLayers?.refreshTheme();
   };
 
+  const loadDebugProbe = async (
+    _config: MapConfig,
+    _setMapStatus: (message: string, color?: string) => void
+  ): Promise<void> => {};
+  const setHighlightDebugInfo = (_info: HighlightLoadDebugInfo | null): void => {};
+
   elements.infoPanelCloseButton?.addEventListener("click", () => infoPanel.dismiss());
   infoPanel.clear();
 
@@ -241,6 +248,8 @@ export function createMapView(elements: MapViewElements) {
     getCurrentZoom: (): number | null => (map && typeof map.getView().getZoom() === "number" ? (map.getView().getZoom() as number) : null),
     renderFeatures,
     resize: (): void => map?.updateSize(),
+    loadDebugProbe,
+    setHighlightDebugInfo,
     selectFeatureByIndex,
     setFeatureClickHandler: (handler: (payload: FeatureClickPayload) => void): void => { onFeatureClick = handler; },
     setMoveEndHandler: (handler: (() => void) | null): void => { onMoveEnd = handler; },

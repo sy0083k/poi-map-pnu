@@ -44,6 +44,34 @@ def create_router() -> APIRouter:
             range_header=request.headers.get("range"),
         )
 
+    @router.get("/cadastral/debug-probe")
+    async def get_cadastral_debug_probe(
+        request: Request,
+        bbox: str,
+        bboxCrs: str = "EPSG:4326",
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        try:
+            parsed_bbox, parsed_bbox_crs, parsed_limit = map_api_helpers.parse_debug_probe_query(
+                bbox=bbox,
+                bbox_crs=bboxCrs,
+                limit=limit,
+            )
+        except (HTTPException, ValueError) as exc:
+            if isinstance(exc, HTTPException):
+                raise
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        config = request.app.state.config
+        return cadastral_highlight_service.get_debug_probe_geojson_response(
+            base_dir=config.BASE_DIR,
+            pnu_field=config.CADASTRAL_FGB_PNU_FIELD,
+            cadastral_crs=config.CADASTRAL_FGB_CRS,
+            bbox=parsed_bbox,
+            bbox_crs=parsed_bbox_crs,
+            limit=parsed_limit,
+        )
+
     @router.post("/cadastral/highlights")
     async def post_cadastral_highlights(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
         try:

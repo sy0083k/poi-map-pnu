@@ -18,8 +18,10 @@
 - 지도 엔진 분리: `/siyu`는 MapLibre, `/file2map`·`/photo2map`은 OpenLayers(1차 전환)
 - 좌표계 기준: `CADASTRAL_FGB_CRS` (`EPSG:3857` 기본)
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
+- FGB 원본 진단 API: `/api/cadastral/debug-probe` (`/api/v1/cadastral/debug-probe` alias)
 - 하이라이트 성능: 기본 경로는 `/api/cadastral/highlights`의 `PNU+bbox` 서버 필터링 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
 - `/siyu` 하이라이트 계약: 서버 응답 GeoJSON은 항상 `EPSG:4326`(`meta.outputCrs`)으로 반환하고 MapLibre는 이를 그대로 렌더링
+- `/siyu` 원본 FGB 진단 모드: `?debugFgb=1`에서 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 별도 오버레이로 1회 로드
 - 하이라이트 캐시 정책: 캐시 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 브라우저 캐시는 IndexedDB 스키마 갱신으로 무효화한다
 - `/siyu` 렌더 최적화: 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스를 재사용하고, 0건 검색은 조기 종료
 - 추가 렌더 최적화: 피처 레이어 반영을 ID 기반 diff로 처리하고, 0건 검색은 패널만 정리해 선택 해제 중복 재렌더를 회피
