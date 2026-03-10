@@ -80,8 +80,7 @@ export function createMapViewInfoPanel(elements: InfoPanelElements) {
     }
   };
 
-  const renderFeatureInfo = (feature: Feature<Geometry>): void => {
-    const props = feature.getProperties() as LandFeatureProperties;
+  const renderProperties = (props: LandFeatureProperties): void => {
     const fields = Array.isArray(props.source_fields)
       ? props.source_fields.filter((item) => isLandSourceField(item))
       : [];
@@ -101,9 +100,14 @@ export function createMapViewInfoPanel(elements: InfoPanelElements) {
     elements.infoPanelElement.classList.add("has-selection");
   };
 
+  const renderFeatureInfo = (feature: Feature<Geometry>): void => {
+    renderProperties(feature.getProperties() as LandFeatureProperties);
+  };
+
   return {
     clear,
     dismiss,
-    renderFeatureInfo
+    renderFeatureInfo,
+    renderProperties
   };
 }

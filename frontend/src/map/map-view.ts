@@ -244,7 +244,8 @@ export function createMapView(elements: MapViewElements) {
     selectFeatureByIndex,
     setFeatureClickHandler: (handler: (payload: FeatureClickPayload) => void): void => { onFeatureClick = handler; },
     setMoveEndHandler: (handler: (() => void) | null): void => { onMoveEnd = handler; },
-    setTheme
+    setTheme,
+    getEngine: (): "openlayers" => "openlayers"
   };
 }
 

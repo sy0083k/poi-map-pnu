@@ -8,6 +8,7 @@ import CircleStyle from "ol/style/Circle";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import Style from "ol/style/Style";
+import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 
 import { loadPersistedPhotoMarkers } from "./photo-persistence";
 import { createPhotoLightbox, type PhotoLightboxItem } from "./photo-lightbox";
@@ -19,6 +20,35 @@ type PersistedPhotoOverlayDeps = {
   setMapStatus: (message: string, color?: string) => void;
   showToast: (message: string) => void;
 };
+
+type MapLibreLike = MapLibreMap & {
+  addSource: (id: string, source: object) => void;
+  getSource: (id: string) => GeoJSONSource | undefined;
+  addLayer: (layer: object) => void;
+  getLayer: (id: string) => object | undefined;
+  on: (event: string, handler: (event: any) => void) => void;
+  queryRenderedFeatures: (point: { x: number; y: number }, options?: { layers?: string[] }) => Array<{ properties?: Record<string, unknown> }>;
+};
+
+const MAPLIBRE_MARKER_SOURCE_ID = "persisted-photo-marker-source";
+const MAPLIBRE_SELECTED_MARKER_SOURCE_ID = "persisted-photo-selected-marker-source";
+const MAPLIBRE_MARKER_LAYER_ID = "persisted-photo-marker-layer";
+const MAPLIBRE_SELECTED_MARKER_LAYER_ID = "persisted-photo-selected-marker-layer";
+
+function isMapLibreLike(value: unknown): value is MapLibreLike {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Partial<MapLibreLike>;
+  return (
+    typeof candidate.addSource === "function"
+    && typeof candidate.getSource === "function"
+    && typeof candidate.addLayer === "function"
+    && typeof candidate.getLayer === "function"
+    && typeof candidate.on === "function"
+    && typeof candidate.queryRenderedFeatures === "function"
+  );
+}
 
 const markerStyle = new Style({
   image: new CircleStyle({
@@ -154,6 +184,107 @@ export async function bootstrapPersistedPhotoOverlay(deps: PersistedPhotoOverlay
     lightbox.open(lightboxItems, startIndex);
   });
   if (!panel) {
+    return;
+  }
+
+  if (isMapLibreLike(map)) {
+    if (!map.getSource(MAPLIBRE_MARKER_SOURCE_ID)) {
+      map.addSource(MAPLIBRE_MARKER_SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+    }
+    if (!map.getSource(MAPLIBRE_SELECTED_MARKER_SOURCE_ID)) {
+      map.addSource(MAPLIBRE_SELECTED_MARKER_SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+    }
+    if (!map.getLayer(MAPLIBRE_MARKER_LAYER_ID)) {
+      map.addLayer({
+        id: MAPLIBRE_MARKER_LAYER_ID,
+        type: "circle",
+        source: MAPLIBRE_MARKER_SOURCE_ID,
+        paint: {
+          "circle-radius": 6,
+          "circle-color": "rgba(239, 68, 68, 0.9)",
+          "circle-stroke-color": "#fff",
+          "circle-stroke-width": 2
+        }
+      });
+    }
+    if (!map.getLayer(MAPLIBRE_SELECTED_MARKER_LAYER_ID)) {
+      map.addLayer({
+        id: MAPLIBRE_SELECTED_MARKER_LAYER_ID,
+        type: "circle",
+        source: MAPLIBRE_SELECTED_MARKER_SOURCE_ID,
+        paint: {
+          "circle-radius": 8,
+          "circle-color": "rgba(250, 204, 21, 0.95)",
+          "circle-stroke-color": "#b45309",
+          "circle-stroke-width": 2.5
+        }
+      });
+    }
+
+    const markerSource = map.getSource(MAPLIBRE_MARKER_SOURCE_ID) as GeoJSONSource | undefined;
+    const selectedSource = map.getSource(MAPLIBRE_SELECTED_MARKER_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!markerSource || !selectedSource) {
+      return;
+    }
+
+    const itemByMarkerId = new globalThis.Map<number, (typeof persisted.items)[number]>();
+    const markerFeatures = persisted.items.map((item) => {
+      itemByMarkerId.set(item.id, item);
+      return {
+        type: "Feature" as const,
+        id: item.id,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [item.lon, item.lat]
+        },
+        properties: {
+          marker_id: item.id,
+          photo_file_name: item.fileName,
+          photo_relative_path: item.relativePath
+        }
+      };
+    });
+    markerSource.setData({ type: "FeatureCollection", features: markerFeatures });
+
+    const selectMarker = (markerId: number): void => {
+      const item = itemByMarkerId.get(markerId);
+      const feature = markerFeatures.find((candidate) => candidate.id === markerId);
+      if (!item || !feature) {
+        return;
+      }
+      selectedSource.setData({ type: "FeatureCollection", features: [feature] });
+      panel.show(item);
+      deps.showToast(`${item.fileName} 선택`);
+    };
+
+    map.on("click", (event: { point: { x: number; y: number } }) => {
+      const clicked = map.queryRenderedFeatures(event.point, {
+        layers: [MAPLIBRE_SELECTED_MARKER_LAYER_ID, MAPLIBRE_MARKER_LAYER_ID]
+      });
+      const markerFeature = clicked.find((candidate) => {
+        const markerIdRaw = candidate.properties?.marker_id;
+        return typeof markerIdRaw === "number" || (typeof markerIdRaw === "string" && markerIdRaw.trim() !== "");
+      });
+      if (!markerFeature) {
+        return;
+      }
+      const markerIdRaw = markerFeature.properties?.marker_id;
+      const markerId = typeof markerIdRaw === "number" ? markerIdRaw : Number(markerIdRaw);
+      if (Number.isFinite(markerId)) {
+        selectMarker(markerId);
+      }
+    });
+
+    deps.setMapStatus(`사진 마커 ${markerFeatures.length}개를 복원했습니다.`, "#166534");
+    window.addEventListener("beforeunload", () => {
+      lightbox.destroy();
+    });
     return;
   }
 

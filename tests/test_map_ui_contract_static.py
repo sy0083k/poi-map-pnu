@@ -175,6 +175,30 @@ def test_select_highlight_theme_sync_contract() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     events_ts = Path("frontend/src/map/land-map-events.ts").read_text(encoding="utf-8")
     init_ts = Path("frontend/src/map/land-map-init.ts").read_text(encoding="utf-8")
-    assert "mapView.setTheme(theme);" in map_ts
+    assert "activeMapView.setTheme(theme);" in map_ts
     assert "deps.mapView.setTheme(nextTheme);" in events_ts
     assert "deps.mapView.setTheme(initialTheme);" in init_ts
+
+
+def test_siyu_maplibre_route_split_contract() -> None:
+    map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    maplibre_view_ts = Path("frontend/src/map/map-view-maplibre.ts").read_text(encoding="utf-8")
+
+    assert_contains_all(
+        map_ts,
+        [
+            'import "maplibre-gl/dist/maplibre-gl.css";',
+            'import { createMapLibreMapView } from "./map/map-view-maplibre";',
+            'const activeMapView = window.location.pathname === "/siyu"',
+            "window.location.assign(targetPath);",
+        ],
+    )
+    assert_contains_all(
+        maplibre_view_ts,
+        [
+            'import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";',
+            "LAND_SOURCE_ID = \"lands-source\"",
+            "getEngine: (): \"maplibre\" => \"maplibre\"",
+            "map.queryRenderedFeatures(event.point",
+        ],
+    )

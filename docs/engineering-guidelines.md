@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-22  
-최종 수정일: 2026-02-27
+최종 수정일: 2026-03-10
 
 ## 문서 목적과 범위
 - 이 문서는 테크 스택, 코딩 철학, 코딩 스타일의 단일 기준(Source of Truth)이다.
@@ -14,7 +14,7 @@
 
 ## Canonical Tech Stack (MUST)
 - Backend: Python 3.12, FastAPI
-- Frontend: TypeScript, Vite, OpenLayers
+- Frontend: TypeScript, Vite, OpenLayers, MapLibre (점진 전환)
 - Database: SQLite3 (`data/database.db`)
 - Data 처리: pandas, openpyxl/xlrd
 - Test/품질: pytest, mypy, coverage, compileall

@@ -2,10 +2,11 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-09
+최종 수정일: 2026-03-10
 
 ## 시스템 개요
-관심 필지 지도는 FastAPI + SQLite + Vite/OpenLayers 기반 애플리케이션이다.
+관심 필지 지도는 FastAPI + SQLite + Vite 기반 애플리케이션이다.
+지도 엔진은 단계적 전환 중이며 `/siyu`는 MapLibre, `/file2map`·`/photo2map`은 OpenLayers를 사용한다.
 지도 경계 데이터는 외부 WFS가 아니라 FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)을 사용한다.
 
 ## 레이어 구성
@@ -89,7 +90,9 @@
 6. 사이드바 `검색 결과 다운로드` 버튼 동작은 테마별로 분기한다.
    - `/siyu(city_owned)`: 현재 검색 결과 `id` 집합을 `/api/lands/export`로 전송해 서버에서 Excel을 생성한다.
    - `/file2map(national_public)` + 로컬 업로드 모드: 현재 검색 결과를 브라우저에서 직접 Excel(`.xlsx`)로 생성해 다운로드한다.
-7. OpenLayers `GeoJSON.readFeatures`에는 `dataProjection=CADASTRAL_FGB_CRS`, `featureProjection=EPSG:3857`을 명시해 투영 오인으로 인한 미표시를 방지한다.
+7. 지도 엔진별 투영 정책을 유지한다.
+   - `/siyu`(MapLibre): 하이라이트 GeoJSON을 EPSG:4326으로 변환해 렌더링한다.
+   - `/file2map`, `/photo2map`(OpenLayers): `GeoJSON.readFeatures`에 `dataProjection=CADASTRAL_FGB_CRS`, `featureProjection=EPSG:3857`을 명시해 투영 오인을 방지한다.
 8. 토지 선택 시 상세정보는 지도 팝업이 아니라 우상단 패널에서 동적으로 렌더링하며, 패널은 2열(속성/값) 그리드로 속성/값 Pair를 동일 라인(y축)에 정렬한다.
    - `/siyu(city_owned)`에서는 상세 패널 제목을 `재산 상세 정보`로 표시한다.
    - 웹앱 초기화 시 상세 패널은 숨김 상태로 시작한다.
@@ -105,6 +108,7 @@
     - `주제도` 메뉴는 `시유지` 하위 항목을 제공한다.
     - 헤더에서 `주제도` 오른쪽에 탑레벨 `파일→지도` 메뉴를 두고, `http://127.0.0.1:8000/file2map`(내부 경로 `/file2map`)로 이동한다.
     - 주제도 경로는 `파일→지도=/file2map`, `시유지=/siyu`로 매핑되며 URL 직접 진입/새로고침 시 해당 테마로 초기화된다.
+    - 엔진 분리 정책: 주제도 경로 전환은 경로 기반 전체 페이지 전환으로 처리해 `/siyu`(MapLibre)와 `/file2map`(OpenLayers) 런타임을 분리한다.
     - 서버 데이터 저장은 `시유재산(poi_city)` 단일 테이블을 사용한다.
     - `/siyu` 유틸리티 사이드바는 주소/재산용도/지목/면적/재산관리관 필터를 지원한다.
     - `/file2map` 유틸리티 사이드바는 최상단 파일 업로드 UI + 주소/지목/면적 필터를 지원한다(`재산관리관`, `재산용도` UI 비노출).

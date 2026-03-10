@@ -1,4 +1,5 @@
 import "ol/ol.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 import { createDownloadClient } from "./map/download-client";
 import { createFeedback } from "./map/feedback";
@@ -13,12 +14,13 @@ import { createListPanel } from "./map/list-panel";
 import { setupFile2MapUpload } from "./map/local-upload";
 import { loadAllLandListItems } from "./map/lands-list-client";
 import { createMapView } from "./map/map-view";
+import { createMapLibreMapView } from "./map/map-view-maplibre";
 import { bootstrapPhotoMode } from "./map/photo-mode";
 import { createSessionTracker } from "./map/session-tracker";
 import { createMapState } from "./map/state";
 import { createTelemetry } from "./map/telemetry";
 import { setupTopbarMenus } from "./map/topbar-menu";
-import { getThemeLabel, pushThemeHistory } from "./map/theme-routing";
+import { getThemeLabel, getThemePath, pushThemeHistory } from "./map/theme-routing";
 
 import type { BaseType } from "./map/types";
 
@@ -45,6 +47,13 @@ async function bootstrap(): Promise<void> {
     infoPanelContent: dom.infoPanelContent,
     infoPanelCloseButton: dom.infoPanelCloseButton
   });
+  const activeMapView = window.location.pathname === "/siyu"
+    ? createMapLibreMapView({
+        infoPanelElement: dom.infoPanelElement,
+        infoPanelContent: dom.infoPanelContent,
+        infoPanelCloseButton: dom.infoPanelCloseButton
+      })
+    : mapView;
 
   const listPanel = createListPanel({
     listContainer: document.getElementById("list-container"),
@@ -89,7 +98,7 @@ async function bootstrap(): Promise<void> {
   const workflow = createLandWorkflow({
     state,
     telemetry,
-    mapView,
+    mapView: activeMapView as typeof mapView,
     listPanel,
     filters,
     downloadClient: createDownloadClient(),
@@ -113,7 +122,7 @@ async function bootstrap(): Promise<void> {
       workflow.resetFilters(syncDesktopToMobileInputs);
     },
     onDesktopResize: () => {
-      mapView.resize();
+      activeMapView.resize();
     }
   });
 
@@ -124,11 +133,16 @@ async function bootstrap(): Promise<void> {
     menuBasemapTrigger: dom.menuBasemapTrigger,
     menuThemeTrigger: dom.menuThemeTrigger,
     onThemeSelected: (theme) => {
+      const targetPath = getThemePath(theme);
+      if (window.location.pathname !== targetPath) {
+        window.location.assign(targetPath);
+        return;
+      }
       if (state.getCurrentTheme() !== "city_owned" && theme === "city_owned") {
         legendController.resetLegendDismissed();
       }
       state.setCurrentTheme(theme);
-      mapView.setTheme(theme);
+      activeMapView.setTheme(theme);
       applyThemeUiState(theme);
       if (theme === "national_public") {
         clearFile2MapSpecificFilters();
@@ -136,13 +150,13 @@ async function bootstrap(): Promise<void> {
       syncThemeMenuActiveState(theme);
       closePhotoPanelUi();
       legendController.applyLegendUiState(theme);
-      mapView.clearInfoPanel();
+      activeMapView.clearInfoPanel();
       pushThemeHistory(theme);
       void workflow.loadThemeData(theme);
       showToast(`${getThemeLabel(theme)} 레이어로 전환했습니다.`);
     },
     onBasemapSelected: (layerType: BaseType) => {
-      mapView.changeLayer(layerType);
+      activeMapView.changeLayer(layerType);
       const label = layerType === "Base" ? "일반지도" : layerType === "White" ? "백지도" : layerType === "Satellite" ? "영상지도" : "하이브리드";
       showToast(`${label}로 변경했습니다.`);
     },
@@ -151,7 +165,7 @@ async function bootstrap(): Promise<void> {
   syncThemeMenuActiveState = topbarMenus.syncThemeMenuActiveState;
 
   bindLandMapEvents({
-    mapView,
+    mapView: activeMapView as typeof mapView,
     workflow,
     state,
     listPanel,
@@ -171,7 +185,7 @@ async function bootstrap(): Promise<void> {
     setMapStatus,
     showToast,
     workflow,
-    mapView,
+    mapView: activeMapView as typeof mapView,
     state,
     layoutControls,
     setupUpload: async () =>

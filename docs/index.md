@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-22  
-최종 수정일: 2026-03-09
+최종 수정일: 2026-03-10
 
 ## 빠른 시작 경로
 1. 왜 만드는가: [`goals.md`](goals.md)
@@ -15,6 +15,7 @@
 
 ## 현행 기준 요약
 - 지도 데이터 소스: FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)
+- 지도 엔진 분리: `/siyu`는 MapLibre, `/file2map`·`/photo2map`은 OpenLayers(1차 전환)
 - 좌표계 기준: `CADASTRAL_FGB_CRS` (`EPSG:3857` 기본)
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
 - 하이라이트 성능: 기본 경로는 `/api/cadastral/highlights`의 `PNU+bbox` 서버 필터링 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
@@ -32,6 +33,7 @@
 - 헤더 탑레벨 메뉴: `파일→지도` (주제도 메뉴 오른쪽, `/file2map` 이동)
 - 헤더 탑레벨 메뉴: `사진→지도` (`/photo2map` 이동, 로컬 사진 EXIF GPS 마커)
 - 주제도 URL 경로: `파일→지도=/file2map`, `시유지=/siyu` (직접 진입/새로고침/뒤로가기 동기화)
+- 엔진 런타임 분리: `/siyu`↔`/file2map` 전환은 경로 기반 페이지 전환으로 처리
 - 루트 경로(`/`) 접속 정책: `307 Temporary Redirect`로 `/siyu`에 진입
 - `/siyu` 필터: `재산용도` 콤보(`전체/행정재산/일반재산`) + `지목` + `재산관리관` + 면적 조건 지원
 - `/file2map` 필터: 사이드바 최상단 로컬 엑셀 업로드 UI + `지역명·주소/지목/면적` 조건 지원(`재산관리관`, `재산용도` UI 비노출)

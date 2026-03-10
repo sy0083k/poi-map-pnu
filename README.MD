@@ -8,7 +8,7 @@
   
 ## 🛠 핵심 기술 스택
 - Backend: Python 3.12, FastAPI, SQLite
-- Frontend: TypeScript, Vite, OpenLayers
+- Frontend: TypeScript, Vite, MapLibre(`/siyu`), OpenLayers(`/file2map`, `/photo2map`)
 - Data: pandas, openpyxl/xlrd
 - External API/Data: VWorld (WMTS), FlatGeobuf
 
@@ -86,7 +86,7 @@ uvicorn app.main:app --reload
 | 글로벌 헤더 | Global Navigation Header | 상위 메뉴(`시작/배경지도/주제도`)와 전역 이동 제공 | `#app-topbar`, `.topbar-menu` |
 | 애플리케이션 셸 | Application Shell | 지도/사이드바/패널을 포함하는 메인 레이아웃 컨테이너 | `#app-shell` |
 | 유틸리티 사이드바 | Utility Sidebar (Filter & Result Panel) | 필터 입력, 검색 결과 목록, 네비게이션(이전/다음) 제공 | `#sidebar`, `#filter-section`, `#list-container` |
-| 지도 캔버스 | Primary Map Canvas | OpenLayers 기반 필지 시각화 및 사용자 상호작용 처리 | `#map` |
+| 지도 캔버스 | Primary Map Canvas | `/siyu`는 MapLibre, `/file2map`·`/photo2map`은 OpenLayers 기반 필지 시각화/상호작용 처리 | `#map` |
 | 지도 상태바 | Map Status Overlay | 하이라이트 준비/강조 건수/검증 메시지를 지도 상단 1줄로 표시하고 `X` 버튼으로 임시 닫기 지원 | `#map-status`, `#map-status-close` |
 | 상세 정보 패널 | Detail Information Panel | 선택 필지의 동적 속성/값 표시 | `#land-info-panel`, `#land-info-content` |
 | 사이드바 토글 핸들 | Sidebar Toggle Handle | 데스크톱에서 사이드바 접기/펼치기 제어 | `#sidebar-handle` |
@@ -229,7 +229,7 @@ uvicorn app.main:app --reload
 - 관리자 보호 경로는 내부망 허용 IP(`ALLOWED_IPS`)와 세션 인증으로 보호되며, 상태 변경 요청에는 CSRF 검증을 적용합니다.
 - `VWORLD_WMTS_KEY`는 일반/위성/하이브리드 베이스맵(WMTS) 렌더링용 예외 공개 키입니다.
 - 연속지적도는 `CADASTRAL_FGB_PATH` 파일에서 조회하며, PNU 매칭 필드는 `CADASTRAL_FGB_PNU_FIELD`를 사용합니다.
-- 클라이언트 렌더링은 `CADASTRAL_FGB_CRS`를 OpenLayers `dataProjection`으로 사용해 투영 오인(기본 4326) 문제를 방지합니다.
+- 클라이언트 렌더링은 엔진별 투영 정책을 사용합니다. `/siyu`(MapLibre)는 하이라이트 좌표를 EPSG:4326으로 변환해 렌더링하고, `/file2map`·`/photo2map`(OpenLayers)은 `CADASTRAL_FGB_CRS`를 `dataProjection`으로 사용해 투영 오인을 방지합니다.
 - 프록시 환경에서는 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`를 정확히 설정해야 합니다.
 - 동일 브라우저/도메인에서 여러 앱을 운영하는 경우 앱별로 `SECRET_KEY`, `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`를 반드시 분리해야 세션 교차 인식을 방지할 수 있습니다.
 - 이벤트 수집 API는 레이트리밋이 적용됩니다.
