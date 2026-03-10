@@ -3,6 +3,7 @@ import type Geometry from "ol/geom/Geometry";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import Style from "ol/style/Style";
+import type { FlatStyleLike } from "ol/style/flat";
 
 import type { LandFeatureProperties, ThemeType } from "./types";
 
@@ -173,6 +174,57 @@ export function createMapViewStyles(getTheme: () => ThemeType) {
 
   return {
     defaultStyleSelector,
-    selectedStyleSelector
+    selectedStyleSelector,
+    webglBaseStyle
   };
 }
+  const webglBaseStyle: FlatStyleLike = [
+    {
+      filter: ["==", ["get", "property_manager"], "도로과"],
+      style: {
+        "stroke-color": "#ff7f00",
+        "stroke-width": 3,
+        "fill-color": "rgba(255, 127, 0, 0.2)"
+      }
+    },
+    {
+      filter: ["==", ["get", "property_manager"], "건설과"],
+      style: {
+        "stroke-color": "#377eb8",
+        "stroke-width": 3,
+        "fill-color": "rgba(55, 126, 184, 0.2)"
+      }
+    },
+    {
+      filter: ["==", ["get", "property_manager"], "산림공원과"],
+      style: {
+        "stroke-color": "#4daf4a",
+        "stroke-width": 3,
+        "fill-color": "rgba(77, 175, 74, 0.2)"
+      }
+    },
+    {
+      filter: ["==", ["get", "property_manager"], "회계과"],
+      style: {
+        "stroke-color": "#e41a1c",
+        "stroke-width": 3,
+        "fill-color": "rgba(228, 26, 28, 0.2)"
+      }
+    },
+    {
+      filter: ["!=", ["get", "property_manager"], ""],
+      style: {
+        "stroke-color": "#984ea3",
+        "stroke-width": 3,
+        "fill-color": "rgba(152, 78, 163, 0.2)"
+      }
+    },
+    {
+      else: true,
+      style: {
+        "stroke-color": "#ff3333",
+        "stroke-width": 3,
+        "fill-color": "rgba(255, 51, 51, 0.2)"
+      }
+    }
+  ];

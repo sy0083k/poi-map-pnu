@@ -75,7 +75,7 @@ export function createMapView(elements: MapViewElements) {
 
     featureLayers = createMapViewFeatureLayers({
       map,
-      defaultStyleSelector: styles.defaultStyleSelector,
+      webglBaseStyle: styles.webglBaseStyle,
       selectedStyleSelector: styles.selectedStyleSelector
     });
 

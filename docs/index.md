@@ -22,6 +22,7 @@
 - `/siyu` 렌더 최적화: 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스를 재사용하고, 0건 검색은 조기 종료
 - 추가 렌더 최적화: 피처 레이어 반영을 ID 기반 diff로 처리하고, 0건 검색은 패널만 정리해 선택 해제 중복 재렌더를 회피
 - 0건 삭제 최적화: 레이어 source를 새 `VectorSource`로 교체(swap)해 대량 `removeFeature` 반복 및 즉시 해제 비용을 완화
+- WebGL 전환: `/siyu` 하이라이트 기본 레이어를 WebGLVector로 전환하고 선택 강조는 Vector 레이어로 유지
 - 지도 표시 정책: 업로드 하이라이트 대상 필지만 렌더링(비하이라이트 배경 필지 미표시)
 - 상세 정보 UI: 선택 필지 정보를 우상단 패널의 2열(속성/값) 동적 필드(`sourceFields`)로 동일 라인 정렬해 표시하며, `X` 버튼으로 닫기 지원
 - 상세 패널 제목 정책: `/siyu`는 `재산 상세 정보`, `/file2map`·`/photo2map`은 `상세 정보`

@@ -1,19 +1,21 @@
 import Feature from "ol/Feature";
 import type Geometry from "ol/geom/Geometry";
 import VectorLayer from "ol/layer/Vector";
+import WebGLVectorLayer from "ol/layer/WebGLVector";
 import type Map from "ol/Map";
 import VectorSource from "ol/source/Vector";
 import Style from "ol/style/Style";
+import type { FlatStyleLike } from "ol/style/flat";
 
 type LayerDeps = {
   map: Map;
-  defaultStyleSelector: (feature: Feature<Geometry>) => Style;
+  webglBaseStyle: FlatStyleLike;
   selectedStyleSelector: (feature: Feature<Geometry>) => Style | Style[];
 };
 
 export function createMapViewFeatureLayers(deps: LayerDeps) {
   const selectionPulseTickMs = 100;
-  let vectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
+  let vectorLayer: WebGLVectorLayer<VectorSource<Feature<Geometry>>> | null = null;
   let selectedVectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
   let selectedFeatureId: number | null = null;
   let featuresById = new globalThis.Map<number, Feature<Geometry>>();
@@ -47,10 +49,10 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
 
   const ensureLayers = (): boolean => {
     if (!vectorLayer) {
-      vectorLayer = new VectorLayer({
+      vectorLayer = new WebGLVectorLayer({
         source: new VectorSource<Feature<Geometry>>(),
         zIndex: 10,
-        style: deps.defaultStyleSelector
+        style: deps.webglBaseStyle
       });
       deps.map.addLayer(vectorLayer);
     }

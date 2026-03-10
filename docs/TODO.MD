@@ -124,3 +124,4 @@
 - 2026-03-09 | reviewer: team | `/siyu` 검색/재조회 렌더에 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스 캐시(LRU 5)와 0건 early return을 적용해 반복 검색 프리징 병목을 완화 | 다음 액션: 동일 조건 반복 검색/0건 검색 시 Long Task 및 응답시간 개선폭 관측
 - 2026-03-09 | reviewer: team | 추가 완화로 피처 레이어 반영을 ID 기반 diff 갱신으로 전환하고, 0건 검색 시 상세 패널만 정리해 선택 해제 중복 전체 재렌더를 제거 | 다음 액션: 0건 검색 직후 UI 입력(줌/팬/커서) 반응성과 Long Task 길이 비교 계측
 - 2026-03-09 | reviewer: team | 0건 전환 시 레이어 source를 새 `VectorSource`로 교체(swap)해 대량 `removeFeature` 루프와 즉시 해제 비용 병목을 추가 완화 | 다음 액션: 0건 검색 직후 프리징 지속 시간(초)과 CPU 점유율 개선폭 계측
+- 2026-03-09 | reviewer: team | `/siyu` 하이라이트 기본 레이어를 WebGLVector로 전환하고 선택 강조는 Vector 레이어를 유지해 대량 렌더를 GPU 우선 경로로 분산 | 다음 액션: WebGL 전/후 pan/zoom Long Task, CPU 점유율, 클릭 hit 정합성 비교 계측
