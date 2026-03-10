@@ -239,6 +239,14 @@ function isClosedRing(ring: [number, number][]): boolean {
   return first[0] === last[0] && first[1] === last[1];
 }
 
+function closeRingIfNeeded(ring: [number, number][]): [number, number][] {
+  if (ring.length === 0 || isClosedRing(ring)) {
+    return ring;
+  }
+  const first = ring[0];
+  return [...ring, [first[0], first[1]]];
+}
+
 function normalizeLineString(value: unknown, sourceCrs: CadastralCrs): [number, number][] | null {
   const normalized = normalizePositionArray(value, sourceCrs);
   if (!normalized || normalized.length < 2) {
@@ -254,10 +262,14 @@ function normalizePolygon(value: unknown, sourceCrs: CadastralCrs): [number, num
   const rings: [number, number][][] = [];
   for (const rawRing of value) {
     const ring = normalizePositionArray(rawRing, sourceCrs);
-    if (!ring || !isClosedRing(ring)) {
+    if (!ring) {
       return null;
     }
-    rings.push(ring);
+    const closedRing = closeRingIfNeeded(ring);
+    if (closedRing.length < 4 || !isClosedRing(closedRing)) {
+      return null;
+    }
+    rings.push(closedRing);
   }
   return rings;
 }

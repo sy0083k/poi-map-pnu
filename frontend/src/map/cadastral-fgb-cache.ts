@@ -9,11 +9,10 @@ export type CachedHighlightRecord = {
 };
 
 const INDEXED_DB_NAME = "poi_map_cache";
-const INDEXED_DB_VERSION = 2;
+const INDEXED_DB_VERSION = 3;
 const INDEXED_DB_STORE = "cadastral_highlights";
 const INDEXED_DB_CREATED_AT_INDEX = "createdAt";
-const CACHE_KEY_VERSION = 2;
-const LEGACY_CACHE_KEY_VERSION = 1;
+const CACHE_KEY_VERSION = 3;
 const CACHE_MAX_RECORDS = 1000;
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -87,15 +86,6 @@ export async function buildCacheKey(
   return `v${version}:${(hash >>> 0).toString(16)}`;
 }
 
-export async function buildLegacyCacheKey(
-  theme: ThemeType,
-  pnus: string[],
-  fgbEtag: string,
-  bboxKey: string = "bbox:none"
-): Promise<string> {
-  return buildCacheKey(theme, pnus, fgbEtag, bboxKey, LEGACY_CACHE_KEY_VERSION);
-}
-
 export function buildBboxKey(
   bbox: [number, number, number, number] | undefined,
   bboxCrs: "EPSG:3857" | "EPSG:4326"
@@ -155,19 +145,11 @@ async function openCacheDb(): Promise<IDBDatabase> {
     const req = indexedDB.open(INDEXED_DB_NAME, INDEXED_DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(INDEXED_DB_STORE)) {
-        const store = db.createObjectStore(INDEXED_DB_STORE, { keyPath: "key" });
-        store.createIndex(INDEXED_DB_CREATED_AT_INDEX, "createdAt", { unique: false });
-        return;
+      if (db.objectStoreNames.contains(INDEXED_DB_STORE)) {
+        db.deleteObjectStore(INDEXED_DB_STORE);
       }
-      const tx = req.transaction;
-      if (!tx) {
-        return;
-      }
-      const store = tx.objectStore(INDEXED_DB_STORE);
-      if (!store.indexNames.contains(INDEXED_DB_CREATED_AT_INDEX)) {
-        store.createIndex(INDEXED_DB_CREATED_AT_INDEX, "createdAt", { unique: false });
-      }
+      const store = db.createObjectStore(INDEXED_DB_STORE, { keyPath: "key" });
+      store.createIndex(INDEXED_DB_CREATED_AT_INDEX, "createdAt", { unique: false });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);

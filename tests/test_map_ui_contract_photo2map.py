@@ -136,6 +136,7 @@ def test_photo_css_and_security_contract() -> None:
     )
     assert ".photo-lightbox {" not in css_text
     assert "img-src 'self' data: blob:" in main_py
+    assert "worker-src 'self' blob:" in main_py
 
 
 def test_photo_legacy_cleanup_contract() -> None:

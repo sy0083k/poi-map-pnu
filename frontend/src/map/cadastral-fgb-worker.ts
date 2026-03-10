@@ -13,6 +13,7 @@ type StartMessage = {
     fgbUrl: string;
     pnuField: string;
     cadastralCrs: CadastralCrs;
+    outputCrs: CadastralCrs;
     uploadedPnus: string[];
   };
 };
@@ -57,6 +58,7 @@ const FLATGEOBUF_MODULE_URLS = [
 ];
 const CHUNK_SIZE = 50;
 const PROGRESS_TICK = 5000;
+const WEB_MERCATOR_HALF_WORLD = 20037508.34;
 
 function normalizePnu(raw: unknown): string {
   return String(raw ?? "").replace(/\D/g, "");
@@ -93,6 +95,52 @@ function postMessageSafe(message: WorkerResponse): void {
   self.postMessage(message);
 }
 
+function mercatorToWgs84(x: number, y: number): [number, number] {
+  const lon = (x / WEB_MERCATOR_HALF_WORLD) * 180;
+  const lat = (Math.atan(Math.sinh((y / WEB_MERCATOR_HALF_WORLD) * Math.PI)) * 180) / Math.PI;
+  return [lon, lat];
+}
+
+function transformCoordinates(node: unknown, sourceCrs: CadastralCrs, outputCrs: CadastralCrs): unknown {
+  if (sourceCrs === outputCrs) {
+    return node;
+  }
+  if (!Array.isArray(node)) {
+    return null;
+  }
+  if (node.length >= 2 && typeof node[0] === "number" && typeof node[1] === "number") {
+    if (sourceCrs === "EPSG:3857" && outputCrs === "EPSG:4326") {
+      const [lon, lat] = mercatorToWgs84(node[0], node[1]);
+      return [lon, lat, ...node.slice(2)];
+    }
+    return null;
+  }
+  const transformedChildren = node.map((item) => transformCoordinates(item, sourceCrs, outputCrs));
+  return transformedChildren.some((item) => item === null) ? null : transformedChildren;
+}
+
+function transformGeometry(geometry: unknown, sourceCrs: CadastralCrs, outputCrs: CadastralCrs): Record<string, unknown> | null {
+  if (!geometry || typeof geometry !== "object") {
+    return null;
+  }
+  const candidate = geometry as { type?: unknown; coordinates?: unknown; geometries?: unknown[] };
+  if (typeof candidate.type !== "string") {
+    return null;
+  }
+  if (sourceCrs === outputCrs) {
+    return candidate as Record<string, unknown>;
+  }
+  if (candidate.type === "GeometryCollection") {
+    if (!Array.isArray(candidate.geometries)) {
+      return null;
+    }
+    const geometries = candidate.geometries.map((item) => transformGeometry(item, sourceCrs, outputCrs));
+    return geometries.some((item) => item === null) ? null : { type: candidate.type, geometries };
+  }
+  const coordinates = transformCoordinates(candidate.coordinates, sourceCrs, outputCrs);
+  return coordinates === null ? null : { type: candidate.type, coordinates };
+}
+
 function getFullRect(cadastralCrs: CadastralCrs): {
   minX: number;
   minY: number;
@@ -123,7 +171,7 @@ self.onmessage = (evt: MessageEvent<StartMessage>) => {
     }
 
     try {
-      const { fgbUrl, pnuField, cadastralCrs, uploadedPnus } = data.payload;
+      const { fgbUrl, pnuField, cadastralCrs, outputCrs, uploadedPnus } = data.payload;
       const requestedPnuSet = new Set(
         uploadedPnus.map((item) => normalizePnu(item)).filter((item) => item.length === 19)
       );
@@ -151,10 +199,14 @@ self.onmessage = (evt: MessageEvent<StartMessage>) => {
         const pnu = normalizePnu(pnuRaw);
 
         if (requestedPnuSet.has(pnu) && !matchedByPnu.has(pnu)) {
+          const geometry = transformGeometry(feature.geometry, cadastralCrs, outputCrs);
+          if (!geometry) {
+            continue;
+          }
           matchedByPnu.add(pnu);
           pending.push({
             type: "Feature",
-            geometry: feature.geometry,
+            geometry,
             properties: { pnu }
           });
         }

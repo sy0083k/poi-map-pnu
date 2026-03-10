@@ -47,6 +47,7 @@ export type WorkerStartMessage = {
     fgbUrl: string;
     pnuField: string;
     cadastralCrs: CadastralCrs;
+    outputCrs: CadastralCrs;
     uploadedPnus: string[];
   };
 };

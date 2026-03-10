@@ -87,6 +87,7 @@ async def add_security_headers(
     response.headers["Content-Security-Policy"] = (
         "default-src 'self' https://cdn.jsdelivr.net https://esm.sh https://api.vworld.kr; "
         "script-src 'self' https://cdn.jsdelivr.net https://esm.sh https://api.vworld.kr; "
+        "worker-src 'self' blob:; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         "font-src 'self' data: https://fonts.gstatic.com; "
         "img-src 'self' data: blob: https://api.vworld.kr https://xdworld.vworld.kr;"

@@ -1,7 +1,6 @@
 import {
   buildBboxKey,
   buildCacheKey,
-  buildLegacyCacheKey,
   dedupeByPnu,
   getCachedHighlights,
   getFgbEtag,
@@ -13,6 +12,8 @@ import { loadUploadedHighlightsFromApi } from "./cadastral-highlights-client";
 import type { WorkerResponse, WorkerStartMessage } from "./cadastral-fgb-worker-types";
 
 import type { CadastralCrs, LandFeature, LandFeatureCollection, ThemeType } from "./types";
+
+const MAX_API_REQUEST_PNUS = 10000;
 
 export type HighlightLoadResult = {
   collection: LandFeatureCollection;
@@ -31,6 +32,7 @@ export async function loadUploadedHighlights(
     fgbUrl: string;
     pnuField: string;
     cadastralCrs: CadastralCrs;
+    outputCrs: CadastralCrs;
     uploadedPnus: string[];
     theme: ThemeType;
     bbox?: [number, number, number, number];
@@ -40,7 +42,7 @@ export async function loadUploadedHighlights(
     onProgress?: (progress: HighlightLoadProgress) => void;
   }
 ): Promise<HighlightLoadResult> {
-  const { fgbUrl, pnuField, cadastralCrs, uploadedPnus, theme, bbox, bboxCrs, signal, onFeatures, onProgress } = params;
+  const { fgbUrl, pnuField, cadastralCrs, outputCrs, uploadedPnus, theme, bbox, bboxCrs, signal, onFeatures, onProgress } = params;
   const requestedPnuSet = new Set(uploadedPnus.map((item) => normalizePnu(item)).filter((item) => item.length === 19));
   if (requestedPnuSet.size === 0) {
     return { collection: { type: "FeatureCollection", features: [] }, datasetKey: "empty" };
@@ -51,8 +53,7 @@ export async function loadUploadedHighlights(
   const fgbEtag = await getFgbEtag(fgbUrl, signal);
   const bboxKey = buildBboxKey(bbox, bboxCrs ?? cadastralCrs);
   const cacheKey = await buildCacheKey(theme, normalizedPnus, fgbEtag, bboxKey);
-  const legacyCacheKey = await buildLegacyCacheKey(theme, normalizedPnus, fgbEtag, bboxKey);
-  const cached = await getCachedHighlights([cacheKey, legacyCacheKey]);
+  const cached = await getCachedHighlights(cacheKey);
   if (cached) {
     const progress: HighlightLoadProgress = {
       scanned: 0,
@@ -71,6 +72,7 @@ export async function loadUploadedHighlights(
     fgbUrl,
     pnuField,
     cadastralCrs,
+    outputCrs,
     normalizedPnus,
     cacheKey,
     signal,
@@ -83,42 +85,45 @@ async function loadUploadedHighlightsFromWorker(params: {
   fgbUrl: string;
   pnuField: string;
   cadastralCrs: CadastralCrs;
+  outputCrs: CadastralCrs;
   normalizedPnus: string[];
   cacheKey: string;
   signal?: AbortSignal;
   onFeatures?: (features: LandFeature[], progress: HighlightLoadProgress) => void;
   onProgress?: (progress: HighlightLoadProgress) => void;
 }): Promise<HighlightLoadResult> {
-  const { apiPayload, fgbUrl, pnuField, cadastralCrs, normalizedPnus, cacheKey, signal, onFeatures, onProgress } = params;
-  try {
-    const apiLoaded = await loadUploadedHighlightsFromApi({
-      theme: apiPayload.theme,
-      pnus: apiPayload.pnus,
-      bbox: apiPayload.bbox,
-      bboxCrs: apiPayload.bboxCrs,
-      signal
-    });
-    const matched = apiLoaded.features.length;
-    const scanned = apiLoaded.meta?.scanned ?? 0;
-    const total = normalizedPnus.length;
-    const progress: HighlightLoadProgress = {
-      scanned,
-      matched,
-      total,
-      done: true,
-      fromCache: false
-    };
-    onFeatures?.(apiLoaded.features, progress);
-    onProgress?.(progress);
-    void setCachedHighlights({
-      key: cacheKey,
-      createdAt: Date.now(),
-      features: apiLoaded.features
-    });
-    return { collection: { type: "FeatureCollection", features: apiLoaded.features }, datasetKey: cacheKey };
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw error;
+  const { apiPayload, fgbUrl, pnuField, cadastralCrs, outputCrs, normalizedPnus, cacheKey, signal, onFeatures, onProgress } = params;
+  if (normalizedPnus.length <= MAX_API_REQUEST_PNUS) {
+    try {
+      const apiLoaded = await loadUploadedHighlightsFromApi({
+        theme: apiPayload.theme,
+        pnus: apiPayload.pnus,
+        bbox: apiPayload.bbox,
+        bboxCrs: apiPayload.bboxCrs,
+        signal
+      });
+      const matched = apiLoaded.features.length;
+      const scanned = apiLoaded.meta?.scanned ?? 0;
+      const total = normalizedPnus.length;
+      const progress: HighlightLoadProgress = {
+        scanned,
+        matched,
+        total,
+        done: true,
+        fromCache: false
+      };
+      onFeatures?.(apiLoaded.features, progress);
+      onProgress?.(progress);
+      void setCachedHighlights({
+        key: cacheKey,
+        createdAt: Date.now(),
+        features: apiLoaded.features
+      });
+      return { collection: { type: "FeatureCollection", features: apiLoaded.features }, datasetKey: cacheKey };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw error;
+      }
     }
   }
 
@@ -206,6 +211,7 @@ async function loadUploadedHighlightsFromWorker(params: {
         fgbUrl,
         pnuField,
         cadastralCrs,
+        outputCrs,
         uploadedPnus: normalizedPnus
       }
     };

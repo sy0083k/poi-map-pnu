@@ -30,6 +30,8 @@
 ### Information Disclosure
 - 위협: 비밀 설정 노출
 - 통제: `SECRET_KEY`, 비밀번호 해시 비노출, WMTS 키만 예외 공개
+- 위협: 과도하게 넓은 CSP 완화로 공개 페이지 스크립트 실행 범위 확대
+- 통제: `/siyu` MapLibre worker 동작에 필요한 `worker-src 'self' blob:`만 최소 허용하고, `script-src`·`img-src` 허용 범위는 별도 확대하지 않음
 - 위협: 웹 방문 로그 확장 필드(Referrer/UTM/클라이언트 컨텍스트) 과수집/2차 유출
 - 통제: 길이 제한·선택 필드 중심 수집·운영 로그 반출 통제, `referrerUrl` 원문 미저장(서버에서 domain/path만 파생 저장, query/fragment 제거)
 - 위협: `/file2map` 로컬 업로드 데이터가 브라우저 저장소에 잔존

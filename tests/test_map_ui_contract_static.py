@@ -182,6 +182,8 @@ def test_select_highlight_theme_sync_contract() -> None:
 
 def test_siyu_maplibre_route_split_contract() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    cache_ts = Path("frontend/src/map/cadastral-fgb-cache.ts").read_text(encoding="utf-8")
+    layer_ts = Path("frontend/src/map/cadastral-fgb-layer.ts").read_text(encoding="utf-8")
     workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
     highlight_ts = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
     maplibre_view_ts = Path("frontend/src/map/map-view-maplibre.ts").read_text(encoding="utf-8")
@@ -232,5 +234,13 @@ def test_siyu_maplibre_route_split_contract() -> None:
             'debug marker ready: lng=${DEBUG_REFERENCE_LNG_LAT[0].toFixed(6)} lat=${DEBUG_REFERENCE_LNG_LAT[1].toFixed(6)}',
         ],
     )
+    assert 'const INDEXED_DB_VERSION = 3;' in cache_ts
+    assert 'const CACHE_KEY_VERSION = 3;' in cache_ts
+    assert "db.deleteObjectStore(INDEXED_DB_STORE);" in cache_ts
+    assert "const MAX_API_REQUEST_PNUS = 10000;" in layer_ts
+    assert "if (normalizedPnus.length <= MAX_API_REQUEST_PNUS) {" in layer_ts
+    assert "outputCrs," in layer_ts
+    assert "function closeRingIfNeeded(" in maplibre_view_ts
+    assert "const closedRing = closeRingIfNeeded(ring);" in maplibre_view_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326"' in workflow_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs' in highlight_ts

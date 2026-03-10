@@ -28,6 +28,7 @@
 - 헤더 탑레벨 `사진→지도` 클릭 시 `/photo2map`으로 이동하는지 점검
 - 주제도 전환 시 URL이 `파일→지도=/file2map`, `시유지=/siyu`로 동기화되고, 직접 URL 진입/새로고침/브라우저 뒤로가기에 테마가 일치하는지 점검
 - `/siyu`는 MapLibre 엔진, `/file2map`·`/photo2map`은 OpenLayers 엔진으로 초기화되는지 점검
+- `/siyu` 접속 시 브라우저 콘솔에 MapLibre worker 관련 CSP 차단 에러가 없고, 응답 `Content-Security-Policy`에 `worker-src 'self' blob:`가 포함되는지 점검
 - `/file2map`에서 `주제도 > 시유지` 선택 시 경로 전환(`/siyu`) 후 전체 페이지 재초기화로 엔진이 전환되는지 점검
 - 루트(`/`) 접속 시 `307`으로 `/siyu`로 이동하는지 점검
 - `/siyu`에서 `재산용도` 콤보(`전체/행정재산/일반재산`)와 `지목` 입력이 표시되고 검색 조건으로 반영되는지 점검
@@ -102,8 +103,8 @@
 3. IndexedDB 캐시(`theme+pnuSetHash+ETag`)를 도입해 재방문 시 재스캔을 줄였다.
 4. `/api/cadastral/fgb` 응답에 `ETag`를 추가해 캐시 무효화 기준을 명확화했다.
 5. `/api/cadastral/highlights` 서버 경로는 `flatgeobuf.Reader(..., bbox=...)`를 우선 사용해 bbox 부분 조회를 수행하고, Reader 경로 실패 시 `load(..., bbox=...)`로 폴백한다.
-6. 하이라이트 캐시는 키 버전 `v2`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 서버 메모리 캐시는 `HIGHLIGHT_CACHE_TTL_SECONDS`/`HIGHLIGHT_CACHE_MAX_ENTRIES`로 TTL/최대 엔트리를 조정한다.
-7. 브라우저 IndexedDB 하이라이트 캐시는 스키마 버전 2를 사용하며 만료(기본 7일)와 최대 건수(기본 1000건)를 초과한 레코드를 자동 정리한다.
+6. 하이라이트 캐시는 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 서버 메모리 캐시는 `HIGHLIGHT_CACHE_TTL_SECONDS`/`HIGHLIGHT_CACHE_MAX_ENTRIES`로 TTL/최대 엔트리를 조정한다.
+7. 브라우저 IndexedDB 하이라이트 캐시는 스키마 버전 3을 사용하며, 스키마 업그레이드 시 기존 `cadastral_highlights` 저장소를 재생성해 구 캐시를 무효화한다. 이후 만료(기본 7일)와 최대 건수(기본 1000건)를 초과한 레코드를 자동 정리한다.
 8. `/siyu` 검색/재조회 렌더 단계는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스 캐시(LRU 최대 5개)를 사용해 반복 검색 시 전체 재구축을 피한다.
 9. 검색 결과가 0건일 때는 하이라이트 조합을 조기 종료(early return)해 불필요한 인덱스 순회를 방지한다.
 10. 피처 레이어 반영은 ID 기반 diff 갱신을 사용하고, `0건` 검색 시에는 패널만 정리해 선택 해제에 따른 중복 전체 재렌더를 피한다.

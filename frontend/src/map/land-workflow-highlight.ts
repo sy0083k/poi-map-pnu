@@ -125,6 +125,7 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
       fgbUrl: config.cadastralFgbUrl,
       pnuField: config.cadastralPnuField,
       cadastralCrs: config.cadastralCrs,
+      outputCrs: getRenderProjection(deps, config),
       uploadedPnus,
       theme: deps.getCurrentTheme(),
       signal: controller.signal,

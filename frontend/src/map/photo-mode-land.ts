@@ -104,6 +104,7 @@ export function createPhotoModeLandController(deps: Deps) {
         fgbUrl: deps.config.cadastralFgbUrl,
         pnuField: deps.config.cadastralPnuField,
         cadastralCrs: deps.config.cadastralCrs,
+        outputCrs: deps.config.cadastralCrs,
         uploadedPnus,
         theme: "national_public",
         onProgress: (progress) => {

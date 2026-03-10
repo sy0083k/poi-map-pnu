@@ -18,3 +18,14 @@ async def test_error_response_includes_request_id(async_client: httpx.AsyncClien
     bad_cursor = await async_client.get("/api/lands?cursor=bad")
     assert bad_cursor.status_code == 400
     assert "x-request-id" in bad_cursor.headers
+
+
+@pytest.mark.anyio
+async def test_public_pages_include_csp_worker_src_for_maplibre(async_client: httpx.AsyncClient) -> None:
+    page = await async_client.get("/siyu")
+    assert page.status_code == 200
+
+    csp = page.headers.get("Content-Security-Policy", "")
+    assert "worker-src 'self' blob:" in csp
+    assert "img-src 'self' data: blob:" in csp
+    assert "script-src 'self' https://cdn.jsdelivr.net https://esm.sh https://api.vworld.kr;" in csp
