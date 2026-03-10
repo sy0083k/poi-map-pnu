@@ -208,6 +208,7 @@ def test_siyu_maplibre_route_split_contract() -> None:
         maplibre_view_ts,
         [
             'import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";',
+            "attributionControl: false",
             "LAND_SOURCE_ID = \"lands-source\"",
             'const DEBUG_PROBE_SOURCE_ID = "debug-fgb-probe-source";',
             'const DEBUG_PROBE_FILL_LAYER_ID = "debug-fgb-probe-fill";',

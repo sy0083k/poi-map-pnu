@@ -28,6 +28,7 @@
 - 헤더 탑레벨 `사진→지도` 클릭 시 `/photo2map`으로 이동하는지 점검
 - 주제도 전환 시 URL이 `파일→지도=/file2map`, `시유지=/siyu`로 동기화되고, 직접 URL 진입/새로고침/브라우저 뒤로가기에 테마가 일치하는지 점검
 - `/siyu`는 MapLibre 엔진, `/file2map`·`/photo2map`은 OpenLayers 엔진으로 초기화되는지 점검
+- `/siyu` 접속 시 지도 우하단 MapLibre 기본 attribution/link UI가 비노출인지 점검하고, VWorld 등 배경지도 출처 표시는 운영 정책대로 유지되는지 확인
 - `/siyu` 접속 시 브라우저 콘솔에 MapLibre worker 관련 CSP 차단 에러가 없고, 응답 `Content-Security-Policy`에 `worker-src 'self' blob:`가 포함되는지 점검
 - `/file2map`에서 `주제도 > 시유지` 선택 시 경로 전환(`/siyu`) 후 전체 페이지 재초기화로 엔진이 전환되는지 점검
 - 루트(`/`) 접속 시 `307`으로 `/siyu`로 이동하는지 점검

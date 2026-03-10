@@ -12,6 +12,8 @@
 - Data: pandas, openpyxl/xlrd
 - External API/Data: VWorld (WMTS), FlatGeobuf
 
+`/siyu`의 MapLibre 캔버스는 기본 attribution/link UI를 비활성화하고, 배경지도 출처 표시는 운영 정책에 따라 별도로 관리합니다.
+
 세부 구현 원칙은 `docs/engineering-guidelines.md`를 기준으로 합니다.
 
 ## 🚀 빠른 시작

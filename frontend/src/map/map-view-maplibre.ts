@@ -771,7 +771,8 @@ export function createMapLibreMapView(elements: MapViewElements) {
       center: config.center,
       zoom: config.zoom,
       maxZoom: 22,
-      minZoom: 7
+      minZoom: 7,
+      attributionControl: false
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 

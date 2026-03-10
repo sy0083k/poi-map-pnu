@@ -16,6 +16,7 @@
 ## 현행 기준 요약
 - 지도 데이터 소스: FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)
 - 지도 엔진 분리: `/siyu`는 MapLibre, `/file2map`·`/photo2map`은 OpenLayers(1차 전환)
+- `/siyu` UI 정책: MapLibre 기본 attribution/link UI는 비활성화하고, 배경지도 출처 표시는 운영 정책에 따라 별도 관리
 - 좌표계 기준: `CADASTRAL_FGB_CRS` (`EPSG:3857` 기본)
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
 - FGB 원본 진단 API: `/api/cadastral/debug-probe` (`/api/v1/cadastral/debug-probe` alias)
