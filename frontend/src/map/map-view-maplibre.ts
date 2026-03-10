@@ -160,12 +160,6 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function mercatorToWgs84(coord: [number, number]): [number, number] {
-  const lon = (coord[0] / 20037508.34) * 180;
-  const lat = (Math.atan(Math.sinh((coord[1] / 20037508.34) * Math.PI)) * 180) / Math.PI;
-  return [lon, lat];
-}
-
 function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, number] | null {
   if (!Array.isArray(value) || value.length < 2) {
     return null;
@@ -175,7 +169,10 @@ function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, numb
   if (!isFiniteNumber(rawX) || !isFiniteNumber(rawY)) {
     return null;
   }
-  const converted = sourceCrs === "EPSG:4326" ? [rawX, rawY] as [number, number] : mercatorToWgs84([rawX, rawY]);
+  if (sourceCrs !== "EPSG:4326") {
+    return null;
+  }
+  const converted = [rawX, rawY] as [number, number];
   if (!Number.isFinite(converted[0]) || !Number.isFinite(converted[1])) {
     return null;
   }
@@ -633,6 +630,9 @@ export function createMapLibreMapView(elements: MapViewElements) {
 
   const renderFeatures = (data: LandFeatureCollection, options?: RenderOptions): number => {
     const sourceProjection = options?.dataProjection ?? "EPSG:4326";
+    if (sourceProjection !== "EPSG:4326") {
+      console.warn(`[maplibre] expected EPSG:4326 GeoJSON but received ${sourceProjection}`);
+    }
     resetGeometryValidationStats(data.features.length);
     featureRecordsById.clear();
     data.features.forEach((rawFeature, idx) => {

@@ -88,11 +88,13 @@ def test_cadastral_highlight_service_build_filtered_response(monkeypatch: pytest
         pnu_field="PNU",
         requested_pnus=["1111111111111111111"],
         fgb_etag='W/"1-1"',
+        cadastral_crs="EPSG:4326",
     )
     assert response["type"] == "FeatureCollection"
     assert len(response["features"]) == 1
     assert response["features"][0]["properties"]["pnu"] == "1111111111111111111"
     assert response["meta"]["matched"] == 1
+    assert response["meta"]["outputCrs"] == "EPSG:4326"
 
 
 def test_cadastral_highlight_service_applies_bbox_filter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -122,12 +124,46 @@ def test_cadastral_highlight_service_applies_bbox_filter(monkeypatch: pytest.Mon
         pnu_field="PNU",
         requested_pnus=["1111111111111111111", "2222222222222222222"],
         fgb_etag='W/"1-1"',
+        cadastral_crs="EPSG:3857",
         bbox=(-1.0, -1.0, 1.0, 1.0),
         bbox_crs="EPSG:3857",
     )
     assert len(response["features"]) == 1
     assert response["meta"]["bboxApplied"] is True
     assert response["meta"]["bboxFiltered"] == 1
+
+
+def test_cadastral_highlight_service_converts_3857_to_4326(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from app.services import cadastral_highlight_service
+
+    fgb_file = tmp_path / "sample.fgb"
+    fgb_file.write_bytes(b"fgb")
+    monkeypatch.setattr(
+        cadastral_highlight_service,
+        "load_features_from_fgb",
+        lambda _path, **_kwargs: [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [14135326.0, 4518366.0]},
+                "properties": {"PNU": "1111111111111111111"},
+            }
+        ],
+    )
+
+    response = cadastral_highlight_service.build_filtered_geojson_response(
+        file_path=fgb_file,
+        pnu_field="PNU",
+        requested_pnus=["1111111111111111111"],
+        fgb_etag='W/"1-1"',
+        cadastral_crs="EPSG:3857",
+    )
+
+    coordinates = response["features"][0]["geometry"]["coordinates"]
+    assert coordinates[0] == pytest.approx(126.98, abs=0.01)
+    assert coordinates[1] == pytest.approx(37.56, abs=0.01)
+    assert response["meta"]["outputCrs"] == "EPSG:4326"
 
 
 def test_iter_features_from_fgb_uses_reader_with_bbox(tmp_path: Path) -> None:

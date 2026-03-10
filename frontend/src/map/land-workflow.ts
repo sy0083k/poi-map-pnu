@@ -15,10 +15,14 @@ type SelectOptions = {
   clickSource?: LandClickSource;
 };
 
+type EngineAwareMapView = Omit<MapView, "getEngine"> & {
+  getEngine: () => "openlayers" | "maplibre";
+};
+
 type LandWorkflowDeps = {
   state: MapStateStore;
   telemetry: Telemetry;
-  mapView: MapView;
+  mapView: EngineAwareMapView;
   listPanel: ListPanel;
   filters: Filters;
   downloadClient: DownloadClient;
@@ -38,6 +42,8 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   const featuresByPnuIndexByDataset = new Map<string, { featuresByPnu: Map<string, unknown>; sourceFeatureCount: number }>();
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
   const serverFilterTheme: ThemeType = "city_owned";
+  const getRenderProjection = (): MapConfig["cadastralCrs"] =>
+    deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");
 
   const updateNavigation = (): void => {
     deps.listPanel.updateNavigation(deps.state.getCurrentIndex(), deps.state.getCurrentItems().length);
@@ -185,7 +191,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         deps.mapView.clearInfoPanelContentOnly();
         updateNavigation();
         if (config) {
-          deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
+          deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
         }
         deps.setMapStatus(`재산관리관 다중 검출: ${uniqueManagers.join(", ")}. 정확한 재산관리관을 입력하세요.`, "#1d4ed8");
         return;
@@ -230,7 +236,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
       uploadedHighlightDatasetKey = "empty";
       if (config) {
-        deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
+        deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
       }
       deps.setMapStatus("표시할 파일을 적용하면 목록이 표시됩니다.", "#1f2937");
       return;

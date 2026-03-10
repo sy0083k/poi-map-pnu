@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import math
 from typing import Any
+
+WEB_MERCATOR_HALF_WORLD = 20037508.34
 
 
 def extract_pnu_from_properties(properties: Any, pnu_field: str) -> Any:
@@ -47,3 +50,57 @@ def collect_points(node: Any, bucket: list[tuple[float, float]]) -> None:
             return
         for item in node:
             collect_points(item, bucket)
+
+
+def mercator_to_wgs84(x: float, y: float) -> tuple[float, float]:
+    lon = (x / WEB_MERCATOR_HALF_WORLD) * 180
+    lat = math.degrees(math.atan(math.sinh((y / WEB_MERCATOR_HALF_WORLD) * math.pi)))
+    return (lon, lat)
+
+
+def transform_geometry_to_wgs84(geometry: Any, *, source_crs: str) -> dict[str, Any] | None:
+    if not isinstance(geometry, dict):
+        return None
+
+    geometry_type = geometry.get("type")
+    if not isinstance(geometry_type, str):
+        return None
+
+    if source_crs == "EPSG:4326":
+        return geometry
+
+    if source_crs != "EPSG:3857":
+        return None
+
+    if geometry_type == "GeometryCollection":
+        geometries = geometry.get("geometries")
+        if not isinstance(geometries, list):
+            return None
+        transformed = []
+        for item in geometries:
+            next_geometry = transform_geometry_to_wgs84(item, source_crs=source_crs)
+            if next_geometry is None:
+                return None
+            transformed.append(next_geometry)
+        return {"type": geometry_type, "geometries": transformed}
+
+    coordinates = geometry.get("coordinates")
+    transformed_coordinates = transform_coordinates_to_wgs84(coordinates)
+    if transformed_coordinates is None:
+        return None
+    return {"type": geometry_type, "coordinates": transformed_coordinates}
+
+
+def transform_coordinates_to_wgs84(node: Any) -> Any:
+    if isinstance(node, (list, tuple)):
+        if len(node) >= 2 and isinstance(node[0], (int, float)) and isinstance(node[1], (int, float)):
+            lon, lat = mercator_to_wgs84(float(node[0]), float(node[1]))
+            return [lon, lat, *node[2:]]
+        transformed_children = []
+        for item in node:
+            transformed = transform_coordinates_to_wgs84(item)
+            if transformed is None:
+                return None
+            transformed_children.append(transformed)
+        return transformed_children
+    return None

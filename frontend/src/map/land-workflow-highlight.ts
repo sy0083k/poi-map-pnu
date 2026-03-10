@@ -25,6 +25,7 @@ type HighlightDeps = {
   mapView: {
     renderFeatures: (data: LandFeatureCollection, options: { dataProjection: MapConfig["cadastralCrs"] }) => number;
     getCurrentExtent: () => number[] | null;
+    getEngine: () => "openlayers" | "maplibre";
   };
   setMapStatus: (message: string, color?: string) => void;
   getThemeLabel: (theme: ThemeType) => string;
@@ -32,6 +33,8 @@ type HighlightDeps = {
 };
 
 const normalizePnu = (raw: unknown): string => String(raw ?? "").replace(/\D/g, "");
+const getRenderProjection = (deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] =>
+  deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs;
 
 const getRuntimeDatasetKey = (deps: HighlightDeps): string => {
   const active = deps.getUploadedHighlightDatasetKey();
@@ -67,7 +70,7 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
 
   const currentItems = deps.getCurrentItems();
   if (currentItems.length === 0) {
-    deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: config.cadastralCrs });
+    deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection(deps, config) });
     deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
     deps.updateNavigation();
     return;
@@ -86,7 +89,7 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
     })
   };
 
-  deps.mapView.renderFeatures(withProperties, { dataProjection: config.cadastralCrs });
+  deps.mapView.renderFeatures(withProperties, { dataProjection: getRenderProjection(deps, config) });
   if (currentItems.length === 0) {
     deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
   } else {

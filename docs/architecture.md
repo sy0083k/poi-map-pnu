@@ -91,7 +91,7 @@
    - `/siyu(city_owned)`: 현재 검색 결과 `id` 집합을 `/api/lands/export`로 전송해 서버에서 Excel을 생성한다.
    - `/file2map(national_public)` + 로컬 업로드 모드: 현재 검색 결과를 브라우저에서 직접 Excel(`.xlsx`)로 생성해 다운로드한다.
 7. 지도 엔진별 투영 정책을 유지한다.
-   - `/siyu`(MapLibre): 하이라이트 GeoJSON을 EPSG:4326으로 변환해 렌더링한다.
+   - `/siyu`(MapLibre): `/api/cadastral/highlights` 서버 응답 GeoJSON은 항상 `EPSG:4326`(`meta.outputCrs`)으로 반환하고, 클라이언트는 이를 추가 변환 없이 렌더링한다.
    - `/file2map`, `/photo2map`(OpenLayers): `GeoJSON.readFeatures`에 `dataProjection=CADASTRAL_FGB_CRS`, `featureProjection=EPSG:3857`을 명시해 투영 오인을 방지한다.
 8. 토지 선택 시 상세정보는 지도 팝업이 아니라 우상단 패널에서 동적으로 렌더링하며, 패널은 2열(속성/값) 그리드로 속성/값 Pair를 동일 라인(y축)에 정렬한다.
    - `/siyu(city_owned)`에서는 상세 패널 제목을 `재산 상세 정보`로 표시한다.

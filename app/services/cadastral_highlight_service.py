@@ -18,6 +18,7 @@ from app.services.cadastral_highlight_cache import (
 from app.services.cadastral_highlight_geometry import (
     extract_pnu_from_properties,
     geometry_intersects_bbox,
+    transform_geometry_to_wgs84,
 )
 
 MAX_REQUEST_PNUS = 10000
@@ -126,6 +127,7 @@ def get_filtered_highlights(
         pnu_field=pnu_field,
         requested_pnus=requested_pnus,
         fgb_etag=fgb_etag,
+        cadastral_crs=cadastral_crs,
         bbox=bbox,
         bbox_crs=bbox_crs,
     )
@@ -139,6 +141,7 @@ def build_filtered_geojson_response(
     pnu_field: str,
     requested_pnus: list[str],
     fgb_etag: str,
+    cadastral_crs: str = "EPSG:3857",
     bbox: tuple[float, float, float, float] | None = None,
     bbox_crs: str = "EPSG:3857",
 ) -> dict[str, Any]:
@@ -157,6 +160,7 @@ def build_filtered_geojson_response(
         all_features=all_features,
         pnu_field=pnu_field,
         wanted=wanted,
+        cadastral_crs=cadastral_crs,
         bbox=bbox,
     )
 
@@ -172,6 +176,7 @@ def build_filtered_geojson_response(
             "source": "parsed",
             "fgbEtag": fgb_etag,
             "bboxCrs": bbox_crs if bbox is not None else None,
+            "outputCrs": "EPSG:4326",
         },
     }
 
@@ -230,6 +235,7 @@ def collect_matching_features(
     all_features: Iterable[dict[str, Any]],
     pnu_field: str,
     wanted: set[str],
+    cadastral_crs: str,
     bbox: tuple[float, float, float, float] | None,
 ) -> tuple[int, int, list[dict[str, Any]], set[str]]:
     scanned = 0
@@ -253,10 +259,14 @@ def collect_matching_features(
             continue
 
         matched.add(pnu)
+        transformed_geometry = transform_geometry_to_wgs84(geometry, source_crs=cadastral_crs)
+        if transformed_geometry is None:
+            matched.remove(pnu)
+            continue
         features.append(
             {
                 "type": "Feature",
-                "geometry": geometry,
+                "geometry": transformed_geometry,
                 "properties": {"pnu": pnu},
             }
         )

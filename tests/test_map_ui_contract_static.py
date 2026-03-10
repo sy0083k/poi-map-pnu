@@ -182,6 +182,8 @@ def test_select_highlight_theme_sync_contract() -> None:
 
 def test_siyu_maplibre_route_split_contract() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
+    workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
+    highlight_ts = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
     maplibre_view_ts = Path("frontend/src/map/map-view-maplibre.ts").read_text(encoding="utf-8")
 
     assert_contains_all(
@@ -207,7 +209,10 @@ def test_siyu_maplibre_route_split_contract() -> None:
             "getGeometryStats: () => deps.getGeometryStats(),",
             "getInvalidGeometrySamples: (limit?: number) => deps.getInvalidGeometrySamples(limit)",
             "function normalizeGeometryToWgs84(",
+            'expected EPSG:4326 GeoJSON',
             "geometryValidationStats.dropReasons",
             "invalidGeometrySamples.push({",
         ],
     )
+    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326"' in workflow_ts
+    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs' in highlight_ts

@@ -14,6 +14,7 @@ export type CadastralHighlightsApiResponse = {
     bboxApplied?: boolean;
     bboxFiltered?: number;
     bboxCrs?: "EPSG:3857" | "EPSG:4326" | null;
+    outputCrs?: "EPSG:4326";
   };
 };
 
