@@ -210,9 +210,13 @@ def test_siyu_maplibre_route_split_contract() -> None:
             'import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";',
             "attributionControl: false",
             "LAND_SOURCE_ID = \"lands-source\"",
+            'const LAND_SELECTED_HALO_LAYER_ID = "lands-selected-halo";',
+            'const LAND_SELECTED_PULSE_LAYER_ID = "lands-selected-pulse";',
             'const DEBUG_PROBE_SOURCE_ID = "debug-fgb-probe-source";',
             'const DEBUG_PROBE_FILL_LAYER_ID = "debug-fgb-probe-fill";',
             'const DEBUG_PROBE_LINE_LAYER_ID = "debug-fgb-probe-line";',
+            'const reducedMotionMedia = window.matchMedia("(prefers-reduced-motion: reduce)");',
+            "selectionPulseAnimationFrameId = window.requestAnimationFrame(animateSelectionPulse);",
             "getEngine: (): \"maplibre\" => \"maplibre\"",
             "map.queryRenderedFeatures(event.point",
             'new URLSearchParams(window.location.search).get("debugMap") === "1"',
@@ -252,6 +256,12 @@ def test_siyu_maplibre_route_split_contract() -> None:
             'bboxCrs=EPSG:4326&limit=1000',
         ],
     )
+    assert '"fill-opacity": 0' in maplibre_view_ts
+    assert '"line-color": "rgba(255, 255, 255, 0.95)"' in maplibre_view_ts
+    assert '"line-width": SELECTION_HALO_LINE_WIDTH' in maplibre_view_ts
+    assert '"line-width": SELECTION_PULSE_MIN_WIDTH' in maplibre_view_ts
+    assert '"line-opacity": SELECTION_PULSE_MIN_ALPHA' in maplibre_view_ts
+    assert '"line-color": "#ffd400"' not in maplibre_view_ts
     assert 'const INDEXED_DB_VERSION = 4;' in cache_ts
     assert 'const CACHE_KEY_VERSION = 4;' in cache_ts
     assert "db.deleteObjectStore(INDEXED_DB_STORE);" in cache_ts

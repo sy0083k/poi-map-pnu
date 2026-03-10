@@ -124,7 +124,9 @@ const LAND_SELECTED_SOURCE_ID = "lands-selected-source";
 const LAND_FILL_LAYER_ID = "lands-fill";
 const LAND_LINE_LAYER_ID = "lands-line";
 const LAND_SELECTED_FILL_LAYER_ID = "lands-selected-fill";
+const LAND_SELECTED_HALO_LAYER_ID = "lands-selected-halo";
 const LAND_SELECTED_LINE_LAYER_ID = "lands-selected-line";
+const LAND_SELECTED_PULSE_LAYER_ID = "lands-selected-pulse";
 const DEBUG_PROBE_SOURCE_ID = "debug-fgb-probe-source";
 const DEBUG_PROBE_FILL_LAYER_ID = "debug-fgb-probe-fill";
 const DEBUG_PROBE_LINE_LAYER_ID = "debug-fgb-probe-line";
@@ -132,6 +134,13 @@ const DEBUG_REFERENCE_MARKER_SOURCE_ID = "debug-reference-marker-source";
 const DEBUG_REFERENCE_MARKER_LAYER_ID = "debug-reference-marker-layer";
 const MAX_INVALID_GEOMETRY_SAMPLES = 50;
 const DEBUG_REFERENCE_LNG_LAT: [number, number] = [126.45208, 36.783454];
+const SELECTION_HALO_LINE_WIDTH = 8;
+const SELECTION_INNER_LINE_WIDTH = 4;
+const SELECTION_PULSE_PERIOD_MS = 1400;
+const SELECTION_PULSE_MIN_WIDTH = 4;
+const SELECTION_PULSE_MAX_WIDTH = 8;
+const SELECTION_PULSE_MIN_ALPHA = 0.2;
+const SELECTION_PULSE_MAX_ALPHA = 0.7;
 
 function isMapDebugEnabled(): boolean {
   return new URLSearchParams(window.location.search).get("debugMap") === "1";
@@ -501,6 +510,14 @@ function createBasemapStyle(vworldKey: string): maplibregl.StyleSpecification {
   };
 }
 
+function getLineColorExpression(theme: ThemeType): any {
+  return (theme === "city_owned" ? MANAGER_LINE_COLOR_EXPRESSION : DEFAULT_LINE_COLOR) as any;
+}
+
+function getFillColorExpression(theme: ThemeType): any {
+  return (theme === "city_owned" ? MANAGER_FILL_COLOR_EXPRESSION : DEFAULT_FILL_COLOR) as any;
+}
+
 function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
   if (!map.getSource(LAND_SOURCE_ID)) {
     map.addSource(LAND_SOURCE_ID, {
@@ -521,7 +538,7 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
       type: "fill",
       source: LAND_SOURCE_ID,
       paint: {
-        "fill-color": (theme === "city_owned" ? MANAGER_FILL_COLOR_EXPRESSION : DEFAULT_FILL_COLOR) as any,
+        "fill-color": getFillColorExpression(theme),
         "fill-opacity": 1
       }
     });
@@ -533,7 +550,7 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
       type: "line",
       source: LAND_SOURCE_ID,
       paint: {
-        "line-color": (theme === "city_owned" ? MANAGER_LINE_COLOR_EXPRESSION : DEFAULT_LINE_COLOR) as any,
+        "line-color": getLineColorExpression(theme),
         "line-width": 3
       }
     });
@@ -545,8 +562,20 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
       type: "fill",
       source: LAND_SELECTED_SOURCE_ID,
       paint: {
-        "fill-color": "rgba(255, 212, 0, 0.18)",
-        "fill-opacity": 1
+        "fill-color": getFillColorExpression(theme),
+        "fill-opacity": 0
+      }
+    });
+  }
+
+  if (!map.getLayer(LAND_SELECTED_HALO_LAYER_ID)) {
+    map.addLayer({
+      id: LAND_SELECTED_HALO_LAYER_ID,
+      type: "line",
+      source: LAND_SELECTED_SOURCE_ID,
+      paint: {
+        "line-color": "rgba(255, 255, 255, 0.95)",
+        "line-width": SELECTION_HALO_LINE_WIDTH
       }
     });
   }
@@ -557,8 +586,21 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
       type: "line",
       source: LAND_SELECTED_SOURCE_ID,
       paint: {
-        "line-color": "#ffd400",
-        "line-width": 4
+        "line-color": getLineColorExpression(theme),
+        "line-width": SELECTION_INNER_LINE_WIDTH
+      }
+    });
+  }
+
+  if (!map.getLayer(LAND_SELECTED_PULSE_LAYER_ID)) {
+    map.addLayer({
+      id: LAND_SELECTED_PULSE_LAYER_ID,
+      type: "line",
+      source: LAND_SELECTED_SOURCE_ID,
+      paint: {
+        "line-color": getLineColorExpression(theme),
+        "line-width": SELECTION_PULSE_MIN_WIDTH,
+        "line-opacity": SELECTION_PULSE_MIN_ALPHA
       }
     });
   }
@@ -667,16 +709,17 @@ function updateLandPaints(map: MapLibreMap, theme: ThemeType): void {
   if (!map.getLayer(LAND_FILL_LAYER_ID) || !map.getLayer(LAND_LINE_LAYER_ID)) {
     return;
   }
-  map.setPaintProperty(
-    LAND_FILL_LAYER_ID,
-    "fill-color",
-    (theme === "city_owned" ? MANAGER_FILL_COLOR_EXPRESSION : DEFAULT_FILL_COLOR) as any
-  );
-  map.setPaintProperty(
-    LAND_LINE_LAYER_ID,
-    "line-color",
-    (theme === "city_owned" ? MANAGER_LINE_COLOR_EXPRESSION : DEFAULT_LINE_COLOR) as any
-  );
+  map.setPaintProperty(LAND_FILL_LAYER_ID, "fill-color", getFillColorExpression(theme));
+  map.setPaintProperty(LAND_LINE_LAYER_ID, "line-color", getLineColorExpression(theme));
+  if (map.getLayer(LAND_SELECTED_FILL_LAYER_ID)) {
+    map.setPaintProperty(LAND_SELECTED_FILL_LAYER_ID, "fill-color", getFillColorExpression(theme));
+  }
+  if (map.getLayer(LAND_SELECTED_LINE_LAYER_ID)) {
+    map.setPaintProperty(LAND_SELECTED_LINE_LAYER_ID, "line-color", getLineColorExpression(theme));
+  }
+  if (map.getLayer(LAND_SELECTED_PULSE_LAYER_ID)) {
+    map.setPaintProperty(LAND_SELECTED_PULSE_LAYER_ID, "line-color", getLineColorExpression(theme));
+  }
 }
 
 function setBasemapVisibility(map: MapLibreMap, type: BaseType): void {
@@ -715,9 +758,47 @@ export function createMapLibreMapView(elements: MapViewElements) {
   let lastHighlightLoad: HighlightLoadDebugInfo | null = null;
   let debugProbeMeta: DebugProbeMeta | null = null;
   let resolveMapReady: (() => void) | null = null;
+  let selectionPulseAnimationFrameId: number | null = null;
+  const reducedMotionMedia = window.matchMedia("(prefers-reduced-motion: reduce)");
   const mapReadyPromise = new Promise<void>((resolve) => {
     resolveMapReady = resolve;
   });
+
+  const stopSelectionPulse = (): void => {
+    if (selectionPulseAnimationFrameId !== null) {
+      window.cancelAnimationFrame(selectionPulseAnimationFrameId);
+      selectionPulseAnimationFrameId = null;
+    }
+    if (map?.getLayer(LAND_SELECTED_PULSE_LAYER_ID)) {
+      map.setPaintProperty(LAND_SELECTED_PULSE_LAYER_ID, "line-width", SELECTION_PULSE_MIN_WIDTH);
+      map.setPaintProperty(LAND_SELECTED_PULSE_LAYER_ID, "line-opacity", reducedMotionMedia.matches ? 0 : SELECTION_PULSE_MIN_ALPHA);
+    }
+  };
+
+  const animateSelectionPulse = (): void => {
+    if (!map || !isLoaded || selectedFeatureId === null || reducedMotionMedia.matches || !map.getLayer(LAND_SELECTED_PULSE_LAYER_ID)) {
+      stopSelectionPulse();
+      return;
+    }
+    const progress = ((Date.now() % SELECTION_PULSE_PERIOD_MS) / SELECTION_PULSE_PERIOD_MS) * Math.PI * 2;
+    const eased = (Math.sin(progress) + 1) / 2;
+    const pulseAlpha = SELECTION_PULSE_MIN_ALPHA + (SELECTION_PULSE_MAX_ALPHA - SELECTION_PULSE_MIN_ALPHA) * eased;
+    const pulseWidth = SELECTION_PULSE_MIN_WIDTH + (SELECTION_PULSE_MAX_WIDTH - SELECTION_PULSE_MIN_WIDTH) * eased;
+    map.setPaintProperty(LAND_SELECTED_PULSE_LAYER_ID, "line-width", pulseWidth);
+    map.setPaintProperty(LAND_SELECTED_PULSE_LAYER_ID, "line-opacity", pulseAlpha);
+    selectionPulseAnimationFrameId = window.requestAnimationFrame(animateSelectionPulse);
+  };
+
+  const syncSelectionPulseState = (): void => {
+    if (!map || !isLoaded || selectedFeatureId === null || reducedMotionMedia.matches) {
+      stopSelectionPulse();
+      return;
+    }
+    if (selectionPulseAnimationFrameId !== null) {
+      return;
+    }
+    selectionPulseAnimationFrameId = window.requestAnimationFrame(animateSelectionPulse);
+  };
 
   const resetGeometryValidationStats = (received: number): void => {
     geometryValidationStats = {
@@ -762,6 +843,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
     } else {
       selectedSource.setData(toFeatureCollection([]));
     }
+    syncSelectionPulseState();
   };
 
   const init = (config: MapConfig): void => {
@@ -812,7 +894,14 @@ export function createMapLibreMapView(elements: MapViewElements) {
         return;
       }
       const features = map.queryRenderedFeatures(event.point, {
-        layers: [LAND_SELECTED_FILL_LAYER_ID, LAND_SELECTED_LINE_LAYER_ID, LAND_FILL_LAYER_ID, LAND_LINE_LAYER_ID]
+        layers: [
+          LAND_SELECTED_FILL_LAYER_ID,
+          LAND_SELECTED_HALO_LAYER_ID,
+          LAND_SELECTED_LINE_LAYER_ID,
+          LAND_SELECTED_PULSE_LAYER_ID,
+          LAND_FILL_LAYER_ID,
+          LAND_LINE_LAYER_ID
+        ]
       });
       const selected = features.find((candidate) => {
         const raw = candidate.properties?.list_index;
@@ -988,6 +1077,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
       return;
     }
     updateLandPaints(map, theme);
+    syncSelectionPulseState();
   };
 
   const loadDebugProbe = async (
@@ -1035,8 +1125,10 @@ export function createMapLibreMapView(elements: MapViewElements) {
 
   elements.infoPanelCloseButton?.addEventListener("click", () => infoPanel.dismiss());
   window.addEventListener("beforeunload", () => {
+    stopSelectionPulse();
     uninstallMapDebugHooks();
   });
+  reducedMotionMedia.addEventListener("change", () => syncSelectionPulseState());
   infoPanel.clear();
 
   return {

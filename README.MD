@@ -103,7 +103,7 @@ uvicorn app.main:app --reload
 
 ### 상태/상호작용 규칙
 - 모바일 UI 상태는 `mobile-home` → `mobile-search` → `mobile-results` 순으로 전환된다.
-- 선택 필지는 `Selected Feature Highlight`로 처리되며, 노란색 경계선으로 강조된다.
+- `/siyu`의 선택 필지는 기존 관리관 색을 유지한 halo + pulse outline 조합으로 강조되며, 동작 축소 환경에서는 정적 강조만 사용한다.
 - 상세 정보 패널(`Detail Information Panel`)은 초기 진입 시 숨김이며, 필지 선택 시 표시된다.
 - 헤더 메뉴(`Top-level Navigation Menu`)는 항목 간 짧은 구분 바로 시각적으로 분리된다.
 - 사이드바 토글은 `Expanded/Collapsed State`를 사용하며, 상태는 로컬 스토리지로 복원된다.
