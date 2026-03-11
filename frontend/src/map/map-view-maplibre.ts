@@ -121,8 +121,8 @@ const BASEMAP_MAX_ZOOM: Record<BaseType, number> = {
 
 const LAND_SOURCE_ID = "lands-source";
 const LAND_SELECTED_SOURCE_ID = "lands-selected-source";
-const LAND_FILL_LAYER_ID = "cont-cadastre-fill";
-const LAND_LINE_LAYER_ID = "cont-cadastre-line";
+const LAND_FILL_LAYER_ID = "cadastral-map-fill";
+const LAND_LINE_LAYER_ID = "cadastral-map-line";
 const LAND_SELECTED_FILL_LAYER_ID = "parcels-selected-fill";
 const LAND_SELECTED_HALO_LAYER_ID = "parcels-selected-halo";
 const LAND_SELECTED_LINE_LAYER_ID = "parcels-selected-line";
@@ -208,7 +208,7 @@ function installMapDebugHooks(
         .getStyle()
         .layers.filter(
           (layer) =>
-            layer.id.startsWith("cont-cadastre-") || layer.id.startsWith("parcels-selected-")
+            layer.id.startsWith("cadastral-map-") || layer.id.startsWith("parcels-selected-")
         )
         .map((layer) => layer.id),
     listDebugLayers: () =>
