@@ -117,12 +117,12 @@ uvicorn app.main:app --reload
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩은 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(초기 화면 밖 필지 누락 고정 방지).
    - 서버는 FGB를 직접 재스캔하지 않고 bbox 요청 시 SQLite `render_grid_cell`/`render_grid_parcel`로 후보 PNU를 줄인 뒤 `parcel_render_item` 렌더 인덱스에서 geometry를 조회한다.
-   - `/siyu` 초기 진입은 `/api/lands/list`의 현재 지도 extent 기반 `bbox` 첫 페이지로 시작하며, 하이라이트 요청도 같은 context bbox를 함께 전달하고 첫 요청 PNU는 최대 300건으로 제한한다.
+   - `/siyu` 초기 진입은 `/api/lands/list`의 현재 지도 extent 기반 `bbox` 첫 페이지로 시작하며, 하이라이트 요청도 같은 context bbox를 함께 전달한다. 첫 viewport 하이라이트 1회에만 요청 PNU를 최대 300건으로 제한하고, 이후 moveend/같은 bbox의 `목록 더 불러오기`는 상한 없이 현재 bbox 기준으로 다시 구성한다.
    - `/siyu`의 viewport query `bboxCrs`는 현재 화면 좌표계를 따르며, 실제 하이라이트 geometry 렌더 좌표계는 `CADASTRAL_FGB_CRS`를 따른다.
    - `/siyu` 첫 seed 하이라이트가 context bbox에서 0건이면 같은 capped PNU 집합으로 bbox 없이 1회 재시도해 빈 레이어 고정을 방지한다.
    - `/siyu` MapLibre 렌더러는 `CADASTRAL_FGB_CRS=EPSG:3857` geometry도 내부에서 EPSG:4326으로 변환해 표시한다.
    - `/siyu`에서 토지 선택 후 fit에 따른 moveend가 발생해도 viewport context 재조회만으로 선택 상태와 상세 패널을 해제하지 않는다.
-   - `/siyu` 이동(moveend) 후에는 현재 화면 기준 context bbox를 다시 계산해 주변 시유지 후보와 하이라이트를 증분 재조회한다.
+   - `/siyu` 이동(moveend) 후에는 현재 화면 기준 context bbox를 다시 계산해 주변 시유지 후보와 하이라이트를 현재 bbox 기준으로 재구성하며, 선택 필지 1건은 bbox 밖이어도 예외적으로 유지한다.
    - 화면 밖 목록 항목을 클릭해 아직 하이라이트가 없으면, 우선 해당 필지 1건을 로드해 이동하고 이후 moveend에서 주변 context를 다시 채운다.
    - 클라이언트는 서버 응답을 우선 사용하고, 실패 시에만 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.
    - `/siyu?debugFgb=1`에서는 검색과 무관하게 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 probe overlay로 1회 로드해 원본 파일 자체의 렌더 가능 여부를 점검한다.

@@ -2,14 +2,21 @@ from pathlib import Path
 
 
 def test_land_workflow_uploaded_highlights_support_bbox_and_cap() -> None:
-    text = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
-    assert "const loadHighlights = async (params?:" in text
-    assert "theme: deps.getCurrentTheme()," in text
-    assert "bbox: params?.bbox," in text
-    assert "bboxCrs: params?.bboxCrs," in text
-    assert "options?.maxPnus" in text
-    assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in text
-    assert '하이라이트를 찾지 못해 전체 PNU로 다시 확인하는 중입니다' in text
+    highlight_text = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
+    workflow_text = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
+    assert "const loadHighlights = async (params?:" in highlight_text
+    assert "theme: deps.getCurrentTheme()," in highlight_text
+    assert "bbox: params?.bbox," in highlight_text
+    assert "bboxCrs: params?.bboxCrs," in highlight_text
+    assert "renderItems?: LandListItem[];" in highlight_text
+    assert "const sourceItems = options?.renderItems ?? items;" in highlight_text
+    assert "options?.maxPnus" in highlight_text
+    assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in highlight_text
+    assert '하이라이트를 찾지 못해 전체 PNU로 다시 확인하는 중입니다' in highlight_text
+    assert "let hasConsumedInitialViewportHighlightCap = false;" in workflow_text
+    assert "const shouldCapViewport = options.isViewportContext && !hasConsumedInitialViewportHighlightCap;" in workflow_text
+    assert "maxPnus: shouldCapViewport ? MAX_INITIAL_HIGHLIGHTS : undefined" in workflow_text
+    assert "hasConsumedInitialViewportHighlightCap = true;" in workflow_text
 
 
 def test_photo_mode_uploaded_land_highlights_are_not_bbox_limited() -> None:
@@ -30,13 +37,17 @@ def test_large_uploaded_highlights_use_chunked_api_before_worker_fallback() -> N
 
 
 def test_highlight_reload_uses_cached_bbox_and_delta_updates() -> None:
-    text = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
-    assert "recordsByPnu: Map<string, HighlightGeometryRecord>" in text
-    assert "feature.properties.bbox" in text
-    assert "deps.mapView.applyFeatureDelta" in text
-    assert "stagedByPnu.set(key, value);" in text
-    assert "mergeRecordMaps" not in text
-    assert 'const getRenderProjection = (_deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] => config.cadastralCrs;' in text
+    highlight_text = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
+    workflow_text = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
+    assert "recordsByPnu: Map<string, HighlightGeometryRecord>" in highlight_text
+    assert "feature.properties.bbox" in highlight_text
+    assert "deps.mapView.applyFeatureDelta" in highlight_text
+    assert "stagedByPnu.set(key, value);" in highlight_text
+    assert "mergeRecordMaps" not in highlight_text
+    assert 'const getRenderProjection = (_deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] => config.cadastralCrs;' in highlight_text
+    assert "append: Boolean(options?.append)," in workflow_text
+    assert "preserveSelectedItem: Boolean(options?.fromMoveEnd)," in workflow_text
+    assert "selectedItemToPreserve" in workflow_text
 
 
 def test_maplibre_view_supports_delta_updates_and_geometry_cache() -> None:

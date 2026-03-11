@@ -304,6 +304,7 @@ export async function prepareUploadedHighlights(
   deps: HighlightDeps,
   items: LandListItem[],
   options?: {
+    renderItems?: LandListItem[];
     bbox?: [number, number, number, number];
     bboxCrs?: "EPSG:3857" | "EPSG:4326";
     maxPnus?: number;
@@ -315,9 +316,10 @@ export async function prepareUploadedHighlights(
   }
 
   deps.getHighlightLoadAbortController()?.abort();
-  const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu))).slice(
+  const sourceItems = options?.renderItems ?? items;
+  const uploadedPnus = Array.from(new Set(sourceItems.map((item) => item.pnu))).slice(
     0,
-    Math.max(1, options?.maxPnus ?? items.length)
+    Math.max(1, options?.maxPnus ?? sourceItems.length)
   );
   if (uploadedPnus.length === 0) {
     deps.setRenderRequestSeq(deps.getRenderRequestSeq() + 1);

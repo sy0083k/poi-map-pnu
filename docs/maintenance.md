@@ -77,7 +77,8 @@
 - `조건에 맞는 토지 찾기` 결과에 현재 화면 내 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 자동 스크롤되는지 점검
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검
 - `/api/cadastral/highlights` 호출 시 요청 `PNU+bbox` 기준 `items[]`, `matched/bboxApplied/bboxFiltered/source/sourceFgbEtag/gridApplied/gridCellCount/gridCandidatePnuCount/fallbackUsed` 메타가 정상 응답되는지 점검
-- `/siyu` 초기 하이라이트 요청이 현재 화면 context `bbox`와 최대 300건 상한을 사용하고, moveend 후 주변 context 하이라이트가 다시 로드되는지 점검
+- `/siyu` 초기 하이라이트 요청 1회만 현재 화면 context `bbox`와 최대 300건 상한을 사용하고, 이후 moveend/같은 bbox의 `목록 더 불러오기`는 상한 없이 현재 bbox 기준 하이라이트를 다시 로드하는지 점검
+- bbox 이동 후 이전 bbox의 일반 벡터가 제거되고 새 bbox 도형으로 교체되는지, 단 선택 필지 1건은 bbox 밖이어도 유지되는지 점검
 - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩 시 `bbox` 없이 전체 업로드 PNU 매칭이 적용되어, 초기 화면 밖 필지도 줌 아웃/이동 시 누락 없이 표시되는지 점검
 - `/api/cadastral/highlights` 실패 시 클라이언트 워커 폴백으로 하이라이트가 계속 표시되는지 점검
 - `/admin/stats/web`에 `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`, `channelBreakdown`가 정상 집계되는지 점검

@@ -22,7 +22,7 @@
 - FGB 원본 진단 API: `/api/cadastral/debug-probe` (`/api/v1/cadastral/debug-probe` alias)
 - 하이라이트 성능: 기본 경로는 SQLite `render_grid_*` 후보 축소 + `parcel_render_item` geometry 캐시 기반 `/api/cadastral/highlights` 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
 - `/siyu` 하이라이트 계약: 서버는 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조와 `meta.responseCrs`를 반환하고 클라이언트가 내부 `FeatureCollection`으로 재조립해 렌더링
-- `/siyu` 초기 로딩 정책: 현재 지도 extent를 1.5배 확장한 `bbox` 기준 목록 첫 페이지와 하이라이트 최대 300건을 우선 로드하고, moveend 후 주변 context를 다시 채운다
+- `/siyu` 초기 로딩 정책: 현재 지도 extent를 1.5배 확장한 `bbox` 기준 목록 첫 페이지와 하이라이트 최대 300건을 1회 우선 로드하고, 이후 moveend/같은 bbox의 `목록 더 불러오기`는 상한 없이 현재 bbox 기준 context를 다시 채운다
 - `/siyu` CRS 계약: viewport query `bboxCrs`와 geometry render projection을 분리하며, 실제 하이라이트 geometry는 `CADASTRAL_FGB_CRS` 기준으로 렌더링한다
 - `/siyu` MapLibre 변환 정책: `CADASTRAL_FGB_CRS=EPSG:3857` geometry는 클라이언트에서 EPSG:4326으로 변환한 뒤 렌더링한다
 - `/siyu` 선택 유지 정책: 선택 후 fit으로 발생한 moveend는 주변 context만 갱신하고 선택 상태는 유지한다

@@ -20,6 +20,12 @@ type EngineAwareMapView = Omit<MapView, "getEngine"> & {
 };
 
 type ListQueryMode = "empty" | "override" | "search" | "viewport";
+type ContextHighlightOptions = {
+  bbox: [number, number, number, number] | null;
+  isViewportContext: boolean;
+  preserveSelectedItem?: boolean;
+  selectedItemToPreserve?: LandListItem | null;
+};
 
 type LandWorkflowDeps = {
   state: MapStateStore;
@@ -127,6 +133,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let currentListFilters: FilterValues | undefined;
   let currentListBbox: [number, number, number, number] | null = null;
   let currentListTotalCount = 0;
+  let hasConsumedInitialViewportHighlightCap = false;
   let lastViewportContextKey = "";
   const featuresByPnuIndexByDataset = new Map<
     string,
@@ -294,14 +301,42 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
 
   const prepareContextHighlights = async (
     items: LandListItem[],
-    bbox: [number, number, number, number] | null
+    options: ContextHighlightOptions
   ): Promise<void> => {
+    const renderItems =
+      options.preserveSelectedItem
+        ? includeSelectedItemForRender(items, options.selectedItemToPreserve)
+        : items;
+    const shouldCapViewport = options.isViewportContext && !hasConsumedInitialViewportHighlightCap;
+    if (options.isViewportContext) {
+      hasConsumedInitialViewportHighlightCap = true;
+    }
     await waitForNextPaint();
     await prepareUploadedHighlights(highlightDeps, items, {
-      bbox: bbox ?? undefined,
-      bboxCrs: bbox ? getViewportBboxCrs() : undefined,
-      maxPnus: MAX_INITIAL_HIGHLIGHTS
+      renderItems,
+      bbox: options.bbox ?? undefined,
+      bboxCrs: options.bbox ? getViewportBboxCrs() : undefined,
+      maxPnus: shouldCapViewport ? MAX_INITIAL_HIGHLIGHTS : undefined
     });
+  };
+
+  const getCurrentlySelectedItem = (): LandListItem | null => {
+    const selectedIndex = deps.state.getCurrentIndex();
+    const currentItems = deps.state.getCurrentItems();
+    return selectedIndex >= 0 && selectedIndex < currentItems.length ? currentItems[selectedIndex] ?? null : null;
+  };
+
+  const includeSelectedItemForRender = (
+    items: LandListItem[],
+    selectedItem: LandListItem | null | undefined
+  ): LandListItem[] => {
+    if (!selectedItem) {
+      return items;
+    }
+    if (items.some((item) => item.id === selectedItem.id)) {
+      return items;
+    }
+    return [selectedItem, ...items];
   };
 
   const loadSelectionHighlight = async (index: number): Promise<void> => {
@@ -394,17 +429,23 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     if (options?.fromMoveEnd && bboxHash === lastViewportContextKey) {
       return;
     }
+    const selectedItemToPreserve = options?.fromMoveEnd ? getCurrentlySelectedItem() : null;
     const page = await fetchListPage({
       theme: "city_owned",
       bbox: bbox ?? undefined
     });
     const nextItems = applyPageToState(page, {
-      append: Boolean(options?.append) || Boolean(options?.fromMoveEnd),
+      append: Boolean(options?.append),
       mode: "viewport",
       bbox
     });
     lastViewportContextKey = bboxHash;
-    await prepareContextHighlights(nextItems, bbox);
+    await prepareContextHighlights(nextItems, {
+      bbox,
+      isViewportContext: true,
+      preserveSelectedItem: Boolean(options?.fromMoveEnd),
+      selectedItemToPreserve
+    });
   };
 
   const loadMoreCurrentQuery = async (): Promise<void> => {
@@ -417,6 +458,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       filters: currentListMode === "search" ? currentListFilters : undefined,
       bbox: currentListMode === "viewport" ? currentListBbox ?? undefined : undefined
     });
+    const selectedItemToPreserve = currentListMode === "viewport" ? getCurrentlySelectedItem() : null;
     const mergedItems = applyPageToState(page, {
       append: true,
       mode: currentListMode,
@@ -424,10 +466,18 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       bbox: currentListMode === "viewport" ? currentListBbox : null
     });
     if (currentListMode === "viewport") {
-      await prepareContextHighlights(mergedItems, currentListBbox);
+      await prepareContextHighlights(mergedItems, {
+        bbox: currentListBbox,
+        isViewportContext: true,
+        preserveSelectedItem: true,
+        selectedItemToPreserve
+      });
       return;
     }
-    await prepareContextHighlights(mergedItems, getInflatedViewportBbox());
+    await prepareContextHighlights(mergedItems, {
+      bbox: getInflatedViewportBbox(),
+      isViewportContext: false
+    });
   };
 
   const applyFilters = async (trackEvent = false): Promise<void> => {
@@ -486,7 +536,10 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     currentListTotalCount = page.totalCount;
     deps.mapView.clearInfoPanel();
     renderCurrentList();
-    await prepareContextHighlights(sortedItems, getInflatedViewportBbox());
+    await prepareContextHighlights(sortedItems, {
+      bbox: getInflatedViewportBbox(),
+      isViewportContext: false
+    });
     if (trackEvent) {
       const topVisibleIndex = findMinVisiblePnuIndex(deps.state.getCurrentItems());
       if (topVisibleIndex !== null) {
@@ -503,6 +556,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     currentListFilters = undefined;
     currentListBbox = null;
     currentListTotalCount = 0;
+    hasConsumedInitialViewportHighlightCap = false;
     lastViewportContextKey = "";
 
     if (overrideItems) {
