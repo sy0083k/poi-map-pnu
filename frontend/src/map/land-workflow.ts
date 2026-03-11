@@ -15,8 +15,14 @@ type SelectOptions = {
   clickSource?: LandClickSource;
 };
 
-type EngineAwareMapView = Omit<MapView, "getEngine"> & {
+type ViewSelectOptions = {
+  shouldFit: boolean;
+  showInfoPanel?: boolean;
+};
+
+type EngineAwareMapView = Omit<MapView, "getEngine" | "selectFeatureByIndex"> & {
   getEngine: () => "openlayers" | "maplibre";
+  selectFeatureByIndex: (index: number, options: ViewSelectOptions) => Promise<boolean>;
 };
 
 type LandWorkflowDeps = {
@@ -151,7 +157,11 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       const selected = currentItems[index];
       deps.telemetry.trackLandClickEvent(selected?.address || "", options.clickSource, selected?.id);
     }
-    const moved = await deps.mapView.selectFeatureByIndex(index, { shouldFit: options.shouldFit });
+    const shouldShowInfoPanel = deps.mapView.getEngine() !== "maplibre" || options.clickSource === "map_click";
+    const moved = await deps.mapView.selectFeatureByIndex(index, {
+      shouldFit: options.shouldFit,
+      showInfoPanel: shouldShowInfoPanel
+    });
     if (!moved) {
       deps.setMapStatus("선택한 필지 하이라이트를 찾지 못했습니다.", "#b45309");
     }

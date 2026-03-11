@@ -25,6 +25,7 @@ type FeatureClickPayload = {
 
 type SelectOptions = {
   shouldFit: boolean;
+  showInfoPanel?: boolean;
 };
 
 type RenderOptions = {
@@ -88,6 +89,7 @@ export function createMapView(elements: MapViewElements) {
       const feature = asVectorFeature(clickedFeature);
       if (!feature) {
         featureLayers.selectFeatureId(null);
+        infoPanel.dismiss();
         infoPanel.clear();
         return;
       }
@@ -145,7 +147,12 @@ export function createMapView(elements: MapViewElements) {
     }
     featureLayers.selectFeatureId(index);
     map.renderSync();
-    infoPanel.renderFeatureInfo(feature);
+    if (options.showInfoPanel !== false) {
+      infoPanel.renderFeatureInfo(feature);
+    } else {
+      infoPanel.dismiss();
+      infoPanel.clear();
+    }
 
     if (!options.shouldFit) {
       return true;
@@ -194,10 +201,12 @@ export function createMapView(elements: MapViewElements) {
 
   const clearInfoPanel = (): void => {
     featureLayers?.selectFeatureId(null);
+    infoPanel.dismiss();
     infoPanel.clear();
   };
 
   const clearInfoPanelContentOnly = (): void => {
+    infoPanel.dismiss();
     infoPanel.clear();
   };
 

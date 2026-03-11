@@ -75,7 +75,7 @@
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검
 - `/api/cadastral/highlights` 호출 시 요청 `PNU+bbox` 기준 `items[]`, `matched/bboxApplied/bboxFiltered/source/sourceFgbEtag` 메타가 정상 응답되는지 점검
 - `/siyu` 첫 진입 시 `cadastral-map-*` 레이어가 PMTiles source + PNU filter로 렌더링되고, 목록 필터 변경 시 전체 GeoJSON 재조립 없이 필터만 갱신되는지 점검
-- `/siyu`에서 필지 클릭 시 `pnu` 기반 역매핑으로 목록 선택/상세 패널/선택 강조가 유지되는지 점검
+- `/siyu`에서 지도 위 필지 마우스 클릭 시 `pnu` 기반 역매핑으로 목록 선택/상세 패널/선택 강조가 유지되는지 점검
 - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩 시 `bbox` 없이 전체 업로드 PNU 매칭이 적용되어, 초기 화면 밖 필지도 줌 아웃/이동 시 누락 없이 표시되는지 점검
 - `/api/cadastral/highlights` 실패 시 클라이언트 워커 폴백으로 하이라이트가 계속 표시되는지 점검
 - `/admin/stats/web`에 `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`, `channelBreakdown`가 정상 집계되는지 점검
@@ -87,7 +87,9 @@
 - 배경지도 기본 레이어가 `Satellite`로 초기화되고, `배경지도` 메뉴(`일반지도/백지도/영상지도/하이브리드`) 전환이 정상 동작하는지 점검
 - `백지도(White)` 선택 시 WMTS 요청 layer 파라미터가 `white`(소문자)로 호출되는지 점검
 - `백지도(White)` 선택 시 줌 레벨이 18을 초과하지 않도록 보정되는지 점검
-- 지도 상세 패널이 초기 진입 시 숨김이며, 필지 선택 시 자동으로 표시되는지 점검
+- 지도 상세 패널이 초기 진입 시 숨김이며, `/siyu`는 지도 클릭 시에만 자동으로 표시되는지 점검
+- `/siyu`에서 사이드바 목록 클릭은 선택 강조/지도 이동만 수행하고 상세 패널을 열지 않는지 점검
+- `/siyu`에서 하단 이전/다음 네비게이션으로 다른 필지를 선택하면 상세 패널이 닫히는지 점검
 - `/siyu`에서 상세 패널 제목이 `재산 상세 정보`로 표시되고, `/file2map`에서는 `상세 정보`로 표시되는지 점검
 - 선택 필지 강조 레이어가 인접 필지보다 위에 표시되는지 점검
 - `/siyu`에서 선택 필지가 기존 관리관 색을 유지한 채 흰 halo + pulse outline으로 강조되고, `prefers-reduced-motion` 환경에서는 pulse 없이 정적 강조만 보이는지 점검

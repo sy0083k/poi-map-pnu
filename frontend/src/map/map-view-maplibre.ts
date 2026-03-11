@@ -21,6 +21,7 @@ type FeatureClickPayload = {
 
 type SelectOptions = {
   shouldFit: boolean;
+  showInfoPanel?: boolean;
 };
 
 type RenderOptions = {
@@ -1004,6 +1005,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
       if (!selected && !selectedPnu) {
         selectedFeatureId = null;
         syncSelectedSourceData();
+        infoPanel.dismiss();
         infoPanel.clear();
         return;
       }
@@ -1186,7 +1188,12 @@ export function createMapLibreMapView(elements: MapViewElements) {
 
     selectedFeatureId = index;
     syncSelectedSourceData();
-    infoPanel.renderProperties(record.feature.properties as LandFeatureProperties);
+    if (options.showInfoPanel !== false) {
+      infoPanel.renderProperties(record.feature.properties as LandFeatureProperties);
+    } else {
+      infoPanel.dismiss();
+      infoPanel.clear();
+    }
 
     if (!options.shouldFit || !record.bbox) {
       return true;
@@ -1249,10 +1256,12 @@ export function createMapLibreMapView(elements: MapViewElements) {
   const clearInfoPanel = (): void => {
     selectedFeatureId = null;
     syncSelectedSourceData();
+    infoPanel.dismiss();
     infoPanel.clear();
   };
 
   const clearInfoPanelContentOnly = (): void => {
+    infoPanel.dismiss();
     infoPanel.clear();
   };
 
