@@ -22,6 +22,10 @@ export type CadastralHighlightsApiResponse = {
     sourceCrs?: CadastralCrs;
     responseCrs?: CadastralCrs;
     geometryFormat?: "geojson";
+    gridApplied?: boolean;
+    gridCellCount?: number;
+    gridCandidatePnuCount?: number;
+    fallbackUsed?: boolean;
   };
 };
 

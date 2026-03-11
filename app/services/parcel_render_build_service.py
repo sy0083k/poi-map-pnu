@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Iterable
+from math import floor
 from pathlib import Path
 from typing import Any
 
 from app.db.connection import db_connection
-from app.repositories import parcel_render_repository
+from app.repositories import parcel_render_repository, render_grid_repository
 from app.services import cadastral_fgb_service, cadastral_highlight_service
 from app.services.cadastral_highlight_cache import build_file_etag
 from app.services.cadastral_highlight_geometry import collect_points, geometry_bounds
@@ -15,6 +16,11 @@ from app.services.cadastral_highlight_geometry import collect_points, geometry_b
 MID_SIMPLIFY_STEP = 2
 LOW_SIMPLIFY_STEP = 4
 SUPPORTED_CRS = {"EPSG:3857", "EPSG:4326"}
+DEFAULT_GRID_LEVEL = 0
+GRID_CELL_SIZE_BY_CRS = {
+    "EPSG:3857": 1000.0,
+    "EPSG:4326": 0.01,
+}
 
 
 def ensure_render_items_current(
@@ -34,11 +40,13 @@ def ensure_render_items_current(
     current_etag = build_file_etag(file_path)
     with db_connection(row_factory=True) as conn:
         parcel_render_repository.init_schema(conn)
+        render_grid_repository.init_schema(conn)
         row_count = parcel_render_repository.count_rows(conn)
         stored_etag = parcel_render_repository.fetch_source_etag(conn)
+        grid_cell_count = render_grid_repository.count_cells(conn)
         conn.commit()
 
-    if row_count > 0 and stored_etag == current_etag:
+    if row_count > 0 and grid_cell_count > 0 and stored_etag == current_etag:
         return False
 
     rebuild_render_items(
@@ -89,11 +97,17 @@ def rebuild_render_items_for_path(
             cadastral_crs=cadastral_crs,
         )
     )
+    grid_cells, grid_parcels = _build_grid_rows(rows=rows, cadastral_crs=cadastral_crs)
     with db_connection() as conn:
         parcel_render_repository.init_schema(conn)
+        render_grid_repository.init_schema(conn)
         parcel_render_repository.prepare_staging_table(conn)
+        render_grid_repository.prepare_staging_tables(conn)
         parcel_render_repository.bulk_insert_staging(conn, rows)
+        render_grid_repository.bulk_insert_staging_cells(conn, grid_cells)
+        render_grid_repository.bulk_insert_staging_parcels(conn, grid_parcels)
         parcel_render_repository.swap_staging_table(conn)
+        render_grid_repository.swap_staging_tables(conn)
         conn.commit()
     return len(rows)
 
@@ -152,6 +166,62 @@ def _normalize_geometry(geometry: dict[str, Any], *, source_crs: str) -> dict[st
     if source_crs != "EPSG:3857":
         return None
     return geometry
+
+
+def _build_grid_rows(
+    *,
+    rows: list[dict[str, Any]],
+    cadastral_crs: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    cell_size = GRID_CELL_SIZE_BY_CRS[cadastral_crs]
+    cells_by_id: dict[str, dict[str, Any]] = {}
+    parcel_rows: list[dict[str, Any]] = []
+    for row in rows:
+        bbox = (
+            float(row["bbox_minx"]),
+            float(row["bbox_miny"]),
+            float(row["bbox_maxx"]),
+            float(row["bbox_maxy"]),
+        )
+        for cell_row in _iter_cells_for_bbox(bbox=bbox, cell_size=cell_size):
+            cell_id = str(cell_row["cell_id"])
+            cells_by_id.setdefault(cell_id, cell_row)
+            parcel_rows.append(
+                {
+                    "cell_id": cell_id,
+                    "pnu": str(row["pnu"]),
+                    "lod_level": 0,
+                }
+            )
+    return list(cells_by_id.values()), parcel_rows
+
+
+def _iter_cells_for_bbox(
+    *,
+    bbox: tuple[float, float, float, float],
+    cell_size: float,
+) -> Iterable[dict[str, Any]]:
+    min_x, min_y, max_x, max_y = bbox
+    start_col = floor(min_x / cell_size)
+    end_col = floor(max_x / cell_size)
+    start_row = floor(min_y / cell_size)
+    end_row = floor(max_y / cell_size)
+    for col in range(start_col, end_col + 1):
+        for row in range(start_row, end_row + 1):
+            cell_min_x = col * cell_size
+            cell_min_y = row * cell_size
+            yield {
+                "cell_id": _build_cell_id(col=col, row=row, grid_level=DEFAULT_GRID_LEVEL),
+                "grid_level": DEFAULT_GRID_LEVEL,
+                "minx": cell_min_x,
+                "miny": cell_min_y,
+                "maxx": cell_min_x + cell_size,
+                "maxy": cell_min_y + cell_size,
+            }
+
+
+def _build_cell_id(*, col: int, row: int, grid_level: int) -> str:
+    return f"g{grid_level}:{col}:{row}"
 
 
 def _compute_center(bounds: tuple[float, float, float, float]) -> tuple[float, float]:

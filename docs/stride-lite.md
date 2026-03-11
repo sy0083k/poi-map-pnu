@@ -15,7 +15,7 @@
 - 관리자 세션/자격
 - 업로드 데이터(관심 필지)
 - FlatGeobuf 지적도 파일
-- SQLite 렌더 인덱스(`parcel_render_item`)
+- SQLite 렌더 인덱스(`parcel_render_item`, `render_grid_cell`, `render_grid_parcel`)
 - 이벤트 로그
 - WMTS 공개 키
 
@@ -26,7 +26,7 @@
 
 ### Tampering
 - 위협: FGB 파일 변조
-- 통제: 운영 파일 권한/배포 절차/무결성 점검 + 관리자 업로드(`POST /admin/upload/cadastral-fgb`)의 내부망/세션/CSRF 검증 + FlatGeobuf 파서 검증 + `parcel_render_item` 재생성 실패 시 기존 인덱스 유지
+- 통제: 운영 파일 권한/배포 절차/무결성 점검 + 관리자 업로드(`POST /admin/upload/cadastral-fgb`)의 내부망/세션/CSRF 검증 + FlatGeobuf 파서 검증 + `parcel_render_item`/`render_grid_*` 재생성 실패 시 기존 인덱스 유지
 
 ### Information Disclosure
 - 위협: 비밀 설정 노출
@@ -46,7 +46,7 @@
 - 위협: `/api/file2map/upload/parse` 대용량 파일 반복 업로드 남용
 - 통제: 파일 확장자 검증 + 서버 파싱 예외 처리 + 클라이언트 로컬 폴백
 - 위협: 대량 PNU 하이라이트 조회 남용
-- 통제: `/api/cadastral/highlights` 입력 PNU 개수 상한(최대 10,000) + bbox 형식/범위 검증 + SQLite `parcel_render_item` 조회 + 서버 응답 캐시(TTL) + 클라이언트 폴백
+- 통제: `/api/cadastral/highlights` 입력 PNU 개수 상한(최대 10,000) + bbox 형식/범위 검증 + SQLite `render_grid_*` 후보 축소 + `parcel_render_item` 조회 + 서버 응답 캐시(TTL) + 클라이언트 폴백
 - 위협: 관리자 FGB 초대형 파일 업로드로 디스크/처리 시간 소모
 - 통제: 확장자/콘텐츠타입/파일크기 상한(1GB)/파서 검증 후 교체, 실패 시 기존 운영 파일 유지
 
@@ -58,7 +58,7 @@
 
 ## 잔여 위험
 - 인메모리 레이트리밋은 멀티 인스턴스에서 일관성 한계
-- FGB 파일 또는 `parcel_render_item` 재생성 실수 시 지도 장애 가능
+- FGB 파일 또는 `parcel_render_item`/`render_grid_*` 재생성 실수 시 지도 장애 가능
 - 원시 로그 CSV 반출 후 2차 유출 위험
 - 공용 단말 브라우저에서 `/file2map` 로컬 업로드 데이터 잔존 가능
 - 공용 단말 브라우저에서 `/photo2map` 로컬 사진 열람 흔적(세션/캐시) 잔존 가능

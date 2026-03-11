@@ -116,7 +116,7 @@ uvicorn app.main:app --reload
    - 필수 컬럼: `고유번호`, `소재지`, `지목`, `실면적`, `재산관리관`
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩은 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(초기 화면 밖 필지 누락 고정 방지).
-   - 서버는 FGB를 직접 재스캔하지 않고 SQLite `parcel_render_item` 렌더 인덱스에서 PNU별 geometry를 조회한다.
+   - 서버는 FGB를 직접 재스캔하지 않고 bbox 요청 시 SQLite `render_grid_cell`/`render_grid_parcel`로 후보 PNU를 줄인 뒤 `parcel_render_item` 렌더 인덱스에서 geometry를 조회한다.
    - `/siyu` 초기 진입은 `/api/lands/list`의 현재 지도 extent 기반 `bbox` 첫 페이지로 시작하며, 하이라이트 요청도 같은 context bbox를 함께 전달하고 첫 요청 PNU는 최대 300건으로 제한한다.
    - `/siyu`의 viewport query `bboxCrs`는 현재 화면 좌표계를 따르며, 실제 하이라이트 geometry 렌더 좌표계는 `CADASTRAL_FGB_CRS`를 따른다.
    - `/siyu` 첫 seed 하이라이트가 context bbox에서 0건이면 같은 capped PNU 집합으로 bbox 없이 1회 재시도해 빈 레이어 고정을 방지한다.
@@ -258,8 +258,8 @@ uvicorn app.main:app --reload
 - 로그인 실패 제한과 이벤트 레이트리밋은 현재 인메모리 구현입니다. 다중 인스턴스 운영 시 인스턴스 간 상태가 공유되지 않으므로 별도 공유 스토어 기반 정책을 고려하세요.
 - API 버전 정책(`/api` vs `/api/v1`)의 운영 절차는 `docs/architecture.md`와 `docs/maintenance.md`를 기준으로 관리하세요.
 - `POST /admin/upload/cadastral-fgb` 성공 시 기존 운영 경로 FGB 파일은 정리(삭제)되므로, 필요 시 사전 백업 후 진행하세요.
-- 하이라이트는 SQLite `parcel_render_item` + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 렌더 인덱스 재생성 여부, 브라우저 저장소 제한/삭제 여부, `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
-- `POST /admin/upload/cadastral-fgb` 성공 시 새 FGB 검증 후 `parcel_render_item`을 즉시 재생성한다. 재생성 실패 시 기존 운영 FGB/렌더 인덱스를 유지한다.
+- 하이라이트는 SQLite `render_grid_*` 후보 축소 + `parcel_render_item` geometry 캐시 + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 렌더 인덱스 재생성 여부, 브라우저 저장소 제한/삭제 여부, `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
+- `POST /admin/upload/cadastral-fgb` 성공 시 새 FGB 검증 후 `parcel_render_item`과 `render_grid_*`를 즉시 재생성한다. 재생성 실패 시 기존 운영 FGB/렌더 인덱스를 유지한다.
 
 ### 연속지적도 Shapefile → FlatGeobuf 변환(ogr2ogr)
 다음 명령으로 Shapefile(`LSMD_CONT_LDREG_44210_202602.shp`)을 서비스용 FlatGeobuf(`LSMD_CONT_LDREG_44210_202602.fgb`)로 변환할 수 있습니다.

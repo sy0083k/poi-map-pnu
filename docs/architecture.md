@@ -77,7 +77,7 @@
    - 유틸리티 사이드바 목록은 항상 `PNU` 오름차순으로 정렬한다.
    - `조건에 맞는 토지 찾기` 실행 후 현재 지도 화면에 결과 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 스크롤한다.
 3. 클라이언트는 목록 PNU를 대상으로 하이라이트를 구성한다.
-   - 기본 경로는 서버 API(`/api/cadastral/highlights`)이며, 서버는 SQLite `parcel_render_item` 렌더 인덱스에서 `PNU IN (...)` 조회를 수행한다.
+   - 기본 경로는 서버 API(`/api/cadastral/highlights`)이며, 서버는 bbox 요청 시 SQLite `render_grid_cell`/`render_grid_parcel` 인덱스로 후보 PNU를 먼저 줄인 뒤 `parcel_render_item`에서 geometry를 조회한다.
    - `/siyu` 초기 진입과 moveend 재조회는 현재 extent를 1.5배 확장한 `bbox`를 함께 전달하고, 첫 요청 대상 PNU는 최대 300건으로 제한한다.
    - `/siyu`의 viewport query는 현재 화면 좌표계(`bboxCrs`)를 사용하지만, 하이라이트 geometry 렌더 projection은 항상 `CADASTRAL_FGB_CRS`를 기준으로 처리한다.
    - MapLibre 렌더 경로는 `CADASTRAL_FGB_CRS=EPSG:3857` geometry를 내부 WGS84 변환 후 source에 적재한다.
@@ -86,6 +86,7 @@
    - `/siyu`에서 화면 밖 목록 항목을 클릭해 현재 컨텍스트에 geometry가 없으면, 우선 선택 필지 1건을 로드해 이동하고 이동 완료 후 moveend에서 주변 context bbox를 다시 채운다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트는 초기 로딩에서 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(부분 응답 고정 방지).
    - `parcel_render_item`은 FGB 교체 시 재생성되는 렌더 전용 캐시 테이블이며, `geom_geojson_full/mid/low`와 bbox/center 메타를 보관한다.
+   - `render_grid_cell`/`render_grid_parcel`은 고정 격자 기반 후보 축소 인덱스이며, 현재는 단일 `grid_level=0`만 사용한다.
    - 서버 경로 실패 시 클라이언트 Web Worker 파싱으로 자동 폴백한다.
    - 폴백 경로의 매칭 파싱은 Web Worker에서 수행해 메인 스레드 블로킹을 줄인다.
    - 결과는 IndexedDB 캐시(`theme + pnuSetHash + bbox + fgb ETag`)로 저장해 재방문 시 재스캔을 회피한다.
@@ -101,7 +102,7 @@
    - `/siyu(city_owned)`: 현재 검색 결과 `id` 집합을 `/api/lands/export`로 전송해 서버에서 Excel을 생성한다.
    - `/file2map(national_public)` + 로컬 업로드 모드: 현재 검색 결과를 브라우저에서 직접 Excel(`.xlsx`)로 생성해 다운로드한다.
 7. 지도 엔진별 투영 정책을 유지한다.
-   - `/api/cadastral/highlights` 응답은 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조를 반환하고 `meta.responseCrs`는 `CADASTRAL_FGB_CRS`와 동일하다.
+   - `/api/cadastral/highlights` 응답은 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조를 반환하고 `meta.responseCrs`는 `CADASTRAL_FGB_CRS`와 동일하다. bbox 요청에는 `meta.gridApplied/gridCellCount/gridCandidatePnuCount/fallbackUsed` 관측 필드가 추가된다.
    - `/siyu`(MapLibre)와 `/file2map`, `/photo2map`(OpenLayers)은 모두 서버 응답 geometry를 내부 `FeatureCollection`으로 재조립해 렌더링한다.
 8. 토지 선택 시 상세정보는 지도 팝업이 아니라 우상단 패널에서 동적으로 렌더링하며, 패널은 2열(속성/값) 그리드로 속성/값 Pair를 동일 라인(y축)에 정렬한다.
    - `/siyu(city_owned)`에서는 상세 패널 제목을 `재산 상세 정보`로 표시한다.

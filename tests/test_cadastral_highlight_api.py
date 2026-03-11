@@ -65,11 +65,13 @@ async def test_cadastral_highlights_reject_invalid_bbox(async_client: httpx.Asyn
 
 def _seed_render_items(db_path: Path) -> None:
     from app.db.connection import db_connection
-    from app.repositories import parcel_render_repository
+    from app.repositories import parcel_render_repository, render_grid_repository
 
     with db_connection() as conn:
         parcel_render_repository.init_schema(conn)
+        render_grid_repository.init_schema(conn)
         parcel_render_repository.prepare_staging_table(conn)
+        render_grid_repository.prepare_staging_tables(conn)
         parcel_render_repository.bulk_insert_staging(
             conn,
             [
@@ -113,7 +115,31 @@ def _seed_render_items(db_path: Path) -> None:
                 },
             ],
         )
+        render_grid_repository.bulk_insert_staging_cells(
+            conn,
+            [
+                {
+                    "cell_id": "g0:0:0",
+                    "grid_level": 0,
+                    "minx": 0.0,
+                    "miny": 0.0,
+                    "maxx": 1000.0,
+                    "maxy": 1000.0,
+                }
+            ],
+        )
+        render_grid_repository.bulk_insert_staging_parcels(
+            conn,
+            [
+                {
+                    "cell_id": "g0:0:0",
+                    "pnu": "1111111111111111111",
+                    "lod_level": 0,
+                }
+            ],
+        )
         parcel_render_repository.swap_staging_table(conn)
+        render_grid_repository.swap_staging_tables(conn)
         conn.commit()
 
 
@@ -136,6 +162,8 @@ def test_cadastral_highlight_service_build_filtered_response(
     assert response["items"][0]["geometry"]["coordinates"] == [1.0, 1.0]
     assert response["meta"]["matched"] == 1
     assert response["meta"]["responseCrs"] == "EPSG:3857"
+    assert response["meta"]["gridApplied"] is False
+    assert response["meta"]["fallbackUsed"] is False
 
 
 def test_cadastral_highlight_service_applies_bbox_filter(db_path: Path) -> None:
@@ -152,7 +180,37 @@ def test_cadastral_highlight_service_applies_bbox_filter(db_path: Path) -> None:
     )
     assert len(response["items"]) == 1
     assert response["meta"]["bboxApplied"] is True
-    assert response["meta"]["bboxFiltered"] == 1
+    assert response["meta"]["bboxFiltered"] == 0
+    assert response["meta"]["gridApplied"] is True
+    assert response["meta"]["gridCellCount"] == 1
+    assert response["meta"]["gridCandidatePnuCount"] == 1
+    assert response["meta"]["fallbackUsed"] is False
+
+
+def test_cadastral_highlight_service_falls_back_when_grid_index_missing(db_path: Path) -> None:
+    from app.db.connection import db_connection
+    from app.repositories import render_grid_repository
+    from app.services import cadastral_highlight_service
+
+    _seed_render_items(db_path)
+    with db_connection() as conn:
+        render_grid_repository.init_schema(conn)
+        conn.execute(f"DELETE FROM {render_grid_repository.PARCEL_TABLE_NAME}")
+        conn.execute(f"DELETE FROM {render_grid_repository.CELL_TABLE_NAME}")
+        conn.commit()
+
+    response = cadastral_highlight_service.build_filtered_geojson_response(
+        requested_pnus=["1111111111111111111"],
+        fgb_etag='W/"1-1"',
+        cadastral_crs="EPSG:3857",
+        bbox=(-1.0, -1.0, 20.0, 20.0),
+        bbox_crs="EPSG:3857",
+    )
+
+    assert len(response["items"]) == 1
+    assert response["meta"]["gridApplied"] is False
+    assert response["meta"]["fallbackUsed"] is True
+    assert response["meta"]["gridCellCount"] == 0
 
 
 def test_cadastral_highlight_service_selects_mid_lod_for_wide_bbox(db_path: Path) -> None:

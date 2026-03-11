@@ -1,8 +1,8 @@
 import sqlite3
 from typing import Sequence
 
-from app.repositories.parcel_render_repository import TABLE_NAME as PARCEL_RENDER_TABLE_NAME
 from app.repositories.land_repository_schema import TABLE_NAME, init_land_schema
+from app.repositories.parcel_render_repository import TABLE_NAME as PARCEL_RENDER_TABLE_NAME
 
 
 def fetch_lands_page_without_geom_filtered(

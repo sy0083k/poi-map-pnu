@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -8,7 +9,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from app.db.connection import db_connection
-from app.repositories import parcel_render_repository
+from app.repositories import parcel_render_repository, render_grid_repository
 from app.services import cadastral_fgb_service
 from app.services.cadastral_highlight_cache import (
     CACHE_KEY_VERSION,
@@ -30,6 +31,7 @@ SUPPORTED_CRS = {"EPSG:3857", "EPSG:4326"}
 DEBUG_PROBE_FGB_PATH = "data/LSMD_CONT_LDREG_44210_202602.fgb"
 DEFAULT_DEBUG_PROBE_LIMIT = 1000
 MAX_DEBUG_PROBE_LIMIT = 5000
+DEFAULT_GRID_LEVEL = 0
 
 
 def normalize_pnu(raw: Any) -> str:
@@ -242,6 +244,10 @@ def build_filtered_geojson_response(
     matched = 0
     bbox_filtered = 0
     source_bbox = bbox
+    grid_applied = False
+    grid_cell_count = 0
+    grid_candidate_pnu_count = len(requested_pnus)
+    fallback_used = False
     if bbox is not None and bbox_crs != cadastral_crs:
         try:
             source_bbox = transform_bbox_to_crs(bbox, source_crs=bbox_crs, target_crs=cadastral_crs)
@@ -249,7 +255,20 @@ def build_filtered_geojson_response(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     with db_connection(row_factory=True) as conn:
-        rows = parcel_render_repository.fetch_render_items_by_pnus(conn, pnus=requested_pnus)
+        candidate_pnus = requested_pnus
+        if source_bbox is not None:
+            try:
+                grid_cell_count, candidate_pnus = _filter_requested_pnus_with_grid(
+                    conn,
+                    source_bbox=source_bbox,
+                    requested_pnus=requested_pnus,
+                )
+                grid_applied = True
+                grid_candidate_pnu_count = len(candidate_pnus)
+            except sqlite3.Error:
+                fallback_used = True
+                grid_candidate_pnu_count = len(requested_pnus)
+        rows = parcel_render_repository.fetch_render_items_by_pnus(conn, pnus=candidate_pnus)
 
     lod = choose_lod(source_bbox=source_bbox, cadastral_crs=cadastral_crs)
     items: list[dict[str, Any]] = []
@@ -289,8 +308,35 @@ def build_filtered_geojson_response(
             "sourceCrs": cadastral_crs,
             "responseCrs": cadastral_crs,
             "geometryFormat": "geojson",
+            "gridApplied": grid_applied,
+            "gridCellCount": grid_cell_count,
+            "gridCandidatePnuCount": grid_candidate_pnu_count,
+            "fallbackUsed": fallback_used,
         },
     }
+
+
+def _filter_requested_pnus_with_grid(
+    conn: Any,
+    *,
+    source_bbox: tuple[float, float, float, float],
+    requested_pnus: list[str],
+) -> tuple[int, list[str]]:
+    if render_grid_repository.count_cells(conn) <= 0:
+        raise sqlite3.OperationalError("render grid index is empty")
+    cell_ids = render_grid_repository.fetch_intersecting_cell_ids(
+        conn,
+        bbox=source_bbox,
+        grid_level=DEFAULT_GRID_LEVEL,
+    )
+    if not cell_ids:
+        return 0, []
+    candidate_pnus = render_grid_repository.fetch_candidate_pnus_for_cells(
+        conn,
+        cell_ids=cell_ids,
+        requested_pnus=requested_pnus,
+    )
+    return len(cell_ids), candidate_pnus
 
 
 def parse_geometry_for_lod(*, row: Any, lod: str) -> dict[str, Any] | None:
@@ -388,4 +434,3 @@ def _iter_dict_features(loaded: Any) -> Iterator[dict[str, Any]]:
     for item in raw_features:
         if isinstance(item, dict):
             yield item
-

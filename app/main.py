@@ -25,6 +25,7 @@ from app.repositories import (
     job_repository,
     land_repository,
     parcel_render_repository,
+    render_grid_repository,
     web_visit_repository,
 )
 from app.routers import admin, auth, map_router, map_v1_router
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         event_repository.init_event_schema(conn)
         web_visit_repository.init_web_visit_schema(conn)
         parcel_render_repository.init_schema(conn)
+        render_grid_repository.init_schema(conn)
         conn.commit()
     parcel_render_build_service.ensure_render_items_current(
         base_dir=settings.base_dir,
