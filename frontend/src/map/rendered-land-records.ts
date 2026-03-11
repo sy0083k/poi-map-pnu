@@ -60,7 +60,8 @@ export function haveRenderedPropertiesChanged(
 
 export function createRenderedLandRecordMap(
   items: LandListItem[],
-  geometriesByPnu: Map<string, unknown>
+  geometriesByPnu: Map<string, unknown>,
+  listIndexByPnu?: Map<string, number>
 ): RenderedLandRecordMap {
   const next = new Map<string, RenderedLandRecord>();
   items.forEach((item, index) => {
@@ -72,11 +73,12 @@ export function createRenderedLandRecordMap(
     if (!geometry) {
       return;
     }
+    const listIndex = listIndexByPnu?.get(normalizedPnu) ?? index;
     next.set(normalizedPnu, {
       pnu: normalizedPnu,
       geometry,
       properties: {
-        list_index: index,
+        list_index: listIndex,
         id: item.id,
         pnu: item.pnu,
         address: item.address,

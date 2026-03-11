@@ -151,6 +151,18 @@ function nextAnimationFrame(): Promise<void> {
   });
 }
 
+function buildListIndexByPnu(items: LandListItem[]): Map<string, number> {
+  const next = new Map<string, number>();
+  items.forEach((item, index) => {
+    const normalizedPnu = normalizePnu(item.pnu);
+    if (!normalizedPnu) {
+      return;
+    }
+    next.set(normalizedPnu, index);
+  });
+  return next;
+}
+
 export async function reloadCadastralLayers(
   deps: HighlightDeps,
   options?: ReloadOptions
@@ -188,6 +200,7 @@ export async function reloadCadastralLayers(
   }
 
   const featuresByPnu = getFeaturesByPnu(deps, datasetKey);
+  const listIndexByPnu = buildListIndexByPnu(currentItems);
   const renderRequestSeq = deps.getRenderRequestSeq() + 1;
   deps.setRenderRequestSeq(renderRequestSeq);
   deps.setPendingRenderSignature(renderSignature);
@@ -201,9 +214,13 @@ export async function reloadCadastralLayers(
     prioritizedIndex >= 0 ? prioritizedIndex : null
   );
 
-  let stagedByPnu = createRenderedLandRecordMap(priorityItems, featuresByPnu);
+  let stagedByPnu = createRenderedLandRecordMap(priorityItems, featuresByPnu, listIndexByPnu);
   if (stagedByPnu.size === 0) {
-    stagedByPnu = createRenderedLandRecordMap(currentItems.slice(0, DEFAULT_VISIBLE_SEED_SIZE), featuresByPnu);
+    stagedByPnu = createRenderedLandRecordMap(
+      currentItems.slice(0, DEFAULT_VISIBLE_SEED_SIZE),
+      featuresByPnu,
+      listIndexByPnu
+    );
   }
 
   await deps.mapView.applyFeatureDiff(stagedByPnu, {
@@ -226,7 +243,7 @@ export async function reloadCadastralLayers(
     if (renderRequestSeq !== deps.getRenderRequestSeq()) {
       return;
     }
-    const nextChunkByPnu = createRenderedLandRecordMap(remainderChunk, featuresByPnu);
+    const nextChunkByPnu = createRenderedLandRecordMap(remainderChunk, featuresByPnu, listIndexByPnu);
     stagedByPnu = mergeRecordMaps(stagedByPnu, nextChunkByPnu);
     await deps.mapView.applyFeatureDiff(stagedByPnu, {
       dataProjection: getRenderProjection(deps, config),

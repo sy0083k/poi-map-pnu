@@ -188,6 +188,29 @@ def test_select_highlight_theme_sync_contract() -> None:
     assert "deps.mapView.setTheme(initialTheme);" in init_ts
 
 
+def test_visible_first_highlight_preserves_original_list_indexes_contract() -> None:
+    rendered_records_ts = Path("frontend/src/map/rendered-land-records.ts").read_text(encoding="utf-8")
+    highlight_ts = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
+
+    assert_contains_all(
+        rendered_records_ts,
+        [
+            "listIndexByPnu?: Map<string, number>",
+            "const listIndex = listIndexByPnu?.get(normalizedPnu) ?? index;",
+            "list_index: listIndex,",
+        ],
+    )
+    assert_contains_all(
+        highlight_ts,
+        [
+            "function buildListIndexByPnu(items: LandListItem[]): Map<string, number> {",
+            "const listIndexByPnu = buildListIndexByPnu(currentItems);",
+            "createRenderedLandRecordMap(priorityItems, featuresByPnu, listIndexByPnu)",
+            "createRenderedLandRecordMap(remainderChunk, featuresByPnu, listIndexByPnu)",
+        ],
+    )
+
+
 def test_siyu_maplibre_route_split_contract() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     cache_ts = Path("frontend/src/map/cadastral-fgb-cache.ts").read_text(encoding="utf-8")
