@@ -40,6 +40,8 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let themeLoadRequestSeq = 0;
   let highlightLoadAbortController: AbortController | null = null;
   let lastRenderedHighlightSignature = "";
+  let pendingHighlightRenderSignature = "";
+  let highlightRenderRequestSeq = 0;
   const featuresByPnuIndexByDataset = new Map<string, { featuresByPnu: Map<string, unknown>; sourceFeatureCount: number }>();
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
   const serverFilterTheme: ThemeType = "city_owned";
@@ -139,8 +141,45 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     getLastRenderedSignature: () => lastRenderedHighlightSignature,
     setLastRenderedSignature: (value: string) => {
       lastRenderedHighlightSignature = value;
+    },
+    getPendingRenderSignature: () => pendingHighlightRenderSignature,
+    setPendingRenderSignature: (value: string) => {
+      pendingHighlightRenderSignature = value;
+    },
+    getRenderRequestSeq: () => highlightRenderRequestSeq,
+    setRenderRequestSeq: (value: number) => {
+      highlightRenderRequestSeq = value;
+    },
+    getCurrentIndex: () => deps.state.getCurrentIndex(),
+    getCurrentExtent: () => deps.mapView.getCurrentExtent()
+  };
+
+  const cancelPendingHighlightRender = (): void => {
+    highlightRenderRequestSeq += 1;
+    pendingHighlightRenderSignature = "";
+  };
+
+  const retrySelectionHighlight = (index: number): void => {
+    void (async () => {
+      await reloadCadastralLayers(highlightDeps, { prioritizeIndex: index });
+      const movedAfterReload = deps.mapView.selectFeatureByIndex(index, { shouldFit: true });
+      if (!movedAfterReload) {
+        deps.setMapStatus("선택한 필지 하이라이트를 찾지 못했습니다.", "#b45309");
+        return;
+      }
+      updateNavigation();
+      deps.listPanel.scrollTo(index);
+    })();
+  };
+
+  const setLastRenderedHighlightSignature = (value: string): void => {
+    lastRenderedHighlightSignature = value;
+    if (value !== "") {
+      pendingHighlightRenderSignature = "";
     }
   };
+
+  highlightDeps.setLastRenderedSignature = setLastRenderedHighlightSignature;
 
   const setConfig = (nextConfig: MapConfig): void => {
     config = nextConfig;
@@ -164,7 +203,9 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     }
     const moved = deps.mapView.selectFeatureByIndex(index, { shouldFit: options.shouldFit });
     if (!moved) {
-      deps.setMapStatus("선택한 필지 하이라이트를 찾지 못했습니다.", "#b45309");
+      deps.setMapStatus("선택한 필지 하이라이트를 다시 준비하는 중입니다...", "#166534");
+      retrySelectionHighlight(index);
+      return;
     }
     updateNavigation();
     deps.listPanel.scrollTo(index);
@@ -201,6 +242,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         deps.listPanel.render([], () => {});
         deps.mapView.clearInfoPanelContentOnly();
         updateNavigation();
+        cancelPendingHighlightRender();
         deps.mapView.clearRenderedFeatures();
         deps.setMapStatus(`재산관리관 다중 검출: ${uniqueManagers.join(", ")}. 정확한 재산관리관을 입력하세요.`, "#1d4ed8");
         return;
@@ -246,6 +288,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.listPanel.clear();
       deps.mapView.clearInfoPanel();
       updateNavigation();
+      cancelPendingHighlightRender();
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
       uploadedHighlightDatasetKey = "empty";
       deps.mapView.clearRenderedFeatures();
@@ -275,6 +318,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         return;
       }
       deps.state.setOriginalItems([]);
+      cancelPendingHighlightRender();
       await applyFilters(false);
       const fallbackMessage = error instanceof HttpError ? `${themeLabel} 목록 로딩 실패: ${error.message} (하이라이트 없이 표시됩니다.)` : `${themeLabel} 목록 로딩에 실패했습니다. 하이라이트 없이 표시합니다.`;
       deps.listPanel.setStatus(fallbackMessage, "#b45309");

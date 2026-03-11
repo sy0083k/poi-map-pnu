@@ -93,3 +93,58 @@ export function createRenderedLandRecordMap(
 export function normalizeRenderedRecordPnu(raw: unknown): string {
   return normalizePnu(raw);
 }
+
+function toCoordinateArray(value: unknown): unknown[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  return value;
+}
+
+function foldGeometryBbox(
+  coordinates: unknown,
+  bbox: [number, number, number, number] | null
+): [number, number, number, number] | null {
+  const items = toCoordinateArray(coordinates);
+  if (!items) {
+    return bbox;
+  }
+  if (
+    items.length >= 2 &&
+    typeof items[0] === "number" &&
+    Number.isFinite(items[0]) &&
+    typeof items[1] === "number" &&
+    Number.isFinite(items[1])
+  ) {
+    const x = items[0];
+    const y = items[1];
+    return bbox
+      ? [Math.min(bbox[0], x), Math.min(bbox[1], y), Math.max(bbox[2], x), Math.max(bbox[3], y)]
+      : [x, y, x, y];
+  }
+
+  let nextBbox = bbox;
+  items.forEach((child) => {
+    nextBbox = foldGeometryBbox(child, nextBbox);
+  });
+  return nextBbox;
+}
+
+export function computeGeometryBbox(geometry: unknown): [number, number, number, number] | null {
+  if (!geometry || typeof geometry !== "object") {
+    return null;
+  }
+  const coordinates = (geometry as { coordinates?: unknown }).coordinates;
+  return foldGeometryBbox(coordinates, null);
+}
+
+export function intersectsGeometryBbox(
+  geometry: unknown,
+  extent: [number, number, number, number]
+): boolean {
+  const bbox = computeGeometryBbox(geometry);
+  if (!bbox) {
+    return false;
+  }
+  return bbox[0] <= extent[2] && bbox[2] >= extent[0] && bbox[1] <= extent[3] && bbox[3] >= extent[1];
+}

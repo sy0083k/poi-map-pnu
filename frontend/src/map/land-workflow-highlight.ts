@@ -1,11 +1,15 @@
 import { loadUploadedHighlights, type HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
-import { createRenderedLandRecordMap } from "./rendered-land-records";
+import { createRenderedLandRecordMap, intersectsGeometryBbox } from "./rendered-land-records";
 
 import type { FeatureDiffOptions, LandFeatureCollection, LandListItem, MapConfig, RenderedLandRecordMap, ThemeType } from "./types";
 
 type FeatureIndexEntry = {
   featuresByPnu: Map<string, unknown>;
   sourceFeatureCount: number;
+};
+
+type ReloadOptions = {
+  prioritizeIndex?: number;
 };
 
 type HighlightDeps = {
@@ -35,9 +39,16 @@ type HighlightDeps = {
   updateNavigation: () => void;
   getLastRenderedSignature: () => string;
   setLastRenderedSignature: (value: string) => void;
+  getPendingRenderSignature: () => string;
+  setPendingRenderSignature: (value: string) => void;
+  getRenderRequestSeq: () => number;
+  setRenderRequestSeq: (value: number) => void;
+  getCurrentIndex: () => number;
 };
 
 const normalizePnu = (raw: unknown): string => String(raw ?? "").replace(/\D/g, "");
+const DEFAULT_VISIBLE_SEED_SIZE = 200;
+const DEFAULT_BACKGROUND_CHUNK_SIZE = 150;
 const getRenderProjection = (deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] =>
   deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs;
 
@@ -67,7 +78,83 @@ const getFeaturesByPnu = (deps: HighlightDeps, datasetKey: string): Map<string, 
   return rebuilt;
 };
 
-export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> {
+function createVisibleFirstItemOrder(
+  items: LandListItem[],
+  featuresByPnu: Map<string, unknown>,
+  extent: number[] | null,
+  prioritizeIndex: number | null
+): { priorityItems: LandListItem[]; remainingItems: LandListItem[] } {
+  const priorityIndexes = new Set<number>();
+  const visibleExtent =
+    extent && extent.length === 4
+      ? ([extent[0], extent[1], extent[2], extent[3]] as [number, number, number, number])
+      : null;
+
+  if (visibleExtent) {
+    items.forEach((item, index) => {
+      const geometry = featuresByPnu.get(normalizePnu(item.pnu));
+      if (geometry && intersectsGeometryBbox(geometry, visibleExtent)) {
+        priorityIndexes.add(index);
+      }
+    });
+  }
+
+  if (typeof prioritizeIndex === "number" && prioritizeIndex >= 0 && prioritizeIndex < items.length) {
+    priorityIndexes.add(prioritizeIndex);
+  }
+
+  if (priorityIndexes.size === 0) {
+    const seedCount = Math.min(DEFAULT_VISIBLE_SEED_SIZE, items.length);
+    for (let index = 0; index < seedCount; index += 1) {
+      priorityIndexes.add(index);
+    }
+  }
+
+  const priorityItems: LandListItem[] = [];
+  const remainingItems: LandListItem[] = [];
+  items.forEach((item, index) => {
+    if (priorityIndexes.has(index)) {
+      priorityItems.push(item);
+      return;
+    }
+    remainingItems.push(item);
+  });
+  return { priorityItems, remainingItems };
+}
+
+function mergeRecordMaps(
+  base: RenderedLandRecordMap,
+  incoming: RenderedLandRecordMap
+): RenderedLandRecordMap {
+  const merged = new Map(base);
+  incoming.forEach((value, key) => {
+    merged.set(key, value);
+  });
+  return merged;
+}
+
+function chunkItems<T>(items: T[], size: number): T[][] {
+  if (items.length === 0) {
+    return [];
+  }
+  const chunkSize = Math.max(1, size);
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
+function nextAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
+}
+
+export async function reloadCadastralLayers(
+  deps: HighlightDeps,
+  options?: ReloadOptions
+): Promise<void> {
   const config = deps.getConfig();
   if (!config) {
     return;
@@ -77,6 +164,8 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
   const datasetKey = getRuntimeDatasetKey(deps);
   const renderSignature = `${datasetKey}:${deps.getUploadedHighlightFeatures().features.length}:${currentItems.map((item) => item.id).join(",")}`;
   if (currentItems.length === 0) {
+    deps.setRenderRequestSeq(deps.getRenderRequestSeq() + 1);
+    deps.setPendingRenderSignature("");
     if (deps.getLastRenderedSignature() === `${datasetKey}:${deps.getUploadedHighlightFeatures().features.length}:empty`) {
       deps.updateNavigation();
       return;
@@ -93,20 +182,74 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
     deps.updateNavigation();
     return;
   }
+  if (deps.getPendingRenderSignature() === renderSignature && options?.prioritizeIndex === undefined) {
+    deps.updateNavigation();
+    return;
+  }
 
   const featuresByPnu = getFeaturesByPnu(deps, datasetKey);
+  const renderRequestSeq = deps.getRenderRequestSeq() + 1;
+  deps.setRenderRequestSeq(renderRequestSeq);
+  deps.setPendingRenderSignature(renderSignature);
 
-  const nextByPnu = createRenderedLandRecordMap(currentItems, featuresByPnu);
-  await deps.mapView.applyFeatureDiff(nextByPnu, {
+  const prioritizedIndex =
+    options?.prioritizeIndex !== undefined ? options.prioritizeIndex : deps.getCurrentIndex();
+  const { priorityItems, remainingItems } = createVisibleFirstItemOrder(
+    currentItems,
+    featuresByPnu,
+    deps.mapView.getCurrentExtent(),
+    prioritizedIndex >= 0 ? prioritizedIndex : null
+  );
+
+  let stagedByPnu = createRenderedLandRecordMap(priorityItems, featuresByPnu);
+  if (stagedByPnu.size === 0) {
+    stagedByPnu = createRenderedLandRecordMap(currentItems.slice(0, DEFAULT_VISIBLE_SEED_SIZE), featuresByPnu);
+  }
+
+  await deps.mapView.applyFeatureDiff(stagedByPnu, {
     dataProjection: getRenderProjection(deps, config),
     datasetKey
   });
-  if (currentItems.length === 0) {
-    deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
-  } else {
-    deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건, ${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${nextByPnu.size}건`, "#166534");
+  if (renderRequestSeq !== deps.getRenderRequestSeq()) {
+    return;
   }
+
+  deps.setMapStatus(
+    `업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건, ${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${stagedByPnu.size}/${currentItems.length}건`,
+    "#166534"
+  );
+  deps.updateNavigation();
+
+  const remainderChunks = chunkItems(remainingItems, DEFAULT_BACKGROUND_CHUNK_SIZE);
+  for (const remainderChunk of remainderChunks) {
+    await nextAnimationFrame();
+    if (renderRequestSeq !== deps.getRenderRequestSeq()) {
+      return;
+    }
+    const nextChunkByPnu = createRenderedLandRecordMap(remainderChunk, featuresByPnu);
+    stagedByPnu = mergeRecordMaps(stagedByPnu, nextChunkByPnu);
+    await deps.mapView.applyFeatureDiff(stagedByPnu, {
+      dataProjection: getRenderProjection(deps, config),
+      datasetKey
+    });
+    if (renderRequestSeq !== deps.getRenderRequestSeq()) {
+      return;
+    }
+    deps.setMapStatus(
+      `업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건, ${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${stagedByPnu.size}/${currentItems.length}건`,
+      "#166534"
+    );
+  }
+
+  if (renderRequestSeq !== deps.getRenderRequestSeq()) {
+    return;
+  }
+  deps.setPendingRenderSignature("");
   deps.setLastRenderedSignature(renderSignature);
+  deps.setMapStatus(
+    `업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건, ${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${stagedByPnu.size}건`,
+    "#166534"
+  );
   deps.updateNavigation();
 }
 
@@ -119,6 +262,8 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
   deps.getHighlightLoadAbortController()?.abort();
   const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu)));
   if (uploadedPnus.length === 0) {
+    deps.setRenderRequestSeq(deps.getRenderRequestSeq() + 1);
+    deps.setPendingRenderSignature("");
     deps.setUploadedHighlightFeatures({ type: "FeatureCollection", features: [] });
     deps.setUploadedHighlightDatasetKey("empty");
     deps.mapView.clearRenderedFeatures();
