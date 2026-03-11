@@ -398,7 +398,6 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       bbox
     });
     lastViewportContextKey = bboxHash;
-    deps.mapView.clearInfoPanel();
     await prepareContextHighlights(nextItems, bbox);
   };
 

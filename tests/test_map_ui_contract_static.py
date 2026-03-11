@@ -68,6 +68,11 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
     moveend_block = events_ts.split(moveend_anchor, maxsplit=1)[1].split("});", maxsplit=1)[0]
     assert "void reloadCadastralLayers();" not in moveend_block
 
+    viewport_anchor = "const loadViewportContext = async (options?: {"
+    assert viewport_anchor in workflow_ts
+    viewport_block = workflow_ts.split(viewport_anchor, maxsplit=1)[1].split("const loadMoreCurrentQuery", maxsplit=1)[0]
+    assert "deps.mapView.clearInfoPanel();" not in viewport_block
+
     assert_contains_all(
         map_ts,
         [

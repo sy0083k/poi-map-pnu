@@ -121,6 +121,7 @@ uvicorn app.main:app --reload
    - `/siyu`의 viewport query `bboxCrs`는 현재 화면 좌표계를 따르며, 실제 하이라이트 geometry 렌더 좌표계는 `CADASTRAL_FGB_CRS`를 따른다.
    - `/siyu` 첫 seed 하이라이트가 context bbox에서 0건이면 같은 capped PNU 집합으로 bbox 없이 1회 재시도해 빈 레이어 고정을 방지한다.
    - `/siyu` MapLibre 렌더러는 `CADASTRAL_FGB_CRS=EPSG:3857` geometry도 내부에서 EPSG:4326으로 변환해 표시한다.
+   - `/siyu`에서 토지 선택 후 fit에 따른 moveend가 발생해도 viewport context 재조회만으로 선택 상태와 상세 패널을 해제하지 않는다.
    - `/siyu` 이동(moveend) 후에는 현재 화면 기준 context bbox를 다시 계산해 주변 시유지 후보와 하이라이트를 증분 재조회한다.
    - 화면 밖 목록 항목을 클릭해 아직 하이라이트가 없으면, 우선 해당 필지 1건을 로드해 이동하고 이후 moveend에서 주변 context를 다시 채운다.
    - 클라이언트는 서버 응답을 우선 사용하고, 실패 시에만 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.

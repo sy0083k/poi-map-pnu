@@ -82,6 +82,7 @@
    - `/siyu`의 viewport query는 현재 화면 좌표계(`bboxCrs`)를 사용하지만, 하이라이트 geometry 렌더 projection은 항상 `CADASTRAL_FGB_CRS`를 기준으로 처리한다.
    - MapLibre 렌더 경로는 `CADASTRAL_FGB_CRS=EPSG:3857` geometry를 내부 WGS84 변환 후 source에 적재한다.
    - `/siyu` 첫 seed 하이라이트가 context bbox에서 0건이면 같은 capped PNU 집합으로 bbox 없이 1회 재시도해 빈 레이어 고정을 막는다.
+   - 선택 필지 fit 이후 발생하는 moveend는 viewport context만 갱신하며, 선택 halo/상세 패널은 선택 필지가 실제로 사라질 때까지 유지한다.
    - `/siyu`에서 화면 밖 목록 항목을 클릭해 현재 컨텍스트에 geometry가 없으면, 우선 선택 필지 1건을 로드해 이동하고 이동 완료 후 moveend에서 주변 context bbox를 다시 채운다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트는 초기 로딩에서 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(부분 응답 고정 방지).
    - `parcel_render_item`은 FGB 교체 시 재생성되는 렌더 전용 캐시 테이블이며, `geom_geojson_full/mid/low`와 bbox/center 메타를 보관한다.

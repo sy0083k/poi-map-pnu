@@ -167,6 +167,7 @@
 - `CADASTRAL_FGB_CRS` 값(EPSG:3857/EPSG:4326)과 실제 파일 CRS 정합 확인
 - `/siyu`에서 목록은 보이는데 경계가 안 보이면 viewport query `bboxCrs`와 하이라이트 geometry render projection(`CADASTRAL_FGB_CRS`)이 분리되어 있는지 먼저 확인
 - 같은 증상에서 `debugMap=1` 기준 geometry accepted가 0이면 MapLibre의 `EPSG:3857 -> EPSG:4326` 변환 경로와 drop reason을 우선 확인
+- `/siyu`에서 선택 직후 1초 내 강조가 사라지면 moveend 후 viewport context 재조회가 선택을 지우는지 확인하고, 빈 지도 클릭이 아닌데 `clearInfoPanel()`가 호출되지 않는지 점검
 - `/siyu`에서 렌더 원인 확인이 필요하면 `?debugMap=1` 쿼리로 접속 후 콘솔 `window.__mapDebug.getLandsSourceData()`/`window.__mapDebug.listLandsLayers()`로 source/layer 상태를 점검
 - 원본 FGB 자체 문제를 검색 흐름과 분리해 확인하려면 `/siyu?debugMap=1&debugFgb=1`로 접속 후 `window.__mapDebug.getDebugProbeSourceData()`/`window.__mapDebug.getDebugProbeMeta()`로 probe overlay 상태를 확인
 - debug probe API 단독 점검 시 `/api/cadastral/debug-probe?bbox=126.44,36.77,126.47,36.79&bboxCrs=EPSG:4326&limit=1000` 응답의 `meta.returned/truncated/sourceFile/outputCrs`를 확인
