@@ -1,6 +1,7 @@
 import sqlite3
 from typing import Sequence
 
+from app.repositories.parcel_render_repository import TABLE_NAME as PARCEL_RENDER_TABLE_NAME
 from app.repositories.land_repository_schema import TABLE_NAME, init_land_schema
 
 
@@ -15,6 +16,7 @@ def fetch_lands_page_without_geom_filtered(
     property_manager_term: str,
     property_usage_term: str,
     land_type_term: str,
+    bbox: tuple[float, float, float, float] | None = None,
     table_name: str = TABLE_NAME,
 ) -> Sequence[sqlite3.Row]:
     init_land_schema(conn, table_name=table_name)
@@ -42,6 +44,21 @@ def fetch_lands_page_without_geom_filtered(
     if land_type_term:
         clauses.append("instr(COALESCE(land_type, ''), ?) > 0")
         params.append(land_type_term)
+    if bbox is not None:
+        clauses.append(
+            f"""
+            EXISTS (
+                SELECT 1
+                  FROM {PARCEL_RENDER_TABLE_NAME} AS parcel
+                 WHERE parcel.pnu = {table_name}.pnu
+                   AND parcel.bbox_minx <= ?
+                   AND parcel.bbox_maxx >= ?
+                   AND parcel.bbox_miny <= ?
+                   AND parcel.bbox_maxy >= ?
+            )
+            """
+        )
+        params.extend([bbox[2], bbox[0], bbox[3], bbox[1]])
 
     where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     query = f"""

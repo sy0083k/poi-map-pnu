@@ -10,6 +10,7 @@ from fastapi.responses import Response
 
 from app.db.connection import db_connection
 from app.repositories import land_repository
+from app.services.cadastral_highlight_geometry import transform_bbox_to_crs
 from app.types import GeoJSONFeature, GeoJSONFeatureCollection
 
 PUBLIC_LAND_FIELDS = {
@@ -94,9 +95,15 @@ def get_public_land_list_page(
     limit: int,
     theme: ThemeType = "city_owned",
     filters: LandListFilters | None = None,
+    bbox: tuple[float, float, float, float] | None = None,
+    bbox_crs: str = "EPSG:4326",
+    cadastral_crs: str = "EPSG:3857",
 ) -> dict[str, Any]:
     normalized_filters = filters or LandListFilters()
     max_area = normalized_filters.max_area if math.isfinite(normalized_filters.max_area) else None
+    source_bbox = bbox
+    if bbox is not None and bbox_crs != cadastral_crs:
+        source_bbox = transform_bbox_to_crs(bbox, source_crs=bbox_crs, target_crs=cadastral_crs)
 
     with db_connection(row_factory=True) as conn:
         rows = land_repository.fetch_lands_page_without_geom_filtered(
@@ -109,6 +116,7 @@ def get_public_land_list_page(
             property_manager_term=normalized_filters.property_manager_term,
             property_usage_term=normalized_filters.property_usage_term,
             land_type_term=normalized_filters.land_type_term,
+            bbox=source_bbox,
             table_name=_table_name_for_theme(theme),
         )
 

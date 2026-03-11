@@ -301,14 +301,25 @@ export async function reloadCadastralLayers(
   deps.updateNavigation();
 }
 
-export async function prepareUploadedHighlights(deps: HighlightDeps, items: LandListItem[]): Promise<void> {
+export async function prepareUploadedHighlights(
+  deps: HighlightDeps,
+  items: LandListItem[],
+  options?: {
+    bbox?: [number, number, number, number];
+    bboxCrs?: "EPSG:3857" | "EPSG:4326";
+    maxPnus?: number;
+  }
+): Promise<void> {
   const config = deps.getConfig();
   if (!config) {
     return;
   }
 
   deps.getHighlightLoadAbortController()?.abort();
-  const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu)));
+  const uploadedPnus = Array.from(new Set(items.map((item) => item.pnu))).slice(
+    0,
+    Math.max(1, options?.maxPnus ?? items.length)
+  );
   if (uploadedPnus.length === 0) {
     deps.setRenderRequestSeq(deps.getRenderRequestSeq() + 1);
     deps.setPendingRenderSignature("");
@@ -348,6 +359,8 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
       outputCrs: getRenderProjection(deps, config),
       uploadedPnus,
       theme: deps.getCurrentTheme(),
+      bbox: options?.bbox,
+      bboxCrs: options?.bboxCrs,
       signal: controller.signal,
       onFeatures: (features, progress) => {
         if (seq !== deps.getUploadedHighlightsRequestSeq() || features.length === 0) {

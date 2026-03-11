@@ -117,6 +117,9 @@ uvicorn app.main:app --reload
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩은 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(초기 화면 밖 필지 누락 고정 방지).
    - 서버는 FGB를 직접 재스캔하지 않고 SQLite `parcel_render_item` 렌더 인덱스에서 PNU별 geometry를 조회한다.
+   - `/siyu` 초기 진입은 `/api/lands/list`의 현재 지도 extent 기반 `bbox` 첫 페이지로 시작하며, 하이라이트 요청도 같은 context bbox를 함께 전달하고 첫 요청 PNU는 최대 300건으로 제한한다.
+   - `/siyu` 이동(moveend) 후에는 현재 화면 기준 context bbox를 다시 계산해 주변 시유지 후보와 하이라이트를 증분 재조회한다.
+   - 화면 밖 목록 항목을 클릭해 아직 하이라이트가 없으면, 우선 해당 필지 1건을 로드해 이동하고 이후 moveend에서 주변 context를 다시 채운다.
    - 클라이언트는 서버 응답을 우선 사용하고, 실패 시에만 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.
    - `/siyu?debugFgb=1`에서는 검색과 무관하게 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 probe overlay로 1회 로드해 원본 파일 자체의 렌더 가능 여부를 점검한다.
    - `/siyu` 검색/재조회 렌더에서는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`) 단위 `Map<pnu, geometry>` 인덱스 캐시를 재사용해 반복 검색 시 전체 재구축을 피한다.
@@ -131,6 +134,7 @@ uvicorn app.main:app --reload
    - 글로벌 헤더에서 `주제도` 오른쪽에 탑레벨 `파일→지도` 메뉴가 표시되며, 클릭 시 `http://127.0.0.1:8000/file2map`(내부 경로 `/file2map`)로 이동한다.
    - 글로벌 헤더에 탑레벨 `사진→지도` 메뉴가 표시되며, 클릭 시 `http://127.0.0.1:8000/photo2map`(내부 경로 `/photo2map`)로 이동한다.
    - `시유지(/siyu)` 유틸리티 사이드바는 `재산용도` 콤보(`전체/행정재산/일반재산`) + `지목` + `재산관리관` + 면적 복합 검색을 지원한다.
+   - `/siyu` 초기 목록은 현재 화면 주변 첫 페이지를 우선 표시하고, 하단 `목록 더 불러오기`로 같은 query의 다음 페이지를 이어붙인다.
    - 유틸리티 사이드바 검색 결과 목록은 항상 `PNU` 오름차순으로 정렬된다.
    - `조건에 맞는 토지 찾기` 결과에 현재 화면 내 토지가 있으면, 그중 `PNU`가 가장 작은 토지가 목록 상단에 보이도록 자동 스크롤한다.
    - `시유지(/siyu)`에서 `재산관리관` 검색 결과의 고유값이 2개 이상이면 검색이 중단되고 상태 영역(`#map-status`)에 검출 목록이 표시된다.
@@ -191,6 +195,7 @@ uvicorn app.main:app --reload
 - `GET /api/lands/list`
   - `theme` 쿼리 지원: `city_owned` (미지정 시 기본 `city_owned`, `national_public`은 400)
   - `/siyu` 필터 서버 처리 쿼리(선택): `searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`
+  - `/siyu` 초기/이동 주변 목록 쿼리(선택): `bbox=minX,minY,maxX,maxY`, `bboxCrs=EPSG:4326|EPSG:3857`
 - `POST /api/lands/export`
   - 요청 본문: `theme`, `landIds[]`
   - 응답: 검색 결과 토지의 원본 업로드 컬럼 전체 속성 Excel(`.xlsx`)

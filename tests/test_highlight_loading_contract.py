@@ -1,12 +1,13 @@
 from pathlib import Path
 
 
-def test_land_workflow_uploaded_highlights_are_not_bbox_limited() -> None:
+def test_land_workflow_uploaded_highlights_support_bbox_and_cap() -> None:
     text = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
     assert "const loaded = await loadUploadedHighlights({" in text
     assert "theme: deps.getCurrentTheme()," in text
-    assert "bbox," not in text
-    assert "bboxCrs:" not in text
+    assert "bbox: options?.bbox," in text
+    assert "bboxCrs: options?.bboxCrs," in text
+    assert "options?.maxPnus" in text
     assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in text
 
 

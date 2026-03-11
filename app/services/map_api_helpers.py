@@ -67,6 +67,18 @@ def parse_debug_probe_query(
     return parsed_bbox, parsed_bbox_crs, parsed_limit
 
 
+def parse_optional_bbox_query(
+    *,
+    bbox: str | None,
+    bbox_crs: str | None,
+) -> tuple[tuple[float, float, float, float] | None, str]:
+    if bbox is None or bbox.strip() == "":
+        return None, cadastral_highlight_service.parse_bbox_crs(bbox_crs or "EPSG:4326")
+    parsed_bbox = cadastral_highlight_service.parse_debug_probe_bbox(bbox)
+    parsed_bbox_crs = cadastral_highlight_service.parse_bbox_crs(bbox_crs or "EPSG:4326")
+    return parsed_bbox, parsed_bbox_crs
+
+
 def build_rate_limit_key(request: Request, payload: dict[str, Any]) -> str:
     client_ip = request.client.host if request.client else "unknown"
     anon_id = str(payload.get("anonId", "")).strip()

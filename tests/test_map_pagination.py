@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from app.db.connection import db_connection
-from app.repositories import land_repository
+from app.repositories import land_repository, parcel_render_repository
+from app.services.cadastral_highlight_geometry import wgs84_to_mercator
 from tests.helpers import init_test_db, table_name_for_theme
 
 
@@ -29,6 +30,59 @@ def _seed_lands(count: int) -> None:
         for item_id, _ in missing:
             land_repository.update_geom(conn, item_id, '{"type":"Point","coordinates":[0,0]}')
         conn.commit()
+
+
+def _seed_render_item(
+    *,
+    pnu: str,
+    bbox: tuple[float, float, float, float],
+    conn: object,
+) -> None:
+    assert hasattr(conn, "execute")
+    parcel_render_repository.init_schema(conn)  # type: ignore[arg-type]
+    conn.execute(  # type: ignore[attr-defined]
+        f"""
+        INSERT OR REPLACE INTO {parcel_render_repository.TABLE_NAME} (
+            pnu,
+            bbox_minx,
+            bbox_miny,
+            bbox_maxx,
+            bbox_maxy,
+            center_x,
+            center_y,
+            area_m2,
+            vertex_count,
+            geom_geojson_full,
+            geom_geojson_mid,
+            geom_geojson_low,
+            label_x,
+            label_y,
+            source_fgb_etag,
+            source_fgb_path,
+            source_crs,
+            updated_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+        """,
+        (
+            pnu,
+            bbox[0],
+            bbox[1],
+            bbox[2],
+            bbox[3],
+            (bbox[0] + bbox[2]) / 2,
+            (bbox[1] + bbox[3]) / 2,
+            1.0,
+            4,
+            '{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}',
+            '{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}',
+            '{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}',
+            (bbox[0] + bbox[2]) / 2,
+            (bbox[1] + bbox[3]) / 2,
+            "etag",
+            "data/test.fgb",
+            "EPSG:4326",
+        ),
+    )
 
 
 @pytest.mark.anyio
@@ -151,6 +205,56 @@ async def test_lands_theme_query_v1_alias_matches(async_client: httpx.AsyncClien
     assert v0.status_code == 200
     assert v1.status_code == 200
     assert v0.json() == v1.json()
+
+
+@pytest.mark.anyio
+async def test_lands_list_supports_bbox_query(async_client: httpx.AsyncClient, db_path: object) -> None:
+    with db_connection(row_factory=True) as conn:
+        init_test_db(conn)
+        land_repository.delete_all(conn, table_name=table_name_for_theme("city_owned"))
+        parcel_render_repository.init_schema(conn)
+        land_repository.insert_land(
+            conn,
+            pnu="3333012345678901234",
+            address="inside-bbox",
+            land_type="전",
+            area=20.0,
+            property_manager="시유지",
+            source_fields_json="[]",
+            table_name=table_name_for_theme("city_owned"),
+        )
+        land_repository.insert_land(
+            conn,
+            pnu="3333012345678909999",
+            address="outside-bbox",
+            land_type="답",
+            area=25.0,
+            property_manager="시유지",
+            source_fields_json="[]",
+            table_name=table_name_for_theme("city_owned"),
+        )
+        inside_min = wgs84_to_mercator(126.0, 36.0)
+        inside_max = wgs84_to_mercator(126.1, 36.1)
+        outside_min = wgs84_to_mercator(128.0, 38.0)
+        outside_max = wgs84_to_mercator(128.1, 38.1)
+        _seed_render_item(
+            pnu="3333012345678901234",
+            bbox=(inside_min[0], inside_min[1], inside_max[0], inside_max[1]),
+            conn=conn,
+        )
+        _seed_render_item(
+            pnu="3333012345678909999",
+            bbox=(outside_min[0], outside_min[1], outside_max[0], outside_max[1]),
+            conn=conn,
+        )
+        conn.commit()
+
+    res = await async_client.get(
+        "/api/lands/list?limit=10&theme=city_owned&bbox=125.9,35.9,126.2,36.2&bboxCrs=EPSG:4326"
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    assert [item["address"] for item in payload["items"]] == ["inside-bbox"]
 
 
 @pytest.mark.anyio

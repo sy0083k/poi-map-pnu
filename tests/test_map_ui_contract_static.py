@@ -109,9 +109,10 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
             "정확한 재산관리관을 입력하세요.",
             "deps.mapView.clearRenderedFeatures();",
             "downloadClient.downloadSearchResultFile({",
+            'currentListMode === "search"',
+            "handleMoveEnd",
         ],
     )
-    assert 'currentTheme === "city_owned"' not in workflow_ts
 
     assert_contains_all(theme_routing_ts, ['const THEME_PATHS: Record<ThemeType, string> = {', 'national_public: "/file2map"', 'city_owned: "/siyu"'])
     assert_not_contains_all(
@@ -129,8 +130,11 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
 def test_lands_list_client_sends_theme_query() -> None:
     client_ts = Path("frontend/src/map/lands-list-client.ts").read_text(encoding="utf-8")
     assert "export async function loadAllLandListItems(theme: ThemeType, filters?: FilterValues)" in client_ts
-    assert 'const query = new URLSearchParams({ limit: "500", theme });' in client_ts
+    assert "export async function loadFirstLandListPage(" in client_ts
+    assert "export async function loadNextLandListPage(" in client_ts
+    assert 'const query = new URLSearchParams({ limit: "500", theme: params.theme });' in client_ts
     assert 'query.set("propertyUsage", filters.propertyUsageTerm);' in client_ts
+    assert 'query.set("bbox", params.bbox.join(","));' in client_ts
 
 
 def test_select_highlight_render_contract() -> None:

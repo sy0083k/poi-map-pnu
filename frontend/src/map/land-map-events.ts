@@ -12,6 +12,7 @@ export function bindLandMapEvents(deps: {
     applyFilters: (trackEvent?: boolean) => Promise<void>;
     resetFilters: (syncDesktopToMobileInputs: () => void) => void;
     downloadCurrentSearchResults: () => void;
+    handleMoveEnd: () => void;
     navigateItem: (direction: number) => void;
     loadThemeData: (theme: "national_public" | "city_owned") => Promise<void>;
   };
@@ -34,8 +35,18 @@ export function bindLandMapEvents(deps: {
   applyLegendUiState: (theme: "national_public" | "city_owned") => void;
   resetLegendDismissed: () => void;
 }): void {
+  const MOVEEND_DEBOUNCE_MS = 250;
+  let moveEndTimer: number | null = null;
   deps.mapView.setFeatureClickHandler(({ index }) => deps.workflow.selectItem(index, { shouldFit: false, clickSource: "map_click" }));
-  deps.mapView.setMoveEndHandler(() => {});
+  deps.mapView.setMoveEndHandler(() => {
+    if (moveEndTimer !== null) {
+      window.clearTimeout(moveEndTimer);
+    }
+    moveEndTimer = window.setTimeout(() => {
+      moveEndTimer = null;
+      deps.workflow.handleMoveEnd();
+    }, MOVEEND_DEBOUNCE_MS);
+  });
 
   document.getElementById("btn-search")?.addEventListener("click", () => void deps.workflow.applyFilters(true));
   document.getElementById("btn-reset-filters")?.addEventListener("click", () => deps.workflow.resetFilters(deps.syncDesktopToMobileInputs));

@@ -18,6 +18,7 @@ const snapHeights = {
 export function createListPanel(elements: ListPanelElements) {
   let startY = 0;
   let startHeight = 0;
+  let loadMoreButton: HTMLButtonElement | null = null;
 
   const setStatus = (message: string, color = "#999"): void => {
     if (!elements.listContainer) {
@@ -64,11 +65,37 @@ export function createListPanel(elements: ListPanelElements) {
     });
   };
 
+  const setLoadMore = (params: {
+    visible: boolean;
+    disabled?: boolean;
+    label?: string;
+    onClick?: () => void;
+  }): void => {
+    if (!elements.listContainer) {
+      return;
+    }
+    if (!params.visible) {
+      loadMoreButton?.remove();
+      loadMoreButton = null;
+      return;
+    }
+    if (!(loadMoreButton instanceof HTMLButtonElement)) {
+      loadMoreButton = document.createElement("button");
+      loadMoreButton.type = "button";
+      loadMoreButton.className = "btn-secondary list-load-more";
+    }
+    loadMoreButton.textContent = params.label ?? "더 불러오기";
+    loadMoreButton.disabled = Boolean(params.disabled);
+    loadMoreButton.onclick = () => params.onClick?.();
+    elements.listContainer.appendChild(loadMoreButton);
+  };
+
   const clear = (): void => {
     if (!elements.listContainer) {
       return;
     }
     elements.listContainer.replaceChildren();
+    loadMoreButton = null;
   };
 
   const setSelected = (index: number): void => {
@@ -152,6 +179,7 @@ export function createListPanel(elements: ListPanelElements) {
     render,
     scrollTo,
     setStatus,
+    setLoadMore,
     updateNavigation
   };
 }

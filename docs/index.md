@@ -22,6 +22,8 @@
 - FGB 원본 진단 API: `/api/cadastral/debug-probe` (`/api/v1/cadastral/debug-probe` alias)
 - 하이라이트 성능: 기본 경로는 SQLite `parcel_render_item` 기반 `/api/cadastral/highlights` 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
 - `/siyu` 하이라이트 계약: 서버는 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조와 `meta.responseCrs`를 반환하고 클라이언트가 내부 `FeatureCollection`으로 재조립해 렌더링
+- `/siyu` 초기 로딩 정책: 현재 지도 extent를 1.5배 확장한 `bbox` 기준 목록 첫 페이지와 하이라이트 최대 300건을 우선 로드하고, moveend 후 주변 context를 다시 채운다
+- `/siyu` 목록 정책: 초기 진입은 전체 목록 선적재를 하지 않고 `목록 더 불러오기`로 같은 query의 다음 페이지를 이어붙인다
 - `/siyu` 원본 FGB 진단 모드: `?debugFgb=1`에서 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 별도 오버레이로 1회 로드
 - 하이라이트 캐시 정책: 캐시 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 브라우저 캐시는 IndexedDB 스키마 갱신으로 무효화한다
 - `/siyu` 렌더 최적화: 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스를 재사용하고, 0건 검색은 조기 종료
@@ -55,7 +57,7 @@
 - 연속지적도 운영 파일 업로드: `POST /admin/upload/cadastral-fgb` (업로드 파일명 유지 저장 + `CADASTRAL_FGB_PATH` 즉시 갱신 + `parcel_render_item` 즉시 재생성 + 이전 운영 파일 정리)
 - 레거시 정리: `python scripts/remove_legacy_national_table.py`로 구 테이블(`poi`) 제거 가능(`--dry-run` 지원)
 - 지도 목록 조회: `/api/lands`, `/api/lands/list`는 `theme` 쿼리 `city_owned`만 지원(미지정 시 기본 `city_owned`)
-- `/siyu` 목록 필터(주소/면적/재산관리관/재산용도/지목)는 `/api/lands/list` 서버 쿼리(`searchTerm/minArea/maxArea/propertyManager/propertyUsage/landType`)로 처리하고, 실패 시 클라이언트 로컬 폴백을 사용
+- `/siyu` 목록 필터(주소/면적/재산관리관/재산용도/지목)는 `/api/lands/list` 서버 쿼리(`searchTerm/minArea/maxArea/propertyManager/propertyUsage/landType`)로 처리하고, 초기/이동 주변 목록은 additive query(`bbox`, `bboxCrs`)를 사용하며 실패 시 클라이언트 로컬 폴백을 사용
 - 유틸리티 사이드바 결과 목록은 `PNU` 오름차순 정렬을 유지하며, `조건에 맞는 토지 찾기` 후 화면 내 토지가 있으면 `PNU` 최소 항목이 목록 상단에 보이도록 자동 스크롤한다
 - 검색 결과 다운로드: `/siyu`는 `/api/lands/export` 서버 다운로드, `/file2map` 로컬 업로드 모드는 브라우저 Excel 생성 다운로드
 - 헤더 메뉴 정렬: 데스크톱에서 `시작/배경지도/주제도` 시작 x좌표를 사이드바 끝점 고정 오프셋으로 배치

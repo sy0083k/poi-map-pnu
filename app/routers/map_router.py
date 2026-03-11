@@ -113,6 +113,7 @@ def create_router() -> APIRouter:
 
     @router.get("/lands/list")
     async def get_lands_list(
+        request: Request,
         limit: int = DEFAULT_LANDS_PAGE_LIMIT,
         cursor: str | None = None,
         theme: str | None = None,
@@ -122,6 +123,8 @@ def create_router() -> APIRouter:
         propertyManager: str | None = None,
         propertyUsage: str | None = None,
         landType: str | None = None,
+        bbox: str | None = None,
+        bboxCrs: str | None = None,
     ) -> dict[str, Any]:
         clamped_limit = max(1, min(limit, MAX_LANDS_PAGE_LIMIT))
         try:
@@ -135,14 +138,25 @@ def create_router() -> APIRouter:
                 property_usage=propertyUsage,
                 land_type=landType,
             )
+            parsed_bbox, parsed_bbox_crs = map_api_helpers.parse_optional_bbox_query(
+                bbox=bbox,
+                bbox_crs=bboxCrs,
+            )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return land_service.get_public_land_list_page(
-            cursor=parsed_cursor,
-            limit=clamped_limit,
-            theme=parsed_theme,
-            filters=parsed_filters,
-        )
+        config = request.app.state.config
+        try:
+            return land_service.get_public_land_list_page(
+                cursor=parsed_cursor,
+                limit=clamped_limit,
+                theme=parsed_theme,
+                filters=parsed_filters,
+                bbox=parsed_bbox,
+                bbox_crs=parsed_bbox_crs,
+                cadastral_crs=config.CADASTRAL_FGB_CRS,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/lands/export")
     async def export_lands(payload: dict[str, Any]):

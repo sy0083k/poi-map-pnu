@@ -12,7 +12,7 @@ import { createLandWorkflow } from "./map/land-workflow";
 import { setupLayoutControls } from "./map/layout-controls";
 import { createListPanel } from "./map/list-panel";
 import { setupFile2MapUpload } from "./map/local-upload";
-import { loadAllLandListItems } from "./map/lands-list-client";
+import { loadAllLandListItems, loadFirstLandListPage, loadNextLandListPage } from "./map/lands-list-client";
 import { createMapView } from "./map/map-view";
 import { createMapLibreMapView } from "./map/map-view-maplibre";
 import { bootstrapPhotoMode } from "./map/photo-mode";
@@ -104,7 +104,9 @@ async function bootstrap(): Promise<void> {
     downloadClient: createDownloadClient(),
     setMapStatus,
     getThemeLabel,
-    loadLandListItems: loadAllLandListItems
+    loadAllLandListItems,
+    loadFirstLandListPage,
+    loadNextLandListPage
   });
 
   const layoutControls = setupLayoutControls({
