@@ -121,12 +121,12 @@ const BASEMAP_MAX_ZOOM: Record<BaseType, number> = {
 
 const LAND_SOURCE_ID = "lands-source";
 const LAND_SELECTED_SOURCE_ID = "lands-selected-source";
-const LAND_FILL_LAYER_ID = "lands-fill";
-const LAND_LINE_LAYER_ID = "lands-line";
-const LAND_SELECTED_FILL_LAYER_ID = "lands-selected-fill";
-const LAND_SELECTED_HALO_LAYER_ID = "lands-selected-halo";
-const LAND_SELECTED_LINE_LAYER_ID = "lands-selected-line";
-const LAND_SELECTED_PULSE_LAYER_ID = "lands-selected-pulse";
+const LAND_FILL_LAYER_ID = "cont-cadastre-fill";
+const LAND_LINE_LAYER_ID = "cont-cadastre-line";
+const LAND_SELECTED_FILL_LAYER_ID = "parcels-selected-fill";
+const LAND_SELECTED_HALO_LAYER_ID = "parcels-selected-halo";
+const LAND_SELECTED_LINE_LAYER_ID = "parcels-selected-line";
+const LAND_SELECTED_PULSE_LAYER_ID = "parcels-selected-pulse";
 const DEBUG_PROBE_SOURCE_ID = "debug-fgb-probe-source";
 const DEBUG_PROBE_FILL_LAYER_ID = "debug-fgb-probe-fill";
 const DEBUG_PROBE_LINE_LAYER_ID = "debug-fgb-probe-line";
@@ -206,7 +206,10 @@ function installMapDebugHooks(
     listLandsLayers: () =>
       map
         .getStyle()
-        .layers.filter((layer) => layer.id.includes("lands"))
+        .layers.filter(
+          (layer) =>
+            layer.id.startsWith("cont-cadastre-") || layer.id.startsWith("parcels-selected-")
+        )
         .map((layer) => layer.id),
     listDebugLayers: () =>
       map
