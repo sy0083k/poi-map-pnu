@@ -85,10 +85,25 @@ type DebugProbeApiResponse = {
 
 const DEFAULT_LINE_COLOR = "#ff3333";
 const DEFAULT_FILL_COLOR = "rgba(255, 51, 51, 0.2)";
+const MANAGER_NAME_EXPRESSION: any[] = [
+  "let",
+  "pmtilesManager",
+  ["to-string", ["coalesce", ["get", "mngr"], ""]],
+  "fallbackManager",
+  ["to-string", ["coalesce", ["get", "property_manager"], ""]],
+  [
+    "case",
+    ["!=", ["var", "pmtilesManager"], ""],
+    ["var", "pmtilesManager"],
+    ["!=", ["var", "fallbackManager"], ""],
+    ["var", "fallbackManager"],
+    ""
+  ]
+];
 
 const MANAGER_LINE_COLOR_EXPRESSION: any[] = [
   "match",
-  ["coalesce", ["to-string", ["get", "property_manager"]], ["to-string", ["get", "mngr"]], ""],
+  MANAGER_NAME_EXPRESSION,
   "도로과",
   "#ff7f00",
   "건설과",
@@ -102,7 +117,7 @@ const MANAGER_LINE_COLOR_EXPRESSION: any[] = [
 
 const MANAGER_FILL_COLOR_EXPRESSION: any[] = [
   "match",
-  ["coalesce", ["to-string", ["get", "property_manager"]], ["to-string", ["get", "mngr"]], ""],
+  MANAGER_NAME_EXPRESSION,
   "도로과",
   "rgba(255, 127, 0, 0.2)",
   "건설과",
