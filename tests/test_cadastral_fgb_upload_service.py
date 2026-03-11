@@ -17,6 +17,8 @@ def _make_request(*, base_dir: Path, configured_path: str, csrf_token: str = "cs
     app.state.config = SimpleNamespace(
         BASE_DIR=str(base_dir),
         CADASTRAL_FGB_PATH=configured_path,
+        CADASTRAL_FGB_PNU_FIELD="PNU",
+        CADASTRAL_FGB_CRS="EPSG:3857",
     )
     scope = {
         "type": "http",
@@ -69,6 +71,12 @@ def test_cadastral_fgb_upload_success_replaces_path_and_deletes_previous(monkeyp
         "clear_cached_responses",
         lambda: clear_called.__setitem__("value", True),
     )
+    rebuild_calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        cadastral_fgb_upload_service.parcel_render_build_service,
+        "rebuild_render_items_for_path",
+        lambda **kwargs: rebuild_calls.append(kwargs) or 1,
+    )
 
     payload = cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, csrf_token="csrf", file=file)
 
@@ -79,6 +87,7 @@ def test_cadastral_fgb_upload_success_replaces_path_and_deletes_previous(monkeyp
     assert captured_updates == {"CADASTRAL_FGB_PATH": "data/new-cadastral.fgb"}
     assert request.app.state.config.CADASTRAL_FGB_PATH == "data/new-cadastral.fgb"
     assert clear_called["value"] is True
+    assert rebuild_calls[0]["source_path"] == "data/new-cadastral.fgb"
 
 
 def test_cadastral_fgb_upload_keeps_previous_file_on_validation_failure(
@@ -101,6 +110,11 @@ def test_cadastral_fgb_upload_keeps_previous_file_on_validation_failure(
         cadastral_fgb_upload_service.admin_settings_service,
         "update_env_file",
         lambda _base_dir, _updates: (_ for _ in ()).throw(AssertionError("must not update env")),
+    )
+    monkeypatch.setattr(
+        cadastral_fgb_upload_service.parcel_render_build_service,
+        "rebuild_render_items_for_path",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("must not rebuild render items")),
     )
 
     with pytest.raises(HTTPException) as exc:

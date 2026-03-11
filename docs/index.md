@@ -20,8 +20,8 @@
 - 좌표계 기준: `CADASTRAL_FGB_CRS` (`EPSG:3857` 기본)
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
 - FGB 원본 진단 API: `/api/cadastral/debug-probe` (`/api/v1/cadastral/debug-probe` alias)
-- 하이라이트 성능: 기본 경로는 `/api/cadastral/highlights`의 `PNU+bbox` 서버 필터링 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
-- `/siyu` 하이라이트 계약: 서버 응답 GeoJSON은 항상 `EPSG:4326`(`meta.outputCrs`)으로 반환하고 MapLibre는 이를 그대로 렌더링
+- 하이라이트 성능: 기본 경로는 SQLite `parcel_render_item` 기반 `/api/cadastral/highlights` 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
+- `/siyu` 하이라이트 계약: 서버는 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조와 `meta.responseCrs`를 반환하고 클라이언트가 내부 `FeatureCollection`으로 재조립해 렌더링
 - `/siyu` 원본 FGB 진단 모드: `?debugFgb=1`에서 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 별도 오버레이로 1회 로드
 - 하이라이트 캐시 정책: 캐시 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 브라우저 캐시는 IndexedDB 스키마 갱신으로 무효화한다
 - `/siyu` 렌더 최적화: 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스를 재사용하고, 0건 검색은 조기 종료
@@ -52,7 +52,7 @@
 - 지도 상태 영역: `#map-status`는 필터/목록 사이가 아니라 지도 캔버스 상단 1줄 오버레이로 표시되며, 데스크톱에서는 줌 UI 비가림을 피하도록 폭이 제한되고 `X` 버튼으로 임시 닫기 지원
 - 다중 검출 정책: `/siyu`의 `재산관리관` 검색 결과 고유값이 2개 이상이면 검색을 중단하고 상태 영역(지도 캔버스 상단 1줄 오버레이)에 검출값 안내를 표시
 - 관리자 업로드: `시유지(/admin/upload/city)` 단일 운영
-- 연속지적도 운영 파일 업로드: `POST /admin/upload/cadastral-fgb` (업로드 파일명 유지 저장 + `CADASTRAL_FGB_PATH` 즉시 갱신 + 이전 운영 파일 정리)
+- 연속지적도 운영 파일 업로드: `POST /admin/upload/cadastral-fgb` (업로드 파일명 유지 저장 + `CADASTRAL_FGB_PATH` 즉시 갱신 + `parcel_render_item` 즉시 재생성 + 이전 운영 파일 정리)
 - 레거시 정리: `python scripts/remove_legacy_national_table.py`로 구 테이블(`poi`) 제거 가능(`--dry-run` 지원)
 - 지도 목록 조회: `/api/lands`, `/api/lands/list`는 `theme` 쿼리 `city_owned`만 지원(미지정 시 기본 `city_owned`)
 - `/siyu` 목록 필터(주소/면적/재산관리관/재산용도/지목)는 `/api/lands/list` 서버 쿼리(`searchTerm/minArea/maxArea/propertyManager/propertyUsage/landType`)로 처리하고, 실패 시 클라이언트 로컬 폴백을 사용

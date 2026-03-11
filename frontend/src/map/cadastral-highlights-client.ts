@@ -1,20 +1,27 @@
 import { fetchJson } from "../http";
 
-import type { LandFeature, ThemeType } from "./types";
+import type { CadastralCrs, ThemeType } from "./types";
+
+export type CadastralRenderItem = {
+  pnu: string;
+  geometry: unknown;
+  lod: "full" | "mid" | "low";
+  bbox: [number, number, number, number];
+  center: [number, number];
+};
 
 export type CadastralHighlightsApiResponse = {
-  type: "FeatureCollection";
-  features: LandFeature[];
+  items: CadastralRenderItem[];
   meta?: {
     requested?: number;
     matched?: number;
-    scanned?: number;
-    source?: "cache" | "parsed";
-    fgbEtag?: string;
+    source?: "parcel_render_item";
+    sourceFgbEtag?: string;
     bboxApplied?: boolean;
     bboxFiltered?: number;
-    bboxCrs?: "EPSG:3857" | "EPSG:4326" | null;
-    outputCrs?: "EPSG:4326";
+    sourceCrs?: CadastralCrs;
+    responseCrs?: CadastralCrs;
+    geometryFormat?: "geojson";
   };
 };
 

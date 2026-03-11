@@ -19,6 +19,7 @@ TEST_MARKER_BY_FILE: dict[str, str] = {
     "test_cadastral_fgb_api.py": "integration",
     "test_cadastral_fgb_upload_api.py": "integration",
     "test_cadastral_fgb_upload_service.py": "unit",
+    "test_parcel_render_build_service.py": "unit",
     "test_dependencies_auth.py": "unit",
     "test_e2e_smoke.py": "e2e",
     "test_env_contract.py": "unit",

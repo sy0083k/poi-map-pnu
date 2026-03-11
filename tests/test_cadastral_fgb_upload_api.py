@@ -48,6 +48,10 @@ async def test_admin_cadastral_fgb_upload_success(async_client: httpx.AsyncClien
 
     monkeypatch.setattr("app.services.cadastral_fgb_upload_service._validate_fgb_file", lambda _path: None)
     monkeypatch.setattr("app.services.cadastral_fgb_upload_service.admin_settings_service.update_env_file", lambda _base, _u: None)
+    monkeypatch.setattr(
+        "app.services.cadastral_fgb_upload_service.parcel_render_build_service.rebuild_render_items_for_path",
+        lambda **_kwargs: 1,
+    )
 
     response = await async_client.post(
         "/admin/upload/cadastral-fgb",
@@ -84,6 +88,10 @@ async def test_admin_cadastral_fgb_upload_rejects_missing_csrf(
     app.state.config.CADASTRAL_FGB_PATH = "data/old.fgb"
     monkeypatch.setattr("app.services.cadastral_fgb_upload_service._validate_fgb_file", lambda _path: None)
     monkeypatch.setattr("app.services.cadastral_fgb_upload_service.admin_settings_service.update_env_file", lambda _base, _u: None)
+    monkeypatch.setattr(
+        "app.services.cadastral_fgb_upload_service.parcel_render_build_service.rebuild_render_items_for_path",
+        lambda **_kwargs: 1,
+    )
 
     response = await async_client.post(
         "/admin/upload/cadastral-fgb",

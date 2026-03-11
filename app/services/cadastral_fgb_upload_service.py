@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import HTTPException, Request, UploadFile
 
 from app.dependencies import validate_csrf_token
-from app.services import admin_settings_service, cadastral_fgb_service
+from app.services import admin_settings_service, cadastral_fgb_service, parcel_render_build_service
 from app.services.cadastral_highlight_cache import clear_cached_responses
 
 ALLOWED_CONTENT_TYPES = {
@@ -39,11 +39,20 @@ def handle_cadastral_fgb_upload(
     file_name = _validated_fgb_filename(file)
     final_path = data_dir / file_name
     temp_path = data_dir / f".upload-{uuid.uuid4().hex}.tmp.fgb"
+    backup_path = data_dir / f".backup-{uuid.uuid4().hex}.fgb"
 
     try:
         _write_upload_to_temp(file=file, temp_path=temp_path)
         _validate_fgb_file(temp_path)
+        if old_path.exists() and old_path.is_file():
+            shutil.copy2(old_path, backup_path)
         os.replace(temp_path, final_path)
+        parcel_render_build_service.rebuild_render_items_for_path(
+            file_path=final_path,
+            source_path=final_path.relative_to(Path(config.BASE_DIR)).as_posix(),
+            pnu_field=config.CADASTRAL_FGB_PNU_FIELD,
+            cadastral_crs=config.CADASTRAL_FGB_CRS,
+        )
 
         applied_relative_path = final_path.relative_to(Path(config.BASE_DIR)).as_posix()
         admin_settings_service.update_env_file(config.BASE_DIR, {"CADASTRAL_FGB_PATH": applied_relative_path})
@@ -51,7 +60,9 @@ def handle_cadastral_fgb_upload(
         clear_cached_responses()
 
         if old_path != final_path and old_path.exists() and old_path.is_file():
-            old_path.unlink()
+            old_path.unlink(missing_ok=True)
+        if backup_path.exists():
+            backup_path.unlink(missing_ok=True)
 
         stat = final_path.stat()
         return {
@@ -62,12 +73,16 @@ def handle_cadastral_fgb_upload(
             "appliedAt": str(stat.st_mtime_ns),
         }
     except HTTPException:
+        _restore_backup_file(backup_path=backup_path, final_path=final_path, old_path=old_path)
         raise
     except Exception as exc:
+        _restore_backup_file(backup_path=backup_path, final_path=final_path, old_path=old_path)
         raise HTTPException(status_code=500, detail=f"연속지적도 업로드 처리 중 오류가 발생했습니다: {exc}") from exc
     finally:
         if temp_path.exists():
             temp_path.unlink(missing_ok=True)
+        if backup_path.exists():
+            backup_path.unlink(missing_ok=True)
 
 
 def _validated_fgb_filename(file: UploadFile) -> str:
@@ -113,3 +128,13 @@ def _validate_fgb_file(file_path: Path) -> None:
                 pass
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"유효한 FlatGeobuf 파일이 아닙니다: {exc}") from exc
+
+
+def _restore_backup_file(*, backup_path: Path, final_path: Path, old_path: Path) -> None:
+    if backup_path.exists():
+        os.replace(backup_path, old_path)
+        if final_path.exists() and final_path != old_path:
+            final_path.unlink(missing_ok=True)
+        return
+    if final_path.exists() and final_path != old_path:
+        final_path.unlink(missing_ok=True)

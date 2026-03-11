@@ -116,7 +116,8 @@ uvicorn app.main:app --reload
    - 필수 컬럼: `고유번호`, `소재지`, `지목`, `실면적`, `재산관리관`
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩은 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(초기 화면 밖 필지 누락 고정 방지).
-   - FlatGeobuf 파싱은 Web Worker에서 수행하고, 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.
+   - 서버는 FGB를 직접 재스캔하지 않고 SQLite `parcel_render_item` 렌더 인덱스에서 PNU별 geometry를 조회한다.
+   - 클라이언트는 서버 응답을 우선 사용하고, 실패 시에만 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.
    - `/siyu?debugFgb=1`에서는 검색과 무관하게 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 probe overlay로 1회 로드해 원본 파일 자체의 렌더 가능 여부를 점검한다.
    - `/siyu` 검색/재조회 렌더에서는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`) 단위 `Map<pnu, geometry>` 인덱스 캐시를 재사용해 반복 검색 시 전체 재구축을 피한다.
    - 검색 결과가 0건일 때는 하이라이트 조합을 조기 종료해 불필요한 순회를 줄인다.
@@ -185,7 +186,7 @@ uvicorn app.main:app --reload
 - `GET /api/cadastral/debug-probe`
 - `POST /api/cadastral/highlights`
   - 요청 본문: `theme`, `pnus[]`(19자리 PNU), 선택 `bbox[minX,minY,maxX,maxY]`, `bboxCrs`
-  - 응답: 요청 PNU(+bbox 조건)에 매칭된 하이라이트 `FeatureCollection` + `meta(requested/matched/scanned/bboxApplied/bboxFiltered/source/fgbEtag)`
+  - 응답: `items[{pnu, geometry, lod, bbox, center}]` + `meta(requested/matched/bboxApplied/bboxFiltered/source/sourceFgbEtag/sourceCrs/responseCrs/geometryFormat)`
 - `GET /api/lands`
 - `GET /api/lands/list`
   - `theme` 쿼리 지원: `city_owned` (미지정 시 기본 `city_owned`, `national_public`은 400)
@@ -248,7 +249,8 @@ uvicorn app.main:app --reload
 - 로그인 실패 제한과 이벤트 레이트리밋은 현재 인메모리 구현입니다. 다중 인스턴스 운영 시 인스턴스 간 상태가 공유되지 않으므로 별도 공유 스토어 기반 정책을 고려하세요.
 - API 버전 정책(`/api` vs `/api/v1`)의 운영 절차는 `docs/architecture.md`와 `docs/maintenance.md`를 기준으로 관리하세요.
 - `POST /admin/upload/cadastral-fgb` 성공 시 기존 운영 경로 FGB 파일은 정리(삭제)되므로, 필요 시 사전 백업 후 진행하세요.
-- 하이라이트는 Web Worker + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 브라우저 저장소 제한/삭제 여부와 `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
+- 하이라이트는 SQLite `parcel_render_item` + IndexedDB 캐시 기반으로 동작한다. 지연이 반복되면 렌더 인덱스 재생성 여부, 브라우저 저장소 제한/삭제 여부, `/api/cadastral/fgb`의 `ETag` 변경 여부를 함께 점검하세요.
+- `POST /admin/upload/cadastral-fgb` 성공 시 새 FGB 검증 후 `parcel_render_item`을 즉시 재생성한다. 재생성 실패 시 기존 운영 FGB/렌더 인덱스를 유지한다.
 
 ### 연속지적도 Shapefile → FlatGeobuf 변환(ogr2ogr)
 다음 명령으로 Shapefile(`LSMD_CONT_LDREG_44210_202602.shp`)을 서비스용 FlatGeobuf(`LSMD_CONT_LDREG_44210_202602.fgb`)로 변환할 수 있습니다.

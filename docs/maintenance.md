@@ -72,7 +72,7 @@
 - `조건에 맞는 토지 찾기` 결과 목록이 항상 `PNU` 오름차순인지 점검
 - `조건에 맞는 토지 찾기` 결과에 현재 화면 내 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 자동 스크롤되는지 점검
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검
-- `/api/cadastral/highlights` 호출 시 요청 `PNU+bbox` 기준 `matched/scanned/bboxApplied/bboxFiltered/source` 메타가 정상 응답되는지 점검
+- `/api/cadastral/highlights` 호출 시 요청 `PNU+bbox` 기준 `items[]`, `matched/bboxApplied/bboxFiltered/source/sourceFgbEtag` 메타가 정상 응답되는지 점검
 - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩 시 `bbox` 없이 전체 업로드 PNU 매칭이 적용되어, 초기 화면 밖 필지도 줌 아웃/이동 시 누락 없이 표시되는지 점검
 - `/api/cadastral/highlights` 실패 시 클라이언트 워커 폴백으로 하이라이트가 계속 표시되는지 점검
 - `/admin/stats/web`에 `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`, `channelBreakdown`가 정상 집계되는지 점검
@@ -100,11 +100,11 @@
 
 ## 하이라이트 초기 지연 대응 (2026-03-06)
 ### 적용 사항
-1. FlatGeobuf 파싱을 Web Worker로 이동해 메인 스레드 프리징을 완화했다.
+1. 서버 하이라이트 기본 경로를 SQLite `parcel_render_item` 조회로 전환해 요청당 FlatGeobuf 재스캔을 제거했다.
 2. 하이라이트 매칭을 청크 단위로 점진 반영해 첫 가시 표시를 앞당겼다.
 3. IndexedDB 캐시(`theme+pnuSetHash+ETag`)를 도입해 재방문 시 재스캔을 줄였다.
 4. `/api/cadastral/fgb` 응답에 `ETag`를 추가해 캐시 무효화 기준을 명확화했다.
-5. `/api/cadastral/highlights` 서버 경로는 `flatgeobuf.Reader(..., bbox=...)`를 우선 사용해 bbox 부분 조회를 수행하고, Reader 경로 실패 시 `load(..., bbox=...)`로 폴백한다.
+5. `parcel_render_item`은 앱 시작 시 또는 `POST /admin/upload/cadastral-fgb` 성공 직후 현재 FGB 기준으로 재생성되며, 실패 시 기존 운영 인덱스를 유지한다.
 6. 하이라이트 캐시는 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 서버 메모리 캐시는 `HIGHLIGHT_CACHE_TTL_SECONDS`/`HIGHLIGHT_CACHE_MAX_ENTRIES`로 TTL/최대 엔트리를 조정한다.
 7. 브라우저 IndexedDB 하이라이트 캐시는 스키마 버전 3을 사용하며, 스키마 업그레이드 시 기존 `cadastral_highlights` 저장소를 재생성해 구 캐시를 무효화한다. 이후 만료(기본 7일)와 최대 건수(기본 1000건)를 초과한 레코드를 자동 정리한다.
 8. `/siyu` 검색/재조회 렌더 단계는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스 캐시(LRU 최대 5개)를 사용해 반복 검색 시 전체 재구축을 피한다.
@@ -166,7 +166,7 @@
 - 원본 FGB 자체 문제를 검색 흐름과 분리해 확인하려면 `/siyu?debugMap=1&debugFgb=1`로 접속 후 `window.__mapDebug.getDebugProbeSourceData()`/`window.__mapDebug.getDebugProbeMeta()`로 probe overlay 상태를 확인
 - debug probe API 단독 점검 시 `/api/cadastral/debug-probe?bbox=126.44,36.77,126.47,36.79&bboxCrs=EPSG:4326&limit=1000` 응답의 `meta.returned/truncated/sourceFile/outputCrs`를 확인
 - 디버깅 종료 후에는 일반 URL(`/siyu`)로 재접속해 전역 디버그 훅 노출 상태가 아닌지 확인
-- 브라우저 콘솔 `업로드 하이라이트 준비 실패` 메시지 확인(FlatGeobuf 모듈/네트워크)
+- 브라우저 콘솔 `업로드 하이라이트 준비 실패` 메시지 확인(SQLite 렌더 인덱스/API 또는 FlatGeobuf worker 폴백 경로)
 - `/api/lands/list` 실패 시 하이라이트가 비어 보일 수 있음
 
 ### 우상단 상세 패널 데이터 누락
@@ -198,7 +198,7 @@
 
 ### 설정 변경 미반영
 - 일반 설정 변경은 `.env` 갱신 후 앱 재시작 필요
-- 예외: `/admin/upload/cadastral-fgb`는 성공 시 `CADASTRAL_FGB_PATH`를 런타임에 즉시 반영하고 하이라이트 캐시를 무효화함
+- 예외: `/admin/upload/cadastral-fgb`는 성공 시 `CADASTRAL_FGB_PATH`를 런타임에 즉시 반영하고 `parcel_render_item` 재생성 및 하이라이트 캐시 무효화를 함께 수행함
 
 ## 백업/복구
 - `data/database.db`

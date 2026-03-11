@@ -195,8 +195,14 @@ async function loadUploadedHighlightsFromApiInChunks(params: {
       signal
     });
     chunkCount += 1;
-    scanned += apiLoaded.meta?.scanned ?? 0;
-    allFeatures.push(...apiLoaded.features);
+    scanned += apiLoaded.meta?.matched ?? apiLoaded.items.length;
+    allFeatures.push(
+      ...apiLoaded.items.map((item) => ({
+        type: "Feature" as const,
+        geometry: item.geometry,
+        properties: { pnu: item.pnu }
+      }))
+    );
     const progress: HighlightLoadProgress = {
       scanned,
       matched: allFeatures.length,
@@ -204,8 +210,6 @@ async function loadUploadedHighlightsFromApiInChunks(params: {
       done: start + MAX_API_REQUEST_PNUS >= normalizedPnus.length,
       fromCache: false
     };
-    if (apiLoaded.features.length > 0) {
-    }
     onProgress?.(progress);
   }
   return { features: allFeatures, chunkCount, scanned };

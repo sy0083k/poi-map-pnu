@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
 
+from app.db.connection import db_connection
+from app.repositories import parcel_render_repository
 from app.services import cadastral_fgb_service
 from app.services.cadastral_highlight_cache import (
     CACHE_KEY_VERSION,
@@ -17,7 +20,6 @@ from app.services.cadastral_highlight_cache import (
 )
 from app.services.cadastral_highlight_geometry import (
     extract_pnu_from_properties,
-    geometry_intersects_bbox,
     transform_bbox_to_crs,
     transform_geometry_to_wgs84,
 )
@@ -120,11 +122,6 @@ def get_filtered_highlights(
     )
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="연속지적도 파일을 찾을 수 없습니다.")
-    if bbox is not None and bbox_crs != cadastral_crs:
-        raise HTTPException(
-            status_code=400,
-            detail=f"bboxCrs({bbox_crs}) must match cadastral CRS({cadastral_crs})",
-        )
 
     fgb_etag = build_file_etag(file_path)
     cache_key = build_cache_key(
@@ -148,8 +145,6 @@ def get_filtered_highlights(
         return cached
 
     response = build_filtered_geojson_response(
-        file_path=file_path,
-        pnu_field=pnu_field,
         requested_pnus=requested_pnus,
         fgb_etag=fgb_etag,
         cadastral_crs=cadastral_crs,
@@ -237,8 +232,6 @@ def get_debug_probe_geojson_response(
 
 def build_filtered_geojson_response(
     *,
-    file_path: Path,
-    pnu_field: str,
     requested_pnus: list[str],
     fgb_etag: str,
     cadastral_crs: str = "EPSG:3857",
@@ -246,39 +239,106 @@ def build_filtered_geojson_response(
     bbox_crs: str = "EPSG:3857",
 ) -> dict[str, Any]:
     wanted = set(requested_pnus)
-    matched: set[str] = set()
-    features: list[dict[str, Any]] = []
-    scanned = 0
+    matched = 0
     bbox_filtered = 0
+    source_bbox = bbox
+    if bbox is not None and bbox_crs != cadastral_crs:
+        try:
+            source_bbox = transform_bbox_to_crs(bbox, source_crs=bbox_crs, target_crs=cadastral_crs)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    try:
-        all_features = load_features_from_fgb(file_path, bbox=bbox)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    with db_connection(row_factory=True) as conn:
+        rows = parcel_render_repository.fetch_render_items_by_pnus(conn, pnus=requested_pnus)
 
-    scanned, bbox_filtered, features, matched = collect_matching_features(
-        all_features=all_features,
-        pnu_field=pnu_field,
-        wanted=wanted,
-        cadastral_crs=cadastral_crs,
-        bbox=bbox,
-    )
+    lod = choose_lod(source_bbox=source_bbox, cadastral_crs=cadastral_crs)
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        row_bbox = (
+            float(row["bbox_minx"]),
+            float(row["bbox_miny"]),
+            float(row["bbox_maxx"]),
+            float(row["bbox_maxy"]),
+        )
+        if source_bbox is not None and not bbox_intersects(source_bbox, row_bbox):
+            bbox_filtered += 1
+            continue
+        geometry = parse_geometry_for_lod(row=row, lod=lod)
+        if geometry is None:
+            continue
+        items.append(
+            {
+                "pnu": str(row["pnu"]),
+                "geometry": geometry,
+                "lod": lod,
+                "bbox": [row_bbox[0], row_bbox[1], row_bbox[2], row_bbox[3]],
+                "center": [float(row["center_x"]), float(row["center_y"])],
+            }
+        )
+    matched = len(items)
 
     return {
-        "type": "FeatureCollection",
-        "features": features,
+        "items": items,
         "meta": {
             "requested": len(wanted),
-            "matched": len(matched),
-            "scanned": scanned,
+            "matched": matched,
             "bboxApplied": bbox is not None,
             "bboxFiltered": bbox_filtered,
-            "source": "parsed",
-            "fgbEtag": fgb_etag,
-            "bboxCrs": bbox_crs if bbox is not None else None,
-            "outputCrs": "EPSG:4326",
+            "source": "parcel_render_item",
+            "sourceFgbEtag": fgb_etag,
+            "sourceCrs": cadastral_crs,
+            "responseCrs": cadastral_crs,
+            "geometryFormat": "geojson",
         },
     }
+
+
+def parse_geometry_for_lod(*, row: Any, lod: str) -> dict[str, Any] | None:
+    raw = row[f"geom_geojson_{lod}"] or row["geom_geojson_full"]
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(str(raw))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def choose_lod(
+    *,
+    source_bbox: tuple[float, float, float, float] | None,
+    cadastral_crs: str,
+) -> str:
+    if source_bbox is None:
+        return "full"
+    min_x, min_y, max_x, max_y = source_bbox
+    width = abs(max_x - min_x)
+    height = abs(max_y - min_y)
+    if cadastral_crs == "EPSG:4326":
+        span = max(width, height)
+        if span >= 0.2:
+            return "low"
+        if span >= 0.05:
+            return "mid"
+        return "full"
+    span = max(width, height)
+    if span >= 20_000:
+        return "low"
+    if span >= 5_000:
+        return "mid"
+    return "full"
+
+
+def bbox_intersects(
+    left: tuple[float, float, float, float],
+    right: tuple[float, float, float, float],
+) -> bool:
+    return not (
+        left[2] < right[0]
+        or left[0] > right[2]
+        or left[3] < right[1]
+        or left[1] > right[3]
+    )
 
 
 def load_features_from_fgb(
@@ -329,48 +389,3 @@ def _iter_dict_features(loaded: Any) -> Iterator[dict[str, Any]]:
         if isinstance(item, dict):
             yield item
 
-
-def collect_matching_features(
-    *,
-    all_features: Iterable[dict[str, Any]],
-    pnu_field: str,
-    wanted: set[str],
-    cadastral_crs: str,
-    bbox: tuple[float, float, float, float] | None,
-) -> tuple[int, int, list[dict[str, Any]], set[str]]:
-    scanned = 0
-    bbox_filtered = 0
-    matched: set[str] = set()
-    features: list[dict[str, Any]] = []
-
-    for feature in all_features:
-        scanned += 1
-        properties = feature.get("properties", {}) if isinstance(feature, dict) else {}
-        pnu_raw = extract_pnu_from_properties(properties, pnu_field)
-        pnu = normalize_pnu(pnu_raw)
-        if pnu not in wanted or pnu in matched:
-            continue
-
-        geometry = feature.get("geometry") if isinstance(feature, dict) else None
-        if geometry is None:
-            continue
-        if bbox is not None and not geometry_intersects_bbox(geometry, bbox):
-            bbox_filtered += 1
-            continue
-
-        matched.add(pnu)
-        transformed_geometry = transform_geometry_to_wgs84(geometry, source_crs=cadastral_crs)
-        if transformed_geometry is None:
-            matched.remove(pnu)
-            continue
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": transformed_geometry,
-                "properties": {"pnu": pnu},
-            }
-        )
-        if len(matched) >= len(wanted):
-            break
-
-    return scanned, bbox_filtered, features, matched
