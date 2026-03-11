@@ -36,6 +36,7 @@ export type LandListItem = {
   land_type: string;
   area: number;
   property_manager: string;
+  bbox: [number, number, number, number] | null;
   sourceFields: LandSourceField[];
 };
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def test_land_workflow_uploaded_highlights_support_bbox_and_cap() -> None:
+def test_land_workflow_uploaded_highlights_support_bbox_and_render_item_subset() -> None:
     highlight_text = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
     workflow_text = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
     assert "const loadHighlights = async (params?:" in highlight_text
@@ -13,10 +13,10 @@ def test_land_workflow_uploaded_highlights_support_bbox_and_cap() -> None:
     assert "options?.maxPnus" in highlight_text
     assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in highlight_text
     assert '하이라이트를 찾지 못해 전체 PNU로 다시 확인하는 중입니다' in highlight_text
-    assert "let hasConsumedInitialViewportHighlightCap = false;" in workflow_text
-    assert "const shouldCapViewport = options.isViewportContext && !hasConsumedInitialViewportHighlightCap;" in workflow_text
-    assert "maxPnus: shouldCapViewport ? MAX_INITIAL_HIGHLIGHTS : undefined" in workflow_text
-    assert "hasConsumedInitialViewportHighlightCap = true;" in workflow_text
+    assert "const getViewportRenderItems = (" in workflow_text
+    assert "renderItems: renderItems.length > 0 ? renderItems : [selected]" in workflow_text
+    assert "bbox: undefined," in workflow_text
+    assert "const normalizedBbox = transformBboxToOutputCrs(bbox, \"EPSG:4326\", targetCrs);" in workflow_text
 
 
 def test_photo_mode_uploaded_land_highlights_are_not_bbox_limited() -> None:
@@ -45,8 +45,7 @@ def test_highlight_reload_uses_cached_bbox_and_delta_updates() -> None:
     assert "stagedByPnu.set(key, value);" in highlight_text
     assert "mergeRecordMaps" not in highlight_text
     assert 'const getRenderProjection = (_deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] => config.cadastralCrs;' in highlight_text
-    assert "append: Boolean(options?.append)," in workflow_text
-    assert "preserveSelectedItem: Boolean(options?.fromMoveEnd)," in workflow_text
+    assert "preserveSelectedItem: Boolean(options?.preserveSelectedItem)," in workflow_text
     assert "selectedItemToPreserve" in workflow_text
 
 

@@ -117,13 +117,12 @@ uvicorn app.main:app --reload
 3. 메인 지도는 업로드 목록 PNU만 1회 매칭해 하이라이트 캐시를 구성하며, 하이라이트 대상이 아닌 필지 연속지적도는 표시하지 않는다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩은 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(초기 화면 밖 필지 누락 고정 방지).
    - 서버는 FGB를 직접 재스캔하지 않고 bbox 요청 시 SQLite `render_grid_cell`/`render_grid_parcel`로 후보 PNU를 줄인 뒤 `parcel_render_item` 렌더 인덱스에서 geometry를 조회한다.
-   - `/siyu` 초기 진입은 `/api/lands/list`의 현재 지도 extent 기반 `bbox` 첫 페이지로 시작하며, 하이라이트 요청도 같은 context bbox를 함께 전달한다. 첫 viewport 하이라이트 1회에만 요청 PNU를 최대 300건으로 제한하고, 이후 moveend/같은 bbox의 `목록 더 불러오기`는 상한 없이 현재 bbox 기준으로 다시 구성한다.
-   - `/siyu`의 viewport query `bboxCrs`는 현재 화면 좌표계를 따르며, 실제 하이라이트 geometry 렌더 좌표계는 `CADASTRAL_FGB_CRS`를 따른다.
-   - `/siyu` 첫 seed 하이라이트가 context bbox에서 0건이면 같은 capped PNU 집합으로 bbox 없이 1회 재시도해 빈 레이어 고정을 방지한다.
+   - `/siyu` 초기 진입과 필터 실행은 `/api/lands/list`를 `theme + filter` 기준으로 끝까지 따라가 전체 목록을 확보한다.
+   - `/api/lands/list` item은 `parcel_render_item` 기반 `bbox`를 포함하며, 좌표계는 `CADASTRAL_FGB_CRS`를 따른다. 클라이언트는 화면 bbox를 같은 CRS로 변환한 뒤 교차하는 토지만 지도 캔버스에 렌더한다.
    - `/siyu` MapLibre 렌더러는 `CADASTRAL_FGB_CRS=EPSG:3857` geometry도 내부에서 EPSG:4326으로 변환해 표시한다.
    - `/siyu`에서 토지 선택 후 fit에 따른 moveend가 발생해도 viewport context 재조회만으로 선택 상태와 상세 패널을 해제하지 않는다.
    - `/siyu` 이동(moveend) 후에는 현재 화면 기준 context bbox를 다시 계산해 주변 시유지 후보와 하이라이트를 현재 bbox 기준으로 재구성하며, 선택 필지 1건은 bbox 밖이어도 예외적으로 유지한다.
-   - 화면 밖 목록 항목을 클릭해 아직 하이라이트가 없으면, 우선 해당 필지 1건을 로드해 이동하고 이후 moveend에서 주변 context를 다시 채운다.
+   - 화면 밖 목록 항목을 클릭하면 현재 bbox 안 토지와 선택 토지 1건을 함께 하이라이트한다.
    - 클라이언트는 서버 응답을 우선 사용하고, 실패 시에만 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+ETag`)로 재사용한다.
    - `/siyu?debugFgb=1`에서는 검색과 무관하게 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 probe overlay로 1회 로드해 원본 파일 자체의 렌더 가능 여부를 점검한다.
    - `/siyu` 검색/재조회 렌더에서는 데이터셋 키(`theme+pnuSetHash+bbox+ETag`) 단위 `Map<pnu, geometry>` 인덱스 캐시를 재사용해 반복 검색 시 전체 재구축을 피한다.
@@ -138,7 +137,7 @@ uvicorn app.main:app --reload
    - 글로벌 헤더에서 `주제도` 오른쪽에 탑레벨 `파일→지도` 메뉴가 표시되며, 클릭 시 `http://127.0.0.1:8000/file2map`(내부 경로 `/file2map`)로 이동한다.
    - 글로벌 헤더에 탑레벨 `사진→지도` 메뉴가 표시되며, 클릭 시 `http://127.0.0.1:8000/photo2map`(내부 경로 `/photo2map`)로 이동한다.
    - `시유지(/siyu)` 유틸리티 사이드바는 `재산용도` 콤보(`전체/행정재산/일반재산`) + `지목` + `재산관리관` + 면적 복합 검색을 지원한다.
-   - `/siyu` 초기 목록은 현재 화면 주변 첫 페이지를 우선 표시하고, 하단 `목록 더 불러오기`로 같은 query의 다음 페이지를 이어붙인다.
+   - `/siyu` 목록은 현재 `theme + filter + geom 존재` 전체 결과를 유지하고, 지도 캔버스만 현재 bbox 교집합으로 좁혀 렌더한다.
    - `/api/lands/list`는 `items[]`, `nextCursor`, `totalCount`를 반환하며, `totalCount`는 `bbox`를 제외한 현재 `theme + filter`에 매칭되고 `parcel_render_item`이 존재하는 전체 필지 수다.
    - 유틸리티 사이드바 내비게이션은 `현재 선택 인덱스 / 전체 검색 결과(totalCount)` 형식으로 표시된다.
    - 유틸리티 사이드바 검색 결과 목록은 항상 `PNU` 오름차순으로 정렬된다.
@@ -201,7 +200,7 @@ uvicorn app.main:app --reload
 - `GET /api/lands/list`
   - `theme` 쿼리 지원: `city_owned` (미지정 시 기본 `city_owned`, `national_public`은 400)
   - `/siyu` 필터 서버 처리 쿼리(선택): `searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`
-  - `/siyu` 초기/이동 주변 목록 쿼리(선택): `bbox=minX,minY,maxX,maxY`, `bboxCrs=EPSG:4326|EPSG:3857`
+  - `/siyu` 지도 캔버스 렌더 기준: 현재 bbox와 목록 item `bbox` 교집합으로 render PNU 집합 산출
 - `POST /api/lands/export`
   - 요청 본문: `theme`, `landIds[]`
   - 응답: 검색 결과 토지의 원본 업로드 컬럼 전체 속성 Excel(`.xlsx`)

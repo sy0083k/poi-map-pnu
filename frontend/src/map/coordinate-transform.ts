@@ -12,6 +12,13 @@ export function mercatorToWgs84(x: number, y: number): [number, number] {
   return [lon, lat];
 }
 
+export function wgs84ToMercator(lon: number, lat: number): [number, number] {
+  const boundedLat = Math.max(Math.min(lat, 89.999999), -89.999999);
+  const x = (lon * WEB_MERCATOR_HALF_WORLD) / 180;
+  const y = (WEB_MERCATOR_HALF_WORLD * Math.log(Math.tan((Math.PI / 4) + (boundedLat * Math.PI) / 360))) / Math.PI;
+  return [x, y];
+}
+
 export function toWgs84CoordinatePair(
   x: unknown,
   y: unknown,
@@ -51,4 +58,35 @@ export function transformCoordinatesToOutputCrs(
   }
   const transformedChildren = items.map((item) => transformCoordinatesToOutputCrs(item, sourceCrs, outputCrs));
   return transformedChildren.some((item) => item === null) ? null : transformedChildren;
+}
+
+export function transformBboxToOutputCrs(
+  bbox: [number, number, number, number],
+  sourceCrs: CadastralCrs,
+  outputCrs: CadastralCrs
+): [number, number, number, number] | null {
+  if (sourceCrs === outputCrs) {
+    return bbox;
+  }
+
+  let minCorner: [number, number] | null = null;
+  let maxCorner: [number, number] | null = null;
+  if (sourceCrs === "EPSG:4326" && outputCrs === "EPSG:3857") {
+    minCorner = wgs84ToMercator(bbox[0], bbox[1]);
+    maxCorner = wgs84ToMercator(bbox[2], bbox[3]);
+  } else if (sourceCrs === "EPSG:3857" && outputCrs === "EPSG:4326") {
+    minCorner = mercatorToWgs84(bbox[0], bbox[1]);
+    maxCorner = mercatorToWgs84(bbox[2], bbox[3]);
+  }
+
+  if (!minCorner || !maxCorner) {
+    return null;
+  }
+
+  return [
+    Math.min(minCorner[0], maxCorner[0]),
+    Math.min(minCorner[1], maxCorner[1]),
+    Math.max(minCorner[0], maxCorner[0]),
+    Math.max(minCorner[1], maxCorner[1])
+  ];
 }

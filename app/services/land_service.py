@@ -142,6 +142,7 @@ def get_public_land_list_page(
                 "land_type": row["land_type"],
                 "area": row["area"],
                 "property_manager": row["property_manager"],
+                "bbox": [row["bbox_minx"], row["bbox_miny"], row["bbox_maxx"], row["bbox_maxy"]],
                 "sourceFields": source_fields,
             }
         )

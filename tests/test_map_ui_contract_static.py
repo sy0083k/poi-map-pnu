@@ -68,9 +68,9 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
     moveend_block = events_ts.split(moveend_anchor, maxsplit=1)[1].split("});", maxsplit=1)[0]
     assert "void reloadCadastralLayers();" not in moveend_block
 
-    viewport_anchor = "const loadViewportContext = async (options?: {"
+    viewport_anchor = "const refreshViewportHighlights = async (options?: {"
     assert viewport_anchor in workflow_ts
-    viewport_block = workflow_ts.split(viewport_anchor, maxsplit=1)[1].split("const loadMoreCurrentQuery", maxsplit=1)[0]
+    viewport_block = workflow_ts.split(viewport_anchor, maxsplit=1)[1].split("const applyFilters", maxsplit=1)[0]
     assert "deps.mapView.clearInfoPanel();" not in viewport_block
 
     assert_contains_all(
@@ -114,7 +114,7 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
             "정확한 재산관리관을 입력하세요.",
             "deps.mapView.clearRenderedFeatures();",
             "downloadClient.downloadSearchResultFile({",
-            'currentListMode === "search"',
+            'mode: "search"',
             "handleMoveEnd",
         ],
     )
@@ -137,6 +137,7 @@ def test_lands_list_client_sends_theme_query() -> None:
     workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
     types_ts = Path("frontend/src/map/types.ts").read_text(encoding="utf-8")
     panel_ts = Path("frontend/src/map/list-panel.ts").read_text(encoding="utf-8")
+    coordinate_transform_ts = Path("frontend/src/map/coordinate-transform.ts").read_text(encoding="utf-8")
     assert "export async function loadAllLandListItems(theme: ThemeType, filters?: FilterValues)" in client_ts
     assert "export async function loadFirstLandListPage(" in client_ts
     assert "export async function loadNextLandListPage(" in client_ts
@@ -144,12 +145,17 @@ def test_lands_list_client_sends_theme_query() -> None:
     assert 'query.set("propertyUsage", filters.propertyUsageTerm);' in client_ts
     assert 'query.set("bbox", params.bbox.join(","));' in client_ts
     assert "totalCount: number;" in types_ts
+    assert "bbox: [number, number, number, number] | null;" in types_ts
     assert "let currentListTotalCount = 0;" in workflow_ts
-    assert "currentListTotalCount = page.totalCount;" in workflow_ts
+    assert "currentListTotalCount = options.totalCount ?? nextItems.length;" in workflow_ts
     assert "deps.listPanel.updateNavigation(" in workflow_ts
     assert "elements.navInfo.innerText = totalCount > 0 && currentIndex >= 0 ? `${currentIndex + 1} / ${totalCount}` : `0 / ${totalCount}`;" in panel_ts
-    assert 'const getViewportBboxCrs = (): "EPSG:3857" | "EPSG:4326" =>' in workflow_ts
-    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");' in workflow_ts
+    assert "const sortedItems = sortItemsByPnuAscending(await deps.loadAllLandListItems(currentTheme, values));" in workflow_ts
+    assert "const items = sortItemsByPnuAscending(await deps.loadAllLandListItems(theme));" in workflow_ts
+    assert "const getViewportRenderItems = (" in workflow_ts
+    assert "deps.listPanel.setLoadMore({ visible: false });" in workflow_ts
+    assert "const normalizedBbox = transformBboxToOutputCrs(bbox, \"EPSG:4326\", targetCrs);" in workflow_ts
+    assert "export function transformBboxToOutputCrs(" in coordinate_transform_ts
 
 
 def test_select_highlight_render_contract() -> None:
@@ -322,8 +328,10 @@ def test_siyu_maplibre_route_split_contract() -> None:
     assert "coordinateSample?: unknown;" in maplibre_view_ts
     assert "let lastHighlightLoad: HighlightLoadDebugInfo | null = null;" in maplibre_view_ts
     assert "const setHighlightDebugInfo = (info: HighlightLoadDebugInfo | null): void => {" in maplibre_view_ts
-    assert 'const getViewportBboxCrs = (): "EPSG:3857" | "EPSG:4326" =>' in workflow_ts
-    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");' in workflow_ts
+    assert "const refreshViewportHighlights = async (options?: {" in workflow_ts
+    assert "void refreshViewportHighlights({ preserveSelectedItem: true });" in workflow_ts
+    assert "const getViewportRenderItems = (" in workflow_ts
+    assert "renderItems: renderItems.length > 0 ? renderItems : [selected]" in workflow_ts
     assert 'const getRenderProjection = (_deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] => config.cadastralCrs;' in highlight_ts
     assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in highlight_ts
     worker_ts = Path("frontend/src/map/cadastral-fgb-worker.ts").read_text(encoding="utf-8")

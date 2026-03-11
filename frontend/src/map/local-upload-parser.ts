@@ -95,6 +95,7 @@ function parseRowsToItems(rows: Record<string, unknown>[]): LandListItem[] {
       land_type: landType,
       area,
       property_manager: propertyManager,
+      bbox: null,
       sourceFields: buildSourceFields(row, headers)
     });
   });

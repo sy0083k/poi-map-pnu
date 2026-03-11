@@ -157,6 +157,7 @@ async def test_lands_list_includes_dynamic_source_fields(async_client: httpx.Asy
     assert len(payload["items"]) == 1
     assert payload["totalCount"] == 1
     item = payload["items"][0]
+    assert item["bbox"] == [0.0, 0.0, 1.0, 1.0]
     assert item["sourceFields"][0]["label"] == "고유번호"
     assert item["sourceFields"][1]["value"] == "테스트"
 
@@ -275,6 +276,7 @@ async def test_lands_list_supports_bbox_query(async_client: httpx.AsyncClient, d
     assert res.status_code == 200
     payload = res.json()
     assert [item["address"] for item in payload["items"]] == ["inside-bbox"]
+    assert payload["items"][0]["bbox"] == [inside_min[0], inside_min[1], inside_max[0], inside_max[1]]
     assert payload["totalCount"] == 2
 
 

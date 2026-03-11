@@ -1,4 +1,5 @@
 import { HttpError } from "../http";
+import { transformBboxToOutputCrs } from "./coordinate-transform";
 import { downloadCurrentSearchResults as downloadSearchResults } from "./land-workflow-download";
 import { hasMultipleManagers, prepareUploadedHighlights, reloadCadastralLayers } from "./land-workflow-highlight";
 import type { FilterValues, Filters } from "./filters";
@@ -22,7 +23,6 @@ type EngineAwareMapView = Omit<MapView, "getEngine"> & {
 type ListQueryMode = "empty" | "override" | "search" | "viewport";
 type ContextHighlightOptions = {
   bbox: [number, number, number, number] | null;
-  isViewportContext: boolean;
   preserveSelectedItem?: boolean;
   selectedItemToPreserve?: LandListItem | null;
 };
@@ -53,9 +53,7 @@ type LandWorkflowDeps = {
 };
 
 const MAX_DATASET_INDEX_CACHE_SIZE = 5;
-const MAX_INITIAL_HIGHLIGHTS = 300;
 const VIEWPORT_CONTEXT_INFLATE_FACTOR = 1.5;
-const LIST_PAGE_LIMIT_HINT = 500;
 
 function inflateExtent(
   extent: [number, number, number, number],
@@ -67,13 +65,6 @@ function inflateExtent(
   const extraWidth = ((factor - 1) * width) / 2;
   const extraHeight = ((factor - 1) * height) / 2;
   return [minX - extraWidth, minY - extraHeight, maxX + extraWidth, maxY + extraHeight];
-}
-
-function bboxContainsPoint(
-  bbox: [number, number, number, number],
-  point: [number, number]
-): boolean {
-  return point[0] >= bbox[0] && point[0] <= bbox[2] && point[1] >= bbox[1] && point[1] <= bbox[3];
 }
 
 function normalizePnuForSort(raw: string): string {
@@ -103,14 +94,6 @@ function sortItemsByPnuAscending(items: LandListItem[]): LandListItem[] {
   });
 }
 
-function mergeUniqueItems(base: LandListItem[], incoming: LandListItem[]): LandListItem[] {
-  const byId = new Map<number, LandListItem>();
-  [...base, ...incoming].forEach((item) => {
-    byId.set(item.id, item);
-  });
-  return sortItemsByPnuAscending(Array.from(byId.values()));
-}
-
 function bboxKey(bbox: [number, number, number, number] | null): string {
   if (!bbox) {
     return "bbox:none";
@@ -133,7 +116,6 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let currentListFilters: FilterValues | undefined;
   let currentListBbox: [number, number, number, number] | null = null;
   let currentListTotalCount = 0;
-  let hasConsumedInitialViewportHighlightCap = false;
   let lastViewportContextKey = "";
   const featuresByPnuIndexByDataset = new Map<
     string,
@@ -142,9 +124,6 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
   const serverFilterTheme: ThemeType = "city_owned";
   const getRenderProjection = (): MapConfig["cadastralCrs"] => config?.cadastralCrs ?? "EPSG:4326";
-
-  const getViewportBboxCrs = (): "EPSG:3857" | "EPSG:4326" =>
-    deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");
 
   const updateNavigation = (): void => {
     deps.listPanel.updateNavigation(
@@ -288,14 +267,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   const renderCurrentList = (): void => {
     const items = deps.state.getCurrentItems();
     deps.listPanel.render(items, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
-    deps.listPanel.setLoadMore({
-      visible: currentListMode !== "empty" && currentListCursor !== null,
-      disabled: false,
-      label: "목록 더 불러오기",
-      onClick: () => {
-        void loadMoreCurrentQuery();
-      }
-    });
+    deps.listPanel.setLoadMore({ visible: false });
     updateNavigation();
   };
 
@@ -304,19 +276,14 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     options: ContextHighlightOptions
   ): Promise<void> => {
     const renderItems =
-      options.preserveSelectedItem
-        ? includeSelectedItemForRender(items, options.selectedItemToPreserve)
+      options.bbox || options.preserveSelectedItem
+        ? getViewportRenderItems(items, options.bbox, options.preserveSelectedItem ? options.selectedItemToPreserve : null)
         : items;
-    const shouldCapViewport = options.isViewportContext && !hasConsumedInitialViewportHighlightCap;
-    if (options.isViewportContext) {
-      hasConsumedInitialViewportHighlightCap = true;
-    }
     await waitForNextPaint();
     await prepareUploadedHighlights(highlightDeps, items, {
       renderItems,
-      bbox: options.bbox ?? undefined,
-      bboxCrs: options.bbox ? getViewportBboxCrs() : undefined,
-      maxPnus: shouldCapViewport ? MAX_INITIAL_HIGHLIGHTS : undefined
+      bbox: undefined,
+      bboxCrs: undefined
     });
   };
 
@@ -339,12 +306,44 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     return [selectedItem, ...items];
   };
 
+  const doesItemIntersectBbox = (
+    item: LandListItem,
+    bbox: [number, number, number, number] | null
+  ): boolean => {
+    if (!bbox || !item.bbox) {
+      return false;
+    }
+    const targetCrs = config?.cadastralCrs ?? "EPSG:4326";
+    const normalizedBbox = transformBboxToOutputCrs(bbox, "EPSG:4326", targetCrs);
+    if (!normalizedBbox) {
+      return false;
+    }
+    return (
+      item.bbox[0] <= normalizedBbox[2] &&
+      item.bbox[2] >= normalizedBbox[0] &&
+      item.bbox[1] <= normalizedBbox[3] &&
+      item.bbox[3] >= normalizedBbox[1]
+    );
+  };
+
+  const getViewportRenderItems = (
+    items: LandListItem[],
+    bbox: [number, number, number, number] | null,
+    selectedItem?: LandListItem | null
+  ): LandListItem[] => {
+    const bboxItems = bbox ? items.filter((item) => doesItemIntersectBbox(item, bbox)) : [];
+    return includeSelectedItemForRender(bboxItems, selectedItem);
+  };
+
   const loadSelectionHighlight = async (index: number): Promise<void> => {
     const selected = deps.state.getCurrentItems()[index];
     if (!selected) {
       return;
     }
-    await prepareUploadedHighlights(highlightDeps, [selected], { maxPnus: 1 });
+    const renderItems = getViewportRenderItems(deps.state.getCurrentItems(), currentListBbox, selected);
+    await prepareUploadedHighlights(highlightDeps, deps.state.getCurrentItems(), {
+      renderItems: renderItems.length > 0 ? renderItems : [selected]
+    });
     const movedAfterReload = deps.mapView.selectFeatureByIndex(index, { shouldFit: true });
     if (!movedAfterReload) {
       deps.setMapStatus("선택한 필지 하이라이트를 찾지 못했습니다.", "#b45309");
@@ -374,109 +373,41 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     deps.listPanel.scrollTo(index);
   };
 
-  const fetchListPage = async (params: {
-    theme: ThemeType;
-    filters?: FilterValues;
-    cursor?: string | null;
-    bbox?: [number, number, number, number];
-  }): Promise<LandListPageResponse> => {
-    if (params.cursor) {
-      return deps.loadNextLandListPage(
-        params.theme,
-        params.cursor,
-        params.filters,
-        params.bbox,
-        params.bbox ? getViewportBboxCrs() : undefined
-      );
-    }
-    return deps.loadFirstLandListPage(
-      params.theme,
-      params.filters,
-      params.bbox,
-      params.bbox ? getViewportBboxCrs() : undefined
-    );
-  };
-
-  const applyPageToState = (page: LandListPageResponse, options: {
-    append: boolean;
+  const applyItemsToState = (items: LandListItem[], options: {
     mode: ListQueryMode;
     filters?: FilterValues;
     bbox?: [number, number, number, number] | null;
+    totalCount?: number;
   }): LandListItem[] => {
-    const nextItems = options.append
-      ? mergeUniqueItems(deps.state.getCurrentItems(), page.items)
-      : sortItemsByPnuAscending(page.items);
+    const nextItems = sortItemsByPnuAscending(items);
     deps.state.setOriginalItems(nextItems);
     syncSelectedIndexAfterItemSet(nextItems);
     currentListMode = options.mode;
-    currentListCursor = page.nextCursor;
+    currentListCursor = null;
     currentListFilters = options.filters;
     currentListBbox = options.bbox ?? null;
-    currentListTotalCount = page.totalCount;
+    currentListTotalCount = options.totalCount ?? nextItems.length;
     renderCurrentList();
     return nextItems;
   };
 
-  const loadViewportContext = async (options?: {
-    append?: boolean;
-    fromMoveEnd?: boolean;
+  const refreshViewportHighlights = async (options?: {
+    preserveSelectedItem?: boolean;
   }): Promise<void> => {
     if (deps.state.getCurrentTheme() !== "city_owned" || overrideItemsByTheme.has("city_owned")) {
       return;
     }
     const bbox = getInflatedViewportBbox();
     const bboxHash = bboxKey(bbox);
-    if (options?.fromMoveEnd && bboxHash === lastViewportContextKey) {
+    if (bboxHash === lastViewportContextKey && !options?.preserveSelectedItem) {
       return;
     }
-    const selectedItemToPreserve = options?.fromMoveEnd ? getCurrentlySelectedItem() : null;
-    const page = await fetchListPage({
-      theme: "city_owned",
-      bbox: bbox ?? undefined
-    });
-    const nextItems = applyPageToState(page, {
-      append: Boolean(options?.append),
-      mode: "viewport",
-      bbox
-    });
+    currentListBbox = bbox;
     lastViewportContextKey = bboxHash;
-    await prepareContextHighlights(nextItems, {
+    await prepareContextHighlights(deps.state.getCurrentItems(), {
       bbox,
-      isViewportContext: true,
-      preserveSelectedItem: Boolean(options?.fromMoveEnd),
-      selectedItemToPreserve
-    });
-  };
-
-  const loadMoreCurrentQuery = async (): Promise<void> => {
-    if (deps.state.getCurrentTheme() !== "city_owned" || !currentListCursor) {
-      return;
-    }
-    const page = await fetchListPage({
-      theme: "city_owned",
-      cursor: currentListCursor,
-      filters: currentListMode === "search" ? currentListFilters : undefined,
-      bbox: currentListMode === "viewport" ? currentListBbox ?? undefined : undefined
-    });
-    const selectedItemToPreserve = currentListMode === "viewport" ? getCurrentlySelectedItem() : null;
-    const mergedItems = applyPageToState(page, {
-      append: true,
-      mode: currentListMode,
-      filters: currentListMode === "search" ? currentListFilters : undefined,
-      bbox: currentListMode === "viewport" ? currentListBbox : null
-    });
-    if (currentListMode === "viewport") {
-      await prepareContextHighlights(mergedItems, {
-        bbox: currentListBbox,
-        isViewportContext: true,
-        preserveSelectedItem: true,
-        selectedItemToPreserve
-      });
-      return;
-    }
-    await prepareContextHighlights(mergedItems, {
-      bbox: getInflatedViewportBbox(),
-      isViewportContext: false
+      preserveSelectedItem: Boolean(options?.preserveSelectedItem),
+      selectedItemToPreserve: options?.preserveSelectedItem ? getCurrentlySelectedItem() : null
     });
   };
 
@@ -493,8 +424,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       return;
     }
 
-    const page = await deps.loadFirstLandListPage(currentTheme, values);
-    const sortedItems = sortItemsByPnuAscending(page.items);
+    const sortedItems = sortItemsByPnuAscending(await deps.loadAllLandListItems(currentTheme, values));
     if (trackEvent) {
       deps.telemetry.trackSearchEvent(
         values.minArea,
@@ -527,18 +457,15 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       }
     }
 
-    deps.state.setOriginalItems(sortedItems);
-    syncSelectedIndexAfterItemSet(sortedItems);
-    currentListMode = "search";
-    currentListCursor = page.nextCursor;
-    currentListFilters = values;
-    currentListBbox = null;
-    currentListTotalCount = page.totalCount;
-    deps.mapView.clearInfoPanel();
-    renderCurrentList();
-    await prepareContextHighlights(sortedItems, {
+    applyItemsToState(sortedItems, {
+      mode: "search",
+      filters: values,
       bbox: getInflatedViewportBbox(),
-      isViewportContext: false
+      totalCount: sortedItems.length
+    });
+    deps.mapView.clearInfoPanel();
+    await prepareContextHighlights(sortedItems, {
+      bbox: getInflatedViewportBbox()
     });
     if (trackEvent) {
       const topVisibleIndex = findMinVisiblePnuIndex(deps.state.getCurrentItems());
@@ -556,7 +483,6 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     currentListFilters = undefined;
     currentListBbox = null;
     currentListTotalCount = 0;
-    hasConsumedInitialViewportHighlightCap = false;
     lastViewportContextKey = "";
 
     if (overrideItems) {
@@ -569,9 +495,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.setMapStatus(`${themeLabel} 하이라이트를 준비하는 중입니다...`, "#166534");
       await waitForNextPaint();
       if (seq === themeLoadRequestSeq) {
-        await prepareUploadedHighlights(highlightDeps, overrideItems, {
-          maxPnus: MAX_INITIAL_HIGHLIGHTS
-        });
+        await prepareUploadedHighlights(highlightDeps, overrideItems);
       }
       return;
     }
@@ -594,12 +518,20 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     }
 
     try {
-      deps.listPanel.setStatus(`${themeLabel} 주변 목록을 불러오는 중입니다...`);
-      await loadViewportContext();
+      deps.listPanel.setStatus(`${themeLabel} 목록을 불러오는 중입니다...`);
+      const items = sortItemsByPnuAscending(await deps.loadAllLandListItems(theme));
       if (seq !== themeLoadRequestSeq) {
         return;
       }
-      deps.setMapStatus(`${themeLabel} 주변 하이라이트를 표시했습니다.`, "#166534");
+      applyItemsToState(items, {
+        mode: "viewport",
+        bbox: getInflatedViewportBbox(),
+        totalCount: items.length
+      });
+      await prepareContextHighlights(items, {
+        bbox: getInflatedViewportBbox()
+      });
+      deps.setMapStatus(`${themeLabel} 현재 화면 하이라이트를 표시했습니다.`, "#166534");
     } catch (error) {
       if (seq !== themeLoadRequestSeq) {
         return;
@@ -625,7 +557,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     syncDesktopToMobileInputs();
     deps.mapView.clearInfoPanel();
     if (deps.state.getCurrentTheme() === "city_owned" && !overrideItemsByTheme.has("city_owned")) {
-      void loadViewportContext();
+      void loadThemeData("city_owned");
       return;
     }
     void applyFilters(false);
@@ -643,26 +575,13 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     if (deps.state.getCurrentTheme() !== "city_owned") {
       return;
     }
-    if (overrideItemsByTheme.has("city_owned") || currentListMode === "search") {
+    if (overrideItemsByTheme.has("city_owned")) {
       return;
     }
-    void loadViewportContext({ fromMoveEnd: true });
+    void refreshViewportHighlights({ preserveSelectedItem: true });
   };
 
   const downloadCurrentSearchResults = (): void => {
-    if (deps.state.getCurrentTheme() === "city_owned" && currentListMode === "search") {
-      void (async () => {
-        const items = await deps.loadAllLandListItems("city_owned", currentListFilters);
-        downloadSearchResults({
-          currentItems: items,
-          currentTheme: deps.state.getCurrentTheme(),
-          hasThemeOverrideItems: false,
-          downloadClient: deps.downloadClient,
-          setMapStatus: deps.setMapStatus,
-        });
-      })();
-      return;
-    }
     downloadSearchResults({
       currentItems: deps.state.getCurrentItems(),
       currentTheme: deps.state.getCurrentTheme(),
