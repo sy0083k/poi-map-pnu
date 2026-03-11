@@ -3,6 +3,12 @@ import type { FilterValues } from "./filters";
 
 import type { LandListItem, LandListPageResponse, ThemeType } from "./types";
 
+async function yieldToBrowser(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 0);
+  });
+}
+
 function appendFilterQuery(query: URLSearchParams, filters?: FilterValues): void {
   if (!filters) {
     return;
@@ -48,6 +54,7 @@ export async function loadAllLandListItems(theme: ThemeType, filters?: FilterVal
       break;
     }
     cursor = page.nextCursor;
+    await yieldToBrowser();
   }
 
   return allItems;

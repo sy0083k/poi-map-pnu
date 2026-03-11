@@ -39,6 +39,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let uploadedHighlightsRequestSeq = 0;
   let themeLoadRequestSeq = 0;
   let highlightLoadAbortController: AbortController | null = null;
+  let lastRenderedHighlightSignature = "";
   const featuresByPnuIndexByDataset = new Map<string, { featuresByPnu: Map<string, unknown>; sourceFeatureCount: number }>();
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
   const serverFilterTheme: ThemeType = "city_owned";
@@ -134,11 +135,21 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     mapView: deps.mapView,
     setMapStatus: deps.setMapStatus,
     getThemeLabel: deps.getThemeLabel,
-    updateNavigation
+    updateNavigation,
+    getLastRenderedSignature: () => lastRenderedHighlightSignature,
+    setLastRenderedSignature: (value: string) => {
+      lastRenderedHighlightSignature = value;
+    }
   };
 
   const setConfig = (nextConfig: MapConfig): void => {
     config = nextConfig;
+  };
+
+  const waitForNextPaint = async (): Promise<void> => {
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
   };
 
   const selectItem = (index: number, options: SelectOptions): void => {
@@ -223,7 +234,11 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.listPanel.setStatus(`${themeLabel} 목록을 로컬 업로드 데이터로 표시합니다.`);
       deps.state.setOriginalItems(overrideItems);
       await applyFilters(false);
-      void prepareUploadedHighlights(highlightDeps, overrideItems);
+      deps.setMapStatus(`${themeLabel} 하이라이트를 준비하는 중입니다...`, "#166534");
+      await waitForNextPaint();
+      if (seq === themeLoadRequestSeq) {
+        void prepareUploadedHighlights(highlightDeps, overrideItems);
+      }
       return;
     }
 
@@ -254,7 +269,11 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.mapView.clearInfoPanel();
       updateNavigation();
       await reloadCadastralLayers(highlightDeps);
-      void prepareUploadedHighlights(highlightDeps, sortedItems);
+      deps.setMapStatus(`${themeLabel} 하이라이트를 준비하는 중입니다...`, "#166534");
+      await waitForNextPaint();
+      if (seq === themeLoadRequestSeq) {
+        void prepareUploadedHighlights(highlightDeps, sortedItems);
+      }
     } catch (error) {
       if (seq !== themeLoadRequestSeq) {
         return;

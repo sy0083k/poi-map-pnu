@@ -31,6 +31,8 @@ type HighlightDeps = {
   setMapStatus: (message: string, color?: string) => void;
   getThemeLabel: (theme: ThemeType) => string;
   updateNavigation: () => void;
+  getLastRenderedSignature: () => string;
+  setLastRenderedSignature: (value: string) => void;
 };
 
 const normalizePnu = (raw: unknown): string => String(raw ?? "").replace(/\D/g, "");
@@ -70,15 +72,27 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
   }
 
   const currentItems = deps.getCurrentItems();
+  const datasetKey = getRuntimeDatasetKey(deps);
+  const renderSignature = `${datasetKey}:${deps.getUploadedHighlightFeatures().features.length}:${currentItems.map((item) => item.id).join(",")}`;
   if (currentItems.length === 0) {
+    if (deps.getLastRenderedSignature() === `${datasetKey}:${deps.getUploadedHighlightFeatures().features.length}:empty`) {
+      deps.updateNavigation();
+      return;
+    }
     deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection(deps, config) });
     deps.mapView.setHighlightDebugInfo?.(null);
     deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
+    deps.setLastRenderedSignature(`${datasetKey}:${deps.getUploadedHighlightFeatures().features.length}:empty`);
     deps.updateNavigation();
     return;
   }
 
-  const featuresByPnu = getFeaturesByPnu(deps, getRuntimeDatasetKey(deps));
+  if (deps.getLastRenderedSignature() === renderSignature) {
+    deps.updateNavigation();
+    return;
+  }
+
+  const featuresByPnu = getFeaturesByPnu(deps, datasetKey);
 
   const withProperties: LandFeatureCollection = {
     type: "FeatureCollection",
@@ -97,6 +111,7 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
   } else {
     deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건, ${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${withProperties.features.length}건`, "#166534");
   }
+  deps.setLastRenderedSignature(renderSignature);
   deps.updateNavigation();
 }
 
@@ -118,9 +133,22 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
   const seq = deps.getUploadedHighlightsRequestSeq() + 1;
   deps.setUploadedHighlightsRequestSeq(seq);
   deps.setUploadedHighlightDatasetKey(`loading:${deps.getCurrentTheme()}:${seq}`);
+  deps.setLastRenderedSignature("");
   const controller = new AbortController();
   deps.setHighlightLoadAbortController(controller);
   let firstVisibleApplied = false;
+  let frameRenderPending = false;
+
+  const scheduleReload = (): void => {
+    if (frameRenderPending) {
+      return;
+    }
+    frameRenderPending = true;
+    window.requestAnimationFrame(() => {
+      frameRenderPending = false;
+      void reloadCadastralLayers(deps);
+    });
+  };
 
   try {
     deps.setMapStatus("업로드 하이라이트를 준비하는 중입니다...");
@@ -143,7 +171,9 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
         deps.deleteFeaturesByPnuIndex(getRuntimeDatasetKey(deps));
         if (!firstVisibleApplied) {
           firstVisibleApplied = true;
-          void reloadCadastralLayers(deps);
+          scheduleReload();
+        } else {
+          scheduleReload();
         }
         deps.setMapStatus(progress.fromCache ? `하이라이트 캐시 ${progress.matched}건 적용` : `하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`, "#166534");
       },
