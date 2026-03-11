@@ -1,6 +1,7 @@
 import { HttpError } from "../http";
 import { downloadCurrentSearchResults as downloadSearchResults } from "./land-workflow-download";
 import { hasMultipleManagers, prepareUploadedHighlights, reloadCadastralLayers } from "./land-workflow-highlight";
+import type { HighlightGeometryRecord } from "./rendered-land-records";
 import { loadServerFilteredItems } from "./land-workflow-server-filter";
 import type { DownloadClient } from "./download-client";
 import type { Filters } from "./filters";
@@ -42,7 +43,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let lastRenderedHighlightSignature = "";
   let pendingHighlightRenderSignature = "";
   let highlightRenderRequestSeq = 0;
-  const featuresByPnuIndexByDataset = new Map<string, { featuresByPnu: Map<string, unknown>; sourceFeatureCount: number }>();
+  const featuresByPnuIndexByDataset = new Map<string, { recordsByPnu: Map<string, HighlightGeometryRecord>; sourceFeatureCount: number }>();
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
   const serverFilterTheme: ThemeType = "city_owned";
   const getRenderProjection = (): MapConfig["cadastralCrs"] =>
@@ -110,7 +111,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       uploadedHighlightDatasetKey = value;
     },
     getFeaturesByPnuIndex: (datasetKey: string) => featuresByPnuIndexByDataset.get(datasetKey),
-    setFeaturesByPnuIndex: (datasetKey: string, entry: { featuresByPnu: Map<string, unknown>; sourceFeatureCount: number }) => {
+    setFeaturesByPnuIndex: (datasetKey: string, entry: { recordsByPnu: Map<string, HighlightGeometryRecord>; sourceFeatureCount: number }) => {
       if (featuresByPnuIndexByDataset.has(datasetKey)) {
         featuresByPnuIndexByDataset.delete(datasetKey);
       }

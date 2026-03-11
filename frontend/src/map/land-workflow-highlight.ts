@@ -1,10 +1,10 @@
 import { loadUploadedHighlights, type HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
-import { createRenderedLandRecordMap, intersectsGeometryBbox } from "./rendered-land-records";
+import { computeGeometryBbox, createRenderedLandRecordMap, type HighlightGeometryRecord } from "./rendered-land-records";
 
-import type { FeatureDiffOptions, LandFeatureCollection, LandListItem, MapConfig, RenderedLandRecordMap, ThemeType } from "./types";
+import type { FeatureDelta, FeatureDiffOptions, LandFeatureCollection, LandListItem, MapConfig, RenderedLandRecordMap, ThemeType } from "./types";
 
 type FeatureIndexEntry = {
-  featuresByPnu: Map<string, unknown>;
+  recordsByPnu: Map<string, HighlightGeometryRecord>;
   sourceFeatureCount: number;
 };
 
@@ -29,6 +29,7 @@ type HighlightDeps = {
   setHighlightLoadAbortController: (value: AbortController | null) => void;
   mapView: {
     applyFeatureDiff: (nextByPnu: RenderedLandRecordMap, options: FeatureDiffOptions) => Promise<number>;
+    applyFeatureDelta?: (delta: FeatureDelta, options: FeatureDiffOptions) => Promise<number>;
     clearRenderedFeatures: () => void;
     getCurrentExtent: () => number[] | null;
     getEngine: () => "openlayers" | "maplibre";
@@ -60,27 +61,35 @@ const getRuntimeDatasetKey = (deps: HighlightDeps): string => {
   return `runtime:${deps.getCurrentTheme()}`;
 };
 
-const getFeaturesByPnu = (deps: HighlightDeps, datasetKey: string): Map<string, unknown> => {
+const getFeaturesByPnu = (deps: HighlightDeps, datasetKey: string): Map<string, HighlightGeometryRecord> => {
   const uploadedFeatures = deps.getUploadedHighlightFeatures().features;
   const existing = deps.getFeaturesByPnuIndex(datasetKey);
   if (existing && existing.sourceFeatureCount === uploadedFeatures.length) {
-    return existing.featuresByPnu;
+    return existing.recordsByPnu;
   }
 
-  const rebuilt = new Map<string, unknown>();
+  const rebuilt = new Map<string, HighlightGeometryRecord>();
   uploadedFeatures.forEach((feature) => {
     const pnu = normalizePnu(feature.properties.pnu);
     if (pnu) {
-      rebuilt.set(pnu, feature.geometry);
+      rebuilt.set(pnu, {
+        geometry: feature.geometry,
+        bbox:
+          Array.isArray(feature.properties.bbox) &&
+          feature.properties.bbox.length === 4 &&
+          feature.properties.bbox.every((value) => typeof value === "number" && Number.isFinite(value))
+            ? feature.properties.bbox
+            : computeGeometryBbox(feature.geometry)
+      });
     }
   });
-  deps.setFeaturesByPnuIndex(datasetKey, { featuresByPnu: rebuilt, sourceFeatureCount: uploadedFeatures.length });
+  deps.setFeaturesByPnuIndex(datasetKey, { recordsByPnu: rebuilt, sourceFeatureCount: uploadedFeatures.length });
   return rebuilt;
 };
 
 function createVisibleFirstItemOrder(
   items: LandListItem[],
-  featuresByPnu: Map<string, unknown>,
+  featuresByPnu: Map<string, HighlightGeometryRecord>,
   extent: number[] | null,
   prioritizeIndex: number | null
 ): { priorityItems: LandListItem[]; remainingItems: LandListItem[] } {
@@ -92,8 +101,9 @@ function createVisibleFirstItemOrder(
 
   if (visibleExtent) {
     items.forEach((item, index) => {
-      const geometry = featuresByPnu.get(normalizePnu(item.pnu));
-      if (geometry && intersectsGeometryBbox(geometry, visibleExtent)) {
+      const geometryRecord = featuresByPnu.get(normalizePnu(item.pnu));
+      const bbox = geometryRecord?.bbox;
+      if (bbox && bbox[0] <= visibleExtent[2] && bbox[2] >= visibleExtent[0] && bbox[1] <= visibleExtent[3] && bbox[3] >= visibleExtent[1]) {
         priorityIndexes.add(index);
       }
     });
@@ -120,17 +130,6 @@ function createVisibleFirstItemOrder(
     remainingItems.push(item);
   });
   return { priorityItems, remainingItems };
-}
-
-function mergeRecordMaps(
-  base: RenderedLandRecordMap,
-  incoming: RenderedLandRecordMap
-): RenderedLandRecordMap {
-  const merged = new Map(base);
-  incoming.forEach((value, key) => {
-    merged.set(key, value);
-  });
-  return merged;
 }
 
 function chunkItems<T>(items: T[], size: number): T[][] {
@@ -161,6 +160,20 @@ function buildListIndexByPnu(items: LandListItem[]): Map<string, number> {
     next.set(normalizedPnu, index);
   });
   return next;
+}
+
+function isMapDebugEnabled(): boolean {
+  return new URLSearchParams(window.location.search).get("debugMap") === "1";
+}
+
+function measureRenderStep<T>(name: string, action: () => Promise<T>): Promise<T> {
+  if (!isMapDebugEnabled() || typeof performance === "undefined") {
+    return action();
+  }
+  const start = performance.now();
+  return action().finally(() => {
+    console.info(`[render] ${name}: ${(performance.now() - start).toFixed(1)}ms`);
+  });
 }
 
 export async function reloadCadastralLayers(
@@ -223,10 +236,12 @@ export async function reloadCadastralLayers(
     );
   }
 
-  await deps.mapView.applyFeatureDiff(stagedByPnu, {
-    dataProjection: getRenderProjection(deps, config),
-    datasetKey
-  });
+  await measureRenderStep("highlight-seed", () =>
+    deps.mapView.applyFeatureDiff(stagedByPnu, {
+      dataProjection: getRenderProjection(deps, config),
+      datasetKey
+    })
+  );
   if (renderRequestSeq !== deps.getRenderRequestSeq()) {
     return;
   }
@@ -244,11 +259,27 @@ export async function reloadCadastralLayers(
       return;
     }
     const nextChunkByPnu = createRenderedLandRecordMap(remainderChunk, featuresByPnu, listIndexByPnu);
-    stagedByPnu = mergeRecordMaps(stagedByPnu, nextChunkByPnu);
-    await deps.mapView.applyFeatureDiff(stagedByPnu, {
-      dataProjection: getRenderProjection(deps, config),
-      datasetKey
+    nextChunkByPnu.forEach((value, key) => {
+      stagedByPnu.set(key, value);
     });
+    if (deps.mapView.applyFeatureDelta) {
+      await measureRenderStep(`highlight-delta-${nextChunkByPnu.size}`, () =>
+        deps.mapView.applyFeatureDelta!(
+          { addOrUpdate: nextChunkByPnu },
+          {
+            dataProjection: getRenderProjection(deps, config),
+            datasetKey
+          }
+        )
+      );
+    } else {
+      await measureRenderStep(`highlight-diff-${stagedByPnu.size}`, () =>
+        deps.mapView.applyFeatureDiff(stagedByPnu, {
+          dataProjection: getRenderProjection(deps, config),
+          datasetKey
+        })
+      );
+    }
     if (renderRequestSeq !== deps.getRenderRequestSeq()) {
       return;
     }

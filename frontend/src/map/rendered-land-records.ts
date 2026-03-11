@@ -1,5 +1,10 @@
 import type { LandListItem, LandSourceField, RenderedLandRecord, RenderedLandRecordMap } from "./types";
 
+export type HighlightGeometryRecord = {
+  geometry: unknown;
+  bbox: [number, number, number, number] | null;
+};
+
 function normalizePnu(raw: unknown): string {
   return String(raw ?? "").replace(/\D/g, "");
 }
@@ -60,7 +65,7 @@ export function haveRenderedPropertiesChanged(
 
 export function createRenderedLandRecordMap(
   items: LandListItem[],
-  geometriesByPnu: Map<string, unknown>,
+  geometriesByPnu: Map<string, HighlightGeometryRecord>,
   listIndexByPnu?: Map<string, number>
 ): RenderedLandRecordMap {
   const next = new Map<string, RenderedLandRecord>();
@@ -69,14 +74,14 @@ export function createRenderedLandRecordMap(
     if (!normalizedPnu) {
       return;
     }
-    const geometry = geometriesByPnu.get(normalizedPnu);
-    if (!geometry) {
+    const geometryRecord = geometriesByPnu.get(normalizedPnu);
+    if (!geometryRecord) {
       return;
     }
     const listIndex = listIndexByPnu?.get(normalizedPnu) ?? index;
     next.set(normalizedPnu, {
       pnu: normalizedPnu,
-      geometry,
+      geometry: geometryRecord.geometry,
       properties: {
         list_index: listIndex,
         id: item.id,

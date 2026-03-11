@@ -11,7 +11,7 @@ import { createMapViewInfoPanel } from "./map-view-info-panel";
 import { createMapViewStyles } from "./map-view-styles";
 import { haveRenderedPropertiesChanged, normalizeRenderedRecordPnu } from "./rendered-land-records";
 import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
-import type { BaseType, CadastralCrs, FeatureDiffOptions, LandFeatureCollection, MapConfig, RenderedLandRecord, RenderedLandRecordMap, ThemeType } from "./types";
+import type { BaseType, CadastralCrs, FeatureDelta, FeatureDiffOptions, LandFeatureCollection, MapConfig, RenderedLandRecord, RenderedLandRecordMap, ThemeType } from "./types";
 
 type MapViewElements = {
   infoPanelElement: HTMLElement;
@@ -228,6 +228,20 @@ export function createMapView(elements: MapViewElements) {
     return accepted;
   };
 
+  const applyFeatureDelta = async (
+    delta: FeatureDelta,
+    options: FeatureDiffOptions
+  ): Promise<number> => {
+    const nextByPnu = new globalThis.Map<string, RenderedLandRecord>(renderedRecordsByPnu);
+    (delta.remove ?? []).forEach((pnu) => {
+      nextByPnu.delete(pnu);
+    });
+    delta.addOrUpdate.forEach((record, pnu) => {
+      nextByPnu.set(pnu, record);
+    });
+    return applyFeatureDiff(nextByPnu, options);
+  };
+
   const selectFeatureByIndex = (index: number, options: SelectOptions): boolean => {
     if (!map || !featureLayers) {
       return false;
@@ -355,6 +369,7 @@ export function createMapView(elements: MapViewElements) {
       return indexes;
     },
     getCurrentZoom: (): number | null => (map && typeof map.getView().getZoom() === "number" ? (map.getView().getZoom() as number) : null),
+    applyFeatureDelta,
     applyFeatureDiff,
     clearRenderedFeatures,
     renderFeatures,

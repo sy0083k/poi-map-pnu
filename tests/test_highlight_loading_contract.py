@@ -25,3 +25,20 @@ def test_large_uploaded_highlights_use_chunked_api_before_worker_fallback() -> N
     assert "const apiLoaded = await loadUploadedHighlightsFromApi({" in text
     assert 'source: "api",' in text
     assert 'source: "worker",' in text
+
+
+def test_highlight_reload_uses_cached_bbox_and_delta_updates() -> None:
+    text = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
+    assert "recordsByPnu: Map<string, HighlightGeometryRecord>" in text
+    assert "feature.properties.bbox" in text
+    assert "deps.mapView.applyFeatureDelta" in text
+    assert "stagedByPnu.set(key, value);" in text
+    assert "mergeRecordMaps" not in text
+
+
+def test_maplibre_view_supports_delta_updates_and_geometry_cache() -> None:
+    text = Path("frontend/src/map/map-view-maplibre.ts").read_text(encoding="utf-8")
+    assert "const normalizedGeometryCache = new WeakMap<object" in text
+    assert "const applyFeatureDelta = async (" in text
+    assert "measureMapRender(`applyFeatureDelta(${delta.addOrUpdate.size})`" in text
+    assert "source.updateData({ add: chunk.map(createFeatureUpdate) });" in text

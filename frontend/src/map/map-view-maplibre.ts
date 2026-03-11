@@ -5,7 +5,7 @@ import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
 import { haveRenderedPropertiesChanged, normalizeRenderedRecordPnu } from "./rendered-land-records";
 
-import type { BaseType, CadastralCrs, FeatureDiffOptions, LandFeature, LandFeatureCollection, LandFeatureProperties, MapConfig, RenderedLandRecord, RenderedLandRecordMap, ThemeType } from "./types";
+import type { BaseType, CadastralCrs, FeatureDelta, FeatureDiffOptions, LandFeature, LandFeatureCollection, LandFeatureProperties, MapConfig, RenderedLandRecord, RenderedLandRecordMap, ThemeType } from "./types";
 
 type MapViewElements = {
   infoPanelElement: HTMLElement;
@@ -525,6 +525,16 @@ function nextAnimationFrame(): Promise<void> {
   });
 }
 
+function measureMapRender<T>(name: string, action: () => Promise<T> | T): Promise<T> {
+  if (!isMapDebugEnabled() || typeof performance === "undefined") {
+    return Promise.resolve(action());
+  }
+  const start = performance.now();
+  return Promise.resolve(action()).finally(() => {
+    console.info(`[maplibre] ${name}: ${(performance.now() - start).toFixed(1)}ms`);
+  });
+}
+
 function createBasemapStyle(vworldKey: string): maplibregl.StyleSpecification {
   return {
     version: 8,
@@ -795,6 +805,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
   let debugProbeMeta: DebugProbeMeta | null = null;
   let resolveMapReady: (() => void) | null = null;
   let selectionPulseAnimationFrameId: number | null = null;
+  const normalizedGeometryCache = new WeakMap<object, { geometry: GeoJSON.Geometry; bbox: [number, number, number, number] }>();
   const reducedMotionMedia = window.matchMedia("(prefers-reduced-motion: reduce)");
   const mapReadyPromise = new Promise<void>((resolve) => {
     resolveMapReady = resolve;
@@ -916,6 +927,20 @@ export function createMapLibreMapView(elements: MapViewElements) {
     const geometryType = typeof (record.geometry as { type?: unknown })?.type === "string"
       ? String((record.geometry as { type?: unknown }).type)
       : "unknown";
+    if (record.geometry && typeof record.geometry === "object") {
+      const cached = normalizedGeometryCache.get(record.geometry as object);
+      if (cached) {
+        return {
+          pnu,
+          feature: {
+            type: "Feature" as const,
+            geometry: cached.geometry,
+            properties: record.properties
+          },
+          bbox: cached.bbox
+        };
+      }
+    }
     const normalizedGeometry = normalizeGeometryToWgs84(record.geometry, sourceProjection);
     if (!normalizedGeometry.geometry) {
       const coordinateSample =
@@ -930,15 +955,22 @@ export function createMapLibreMapView(elements: MapViewElements) {
       addGeometryDrop(Number(record.properties.list_index ?? -1), "bbox_unavailable", geometryType);
       return null;
     }
-    return {
+    const nextRecord = {
       pnu,
       feature: {
-        type: "Feature",
+        type: "Feature" as const,
         geometry: normalizedGeometry.geometry,
         properties: record.properties
       },
       bbox
     };
+    if (record.geometry && typeof record.geometry === "object") {
+      normalizedGeometryCache.set(record.geometry as object, {
+        geometry: normalizedGeometry.geometry,
+        bbox
+      });
+    }
+    return nextRecord;
   };
 
   const replaceAllFeatureRecords = (
@@ -1161,7 +1193,6 @@ export function createMapLibreMapView(elements: MapViewElements) {
         }
         const startedAt = performance.now();
         updater(chunk);
-        syncSelectedSourceData();
         if (performance.now() - startedAt >= frameBudgetMs) {
           await nextAnimationFrame();
         }
@@ -1207,6 +1238,141 @@ export function createMapLibreMapView(elements: MapViewElements) {
     renderedRecordsByPnu = new Map(nextByPnu);
     currentDatasetKey = options.datasetKey;
     syncSelectedSourceData();
+    return geometryValidationStats.accepted;
+  };
+
+  const applyFeatureDelta = async (
+    delta: FeatureDelta,
+    options: FeatureDiffOptions
+  ): Promise<number> => {
+    const sourceProjection = options.dataProjection ?? "EPSG:4326";
+    if (sourceProjection !== "EPSG:4326") {
+      console.warn(`[maplibre] expected EPSG:4326 GeoJSON but received ${sourceProjection}`);
+    }
+    const requestSeq = applyFeatureDiffRequestSeq + 1;
+    applyFeatureDiffRequestSeq = requestSeq;
+    const chunkSize = options.chunkSize ?? DEFAULT_DIFF_CHUNK_SIZE;
+    const frameBudgetMs = options.frameBudgetMs ?? DEFAULT_DIFF_FRAME_BUDGET_MS;
+    const remove = delta.remove ?? [];
+
+    if (!map || !isLoaded) {
+      const merged = new Map(renderedRecordsByPnu);
+      remove.forEach((pnu) => {
+        merged.delete(pnu);
+      });
+      delta.addOrUpdate.forEach((record, pnu) => {
+        merged.set(pnu, record);
+      });
+      currentDatasetKey = options.datasetKey;
+      return replaceAllFeatureRecords(merged, sourceProjection);
+    }
+
+    const source = map.getSource(LAND_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!source || currentDatasetKey !== options.datasetKey) {
+      const merged = new Map(renderedRecordsByPnu);
+      remove.forEach((pnu) => {
+        merged.delete(pnu);
+      });
+      delta.addOrUpdate.forEach((record, pnu) => {
+        merged.set(pnu, record);
+      });
+      currentDatasetKey = options.datasetKey;
+      return replaceAllFeatureRecords(merged, sourceProjection);
+    }
+
+    resetGeometryValidationStats(delta.addOrUpdate.size + remove.length);
+    const toAdd: FeatureRecord[] = [];
+    const toUpdate: FeatureRecord[] = [];
+    let selectionChanged = false;
+
+    for (const [pnu, nextRecord] of delta.addOrUpdate.entries()) {
+      const previousRecord = renderedRecordsByPnu.get(pnu);
+      const existingFeatureRecord = featureRecordsByPnu.get(pnu);
+      if (!previousRecord || !existingFeatureRecord) {
+        const normalized = normalizeFeatureRecord(pnu, nextRecord, sourceProjection);
+        if (!normalized) {
+          continue;
+        }
+        toAdd.push(normalized);
+        geometryValidationStats.accepted += 1;
+        continue;
+      }
+      if (
+        previousRecord.geometry === nextRecord.geometry &&
+        !haveRenderedPropertiesChanged(previousRecord.properties, nextRecord.properties)
+      ) {
+        geometryValidationStats.accepted += 1;
+        continue;
+      }
+      const normalized = normalizeFeatureRecord(pnu, nextRecord, sourceProjection);
+      if (!normalized) {
+        continue;
+      }
+      toUpdate.push(normalized);
+      geometryValidationStats.accepted += 1;
+      if (selectedFeaturePnu === pnu) {
+        selectionChanged = true;
+      }
+    }
+
+    const updateInBatches = async <T>(items: T[], updater: (chunk: T[]) => void): Promise<void> => {
+      for (const chunk of chunkItems(items, chunkSize)) {
+        if (requestSeq !== applyFeatureDiffRequestSeq) {
+          return;
+        }
+        const startedAt = performance.now();
+        updater(chunk);
+        if (performance.now() - startedAt >= frameBudgetMs) {
+          await nextAnimationFrame();
+        }
+      }
+    };
+
+    await updateInBatches(remove, (chunk) => {
+      source.updateData({ remove: chunk });
+      chunk.forEach((pnu) => {
+        featureRecordsByPnu.delete(pnu);
+        renderedRecordsByPnu.delete(pnu);
+        if (selectedFeaturePnu === pnu) {
+          selectedFeaturePnu = null;
+          selectionChanged = true;
+        }
+      });
+    });
+    await updateInBatches(toAdd, (chunk) => {
+      source.updateData({ add: chunk.map(createFeatureUpdate) });
+      chunk.forEach((record) => {
+        featureRecordsByPnu.set(record.pnu, record);
+      });
+    });
+    await updateInBatches(toUpdate, (chunk) => {
+      source.updateData({
+        update: chunk.map((record) => ({
+          id: record.pnu,
+          newGeometry: record.feature.geometry as GeoJSON.Geometry,
+          removeAllProperties: true,
+          addOrUpdateProperties: Object.entries(record.feature.properties as Record<string, unknown>).map(([key, value]) => ({
+            key,
+            value
+          }))
+        }))
+      });
+      chunk.forEach((record) => {
+        featureRecordsByPnu.set(record.pnu, record);
+      });
+    });
+
+    if (requestSeq !== applyFeatureDiffRequestSeq) {
+      return geometryValidationStats.accepted;
+    }
+
+    delta.addOrUpdate.forEach((record, pnu) => {
+      renderedRecordsByPnu.set(pnu, record);
+    });
+    currentDatasetKey = options.datasetKey;
+    if (selectionChanged) {
+      syncSelectedSourceData();
+    }
     return geometryValidationStats.accepted;
   };
 
@@ -1390,7 +1556,10 @@ export function createMapLibreMapView(elements: MapViewElements) {
       return indexes;
     },
     getEngine: (): "maplibre" => "maplibre",
-    applyFeatureDiff,
+    applyFeatureDelta: (delta: FeatureDelta, options: FeatureDiffOptions): Promise<number> =>
+      measureMapRender(`applyFeatureDelta(${delta.addOrUpdate.size})`, () => applyFeatureDelta(delta, options)),
+    applyFeatureDiff: (nextByPnu: RenderedLandRecordMap, options: FeatureDiffOptions): Promise<number> =>
+      measureMapRender(`applyFeatureDiff(${nextByPnu.size})`, () => applyFeatureDiff(nextByPnu, options)),
     clearRenderedFeatures,
     loadDebugProbe,
     renderFeatures,

@@ -20,6 +20,7 @@ export type LandFeatureProperties = {
   property_manager?: string;
   source_fields?: LandSourceField[];
   geom_status?: string;
+  bbox?: [number, number, number, number];
 };
 
 export type LandFeature = {
@@ -61,6 +62,11 @@ export type RenderedLandRecord = {
 };
 
 export type RenderedLandRecordMap = Map<string, RenderedLandRecord>;
+
+export type FeatureDelta = {
+  addOrUpdate: RenderedLandRecordMap;
+  remove?: string[];
+};
 
 export type FeatureDiffOptions = {
   dataProjection: CadastralCrs;

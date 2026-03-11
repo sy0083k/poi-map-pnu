@@ -200,7 +200,7 @@ async function loadUploadedHighlightsFromApiInChunks(params: {
       ...apiLoaded.items.map((item) => ({
         type: "Feature" as const,
         geometry: item.geometry,
-        properties: { pnu: item.pnu }
+        properties: { pnu: item.pnu, bbox: item.bbox as [number, number, number, number] }
       }))
     );
     const progress: HighlightLoadProgress = {
