@@ -2,6 +2,7 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibr
 
 import { fetchJson } from "../http";
 import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
+import { toWgs84CoordinatePair } from "./coordinate-transform";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
 import { haveRenderedPropertiesChanged, normalizeRenderedRecordPnu } from "./rendered-land-records";
 
@@ -241,10 +242,6 @@ function isPosition(value: unknown): value is [number, number] {
   return Array.isArray(value) && value.length >= 2 && typeof value[0] === "number" && typeof value[1] === "number";
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
 function isCoordinateContainer(value: unknown): value is Iterable<unknown> {
   return Array.isArray(value) || ArrayBuffer.isView(value) || (!!value && typeof value === "object" && Symbol.iterator in value);
 }
@@ -272,22 +269,7 @@ function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, numb
   if (!items || items.length < 2) {
     return null;
   }
-  const rawX = items[0];
-  const rawY = items[1];
-  if (!isFiniteNumber(rawX) || !isFiniteNumber(rawY)) {
-    return null;
-  }
-  if (sourceCrs !== "EPSG:4326") {
-    return null;
-  }
-  const converted = [rawX, rawY] as [number, number];
-  if (!Number.isFinite(converted[0]) || !Number.isFinite(converted[1])) {
-    return null;
-  }
-  if (converted[0] < -180 || converted[0] > 180 || converted[1] < -90 || converted[1] > 90) {
-    return null;
-  }
-  return converted;
+  return toWgs84CoordinatePair(items[0], items[1], sourceCrs);
 }
 
 function normalizePositionArray(value: unknown, sourceCrs: CadastralCrs): [number, number][] | null {

@@ -24,6 +24,7 @@
 - `/siyu` 하이라이트 계약: 서버는 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조와 `meta.responseCrs`를 반환하고 클라이언트가 내부 `FeatureCollection`으로 재조립해 렌더링
 - `/siyu` 초기 로딩 정책: 현재 지도 extent를 1.5배 확장한 `bbox` 기준 목록 첫 페이지와 하이라이트 최대 300건을 우선 로드하고, moveend 후 주변 context를 다시 채운다
 - `/siyu` CRS 계약: viewport query `bboxCrs`와 geometry render projection을 분리하며, 실제 하이라이트 geometry는 `CADASTRAL_FGB_CRS` 기준으로 렌더링한다
+- `/siyu` MapLibre 변환 정책: `CADASTRAL_FGB_CRS=EPSG:3857` geometry는 클라이언트에서 EPSG:4326으로 변환한 뒤 렌더링한다
 - `/siyu` 목록 정책: 초기 진입은 전체 목록 선적재를 하지 않고 `목록 더 불러오기`로 같은 query의 다음 페이지를 이어붙인다
 - `/siyu` 원본 FGB 진단 모드: `?debugFgb=1`에서 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 별도 오버레이로 1회 로드
 - 하이라이트 캐시 정책: 캐시 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 브라우저 캐시는 IndexedDB 스키마 갱신으로 무효화한다

@@ -221,6 +221,7 @@ def test_visible_first_highlight_preserves_original_list_indexes_contract() -> N
 def test_siyu_maplibre_route_split_contract() -> None:
     map_ts = Path("frontend/src/map.ts").read_text(encoding="utf-8")
     cache_ts = Path("frontend/src/map/cadastral-fgb-cache.ts").read_text(encoding="utf-8")
+    coordinate_transform_ts = Path("frontend/src/map/coordinate-transform.ts").read_text(encoding="utf-8")
     layer_ts = Path("frontend/src/map/cadastral-fgb-layer.ts").read_text(encoding="utf-8")
     workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
     highlight_ts = Path("frontend/src/map/land-workflow-highlight.ts").read_text(encoding="utf-8")
@@ -285,6 +286,7 @@ def test_siyu_maplibre_route_split_contract() -> None:
             'debug marker ready: lng=${DEBUG_REFERENCE_LNG_LAT[0].toFixed(6)} lat=${DEBUG_REFERENCE_LNG_LAT[1].toFixed(6)}',
             'await fetchJson<DebugProbeApiResponse>(',
             'bboxCrs=EPSG:4326&limit=1000',
+            'import { toWgs84CoordinatePair } from "./coordinate-transform";',
         ],
     )
     assert '"fill-opacity": 0' in maplibre_view_ts
@@ -313,7 +315,10 @@ def test_siyu_maplibre_route_split_contract() -> None:
     assert 'const getRenderProjection = (_deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] => config.cadastralCrs;' in highlight_ts
     assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in highlight_ts
     worker_ts = Path("frontend/src/map/cadastral-fgb-worker.ts").read_text(encoding="utf-8")
+    assert 'import { transformCoordinatesToOutputCrs } from "./coordinate-transform";' in worker_ts
     assert "ArrayBuffer.isView(value)" in worker_ts
     assert "function toPlainCoordinateArray(value: unknown): unknown[] | null {" in worker_ts
-    assert "if (sourceCrs === outputCrs) {" in worker_ts
-    assert "return [...items];" in worker_ts
+    assert "const coordinates = transformCoordinatesToOutputCrs(candidate.coordinates, sourceCrs, outputCrs);" in worker_ts
+    assert "export function toWgs84CoordinatePair(" in coordinate_transform_ts
+    assert 'if (sourceCrs === "EPSG:3857") {' in coordinate_transform_ts
+    assert "export function transformCoordinatesToOutputCrs(" in coordinate_transform_ts

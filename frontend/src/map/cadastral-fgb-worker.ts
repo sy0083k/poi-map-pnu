@@ -1,3 +1,4 @@
+import { transformCoordinatesToOutputCrs } from "./coordinate-transform";
 import type { CadastralCrs, LandFeature } from "./types";
 
 type FlatGeobufModule = {
@@ -58,8 +59,6 @@ const FLATGEOBUF_MODULE_URLS = [
 ];
 const CHUNK_SIZE = 50;
 const PROGRESS_TICK = 5000;
-const WEB_MERCATOR_HALF_WORLD = 20037508.34;
-
 function normalizePnu(raw: unknown): string {
   return String(raw ?? "").replace(/\D/g, "");
 }
@@ -95,12 +94,6 @@ function postMessageSafe(message: WorkerResponse): void {
   self.postMessage(message);
 }
 
-function mercatorToWgs84(x: number, y: number): [number, number] {
-  const lon = (x / WEB_MERCATOR_HALF_WORLD) * 180;
-  const lat = (Math.atan(Math.sinh((y / WEB_MERCATOR_HALF_WORLD) * Math.PI)) * 180) / Math.PI;
-  return [lon, lat];
-}
-
 function isCoordinateContainer(value: unknown): value is Iterable<unknown> {
   return Array.isArray(value) || ArrayBuffer.isView(value) || (!!value && typeof value === "object" && Symbol.iterator in value);
 }
@@ -110,25 +103,6 @@ function toPlainCoordinateArray(value: unknown): unknown[] | null {
     return null;
   }
   return Array.from(value);
-}
-
-function transformCoordinates(node: unknown, sourceCrs: CadastralCrs, outputCrs: CadastralCrs): unknown {
-  const items = toPlainCoordinateArray(node);
-  if (!items) {
-    return null;
-  }
-  if (items.length >= 2 && typeof items[0] === "number" && typeof items[1] === "number") {
-    if (sourceCrs === outputCrs) {
-      return [...items];
-    }
-    if (sourceCrs === "EPSG:3857" && outputCrs === "EPSG:4326") {
-      const [lon, lat] = mercatorToWgs84(items[0], items[1]);
-      return [lon, lat, ...items.slice(2)];
-    }
-    return null;
-  }
-  const transformedChildren = items.map((item) => transformCoordinates(item, sourceCrs, outputCrs));
-  return transformedChildren.some((item) => item === null) ? null : transformedChildren;
 }
 
 function transformGeometry(geometry: unknown, sourceCrs: CadastralCrs, outputCrs: CadastralCrs): Record<string, unknown> | null {
@@ -147,7 +121,7 @@ function transformGeometry(geometry: unknown, sourceCrs: CadastralCrs, outputCrs
     const geometries = geometriesRaw.map((item) => transformGeometry(item, sourceCrs, outputCrs));
     return geometries.some((item) => item === null) ? null : { type: candidate.type, geometries };
   }
-  const coordinates = transformCoordinates(candidate.coordinates, sourceCrs, outputCrs);
+  const coordinates = transformCoordinatesToOutputCrs(candidate.coordinates, sourceCrs, outputCrs);
   return coordinates === null ? null : { type: candidate.type, coordinates };
 }
 
