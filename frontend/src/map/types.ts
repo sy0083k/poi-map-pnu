@@ -54,6 +54,21 @@ export type LandFeatureCollection = {
   features: LandFeature[];
 };
 
+export type RenderedLandRecord = {
+  pnu: string;
+  geometry: unknown;
+  properties: LandFeatureProperties;
+};
+
+export type RenderedLandRecordMap = Map<string, RenderedLandRecord>;
+
+export type FeatureDiffOptions = {
+  dataProjection: CadastralCrs;
+  datasetKey: string;
+  chunkSize?: number;
+  frameBudgetMs?: number;
+};
+
 export type LandsPageResponse = LandFeatureCollection & {
   nextCursor: string | null;
 };

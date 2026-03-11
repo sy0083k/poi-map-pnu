@@ -9,8 +9,9 @@ import { applyBasemapType, createBasemapLayers } from "./map-view-basemap";
 import { createMapViewFeatureLayers } from "./map-view-feature-layers";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
 import { createMapViewStyles } from "./map-view-styles";
+import { haveRenderedPropertiesChanged, normalizeRenderedRecordPnu } from "./rendered-land-records";
 import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
-import type { BaseType, CadastralCrs, LandFeatureCollection, MapConfig, ThemeType } from "./types";
+import type { BaseType, CadastralCrs, FeatureDiffOptions, LandFeatureCollection, MapConfig, RenderedLandRecord, RenderedLandRecordMap, ThemeType } from "./types";
 
 type MapViewElements = {
   infoPanelElement: HTMLElement;
@@ -58,6 +59,29 @@ export function createMapView(elements: MapViewElements) {
     infoPanelContent: elements.infoPanelContent
   });
   let featureLayers: ReturnType<typeof createMapViewFeatureLayers> | null = null;
+  let featuresByPnu = new globalThis.Map<string, Feature<Geometry>>();
+  let renderedRecordsByPnu = new globalThis.Map<string, RenderedLandRecord>();
+
+  const readSingleFeature = (
+    pnu: string,
+    geometry: unknown,
+    properties: Record<string, unknown>,
+    options?: RenderOptions
+  ): Feature<Geometry> | null => {
+    const parsed = new GeoJSON().readFeature(
+      { type: "Feature", geometry, properties },
+      {
+        dataProjection: options?.dataProjection ?? "EPSG:4326",
+        featureProjection: "EPSG:3857"
+      }
+    );
+    const feature = asVectorFeature(parsed);
+    if (!feature) {
+      return null;
+    }
+    feature.setId(pnu);
+    return feature;
+  };
 
   const init = (config: MapConfig): void => {
     basemapLayers = createBasemapLayers(config.vworldKey);
@@ -91,12 +115,13 @@ export function createMapView(elements: MapViewElements) {
         infoPanel.clear();
         return;
       }
-      const idx = feature.getId();
-      if (idx === undefined || onFeatureClick === null) {
+      const props = feature.getProperties() as Record<string, unknown>;
+      const listIndex = props.list_index;
+      if (typeof listIndex !== "number" || onFeatureClick === null) {
         return;
       }
       onFeatureClick({
-        index: Number(idx),
+        index: listIndex,
         coordinate: evt.coordinate as number[]
       });
     });
@@ -119,23 +144,106 @@ export function createMapView(elements: MapViewElements) {
       dataProjection: options?.dataProjection ?? "EPSG:4326",
       featureProjection: "EPSG:3857"
     }) as Feature<Geometry>[];
-    const byId = new globalThis.Map<number, Feature<Geometry>>();
+    const byId = new globalThis.Map<string, Feature<Geometry>>();
+    const nextRecords = new globalThis.Map<string, RenderedLandRecord>();
     parsed.forEach((feature, idx) => {
       const props = feature.getProperties() as Record<string, unknown>;
-      const listIndex = props.list_index;
-      const featureId = typeof listIndex === "number" ? listIndex : idx;
-      feature.setId(featureId);
-      byId.set(featureId, feature);
+      const pnu = normalizeRenderedRecordPnu(props.pnu ?? feature.getId() ?? idx);
+      if (!pnu) {
+        return;
+      }
+      feature.setId(pnu);
+      byId.set(pnu, feature);
+      nextRecords.set(pnu, {
+        pnu,
+        geometry: data.features[idx]?.geometry,
+        properties: props
+      });
     });
+    featuresByPnu = byId;
+    renderedRecordsByPnu = nextRecords;
     featureLayers.setFeatures(byId);
     return parsed.length;
+  };
+
+  const clearRenderedFeatures = (): void => {
+    if (!featureLayers) {
+      featuresByPnu = new globalThis.Map<string, Feature<Geometry>>();
+      renderedRecordsByPnu = new globalThis.Map<string, RenderedLandRecord>();
+      return;
+    }
+    featuresByPnu = new globalThis.Map<string, Feature<Geometry>>();
+    renderedRecordsByPnu = new globalThis.Map<string, RenderedLandRecord>();
+    featureLayers.setFeatures(new globalThis.Map<string, Feature<Geometry>>());
+  };
+
+  const applyFeatureDiff = async (
+    nextByPnu: RenderedLandRecordMap,
+    options: FeatureDiffOptions
+  ): Promise<number> => {
+    if (!featureLayers) {
+      return 0;
+    }
+
+    const nextFeaturesByPnu = new globalThis.Map<string, Feature<Geometry>>();
+    let accepted = 0;
+
+    for (const [pnu, nextRecord] of nextByPnu.entries()) {
+      const previousRecord = renderedRecordsByPnu.get(pnu);
+      const previousFeature = featuresByPnu.get(pnu);
+      if (
+        previousRecord &&
+        previousFeature &&
+        previousRecord.geometry === nextRecord.geometry &&
+        !haveRenderedPropertiesChanged(previousRecord.properties, nextRecord.properties)
+      ) {
+        nextFeaturesByPnu.set(pnu, previousFeature);
+        accepted += 1;
+        continue;
+      }
+
+      if (previousRecord && previousFeature && previousRecord.geometry === nextRecord.geometry) {
+        previousFeature.setProperties({ ...nextRecord.properties }, true);
+        nextFeaturesByPnu.set(pnu, previousFeature);
+        accepted += 1;
+        continue;
+      }
+
+      const parsed = readSingleFeature(
+        pnu,
+        nextRecord.geometry,
+        nextRecord.properties as Record<string, unknown>,
+        { dataProjection: options.dataProjection }
+      );
+      if (!parsed) {
+        continue;
+      }
+      nextFeaturesByPnu.set(pnu, parsed);
+      accepted += 1;
+    }
+
+    featuresByPnu = nextFeaturesByPnu;
+    renderedRecordsByPnu = new globalThis.Map<string, RenderedLandRecord>(nextByPnu);
+    featureLayers.setFeatures(nextFeaturesByPnu);
+    return accepted;
   };
 
   const selectFeatureByIndex = (index: number, options: SelectOptions): boolean => {
     if (!map || !featureLayers) {
       return false;
     }
-    const feature = featureLayers.getFeatureById(index);
+    let selectedPnu: string | null = null;
+    for (const [pnu, feature] of featuresByPnu.entries()) {
+      const props = feature.getProperties() as Record<string, unknown>;
+      if (props.list_index === index) {
+        selectedPnu = pnu;
+        break;
+      }
+    }
+    if (!selectedPnu) {
+      return false;
+    }
+    const feature = featureLayers.getFeatureById(selectedPnu);
     if (!feature) {
       return false;
     }
@@ -143,7 +251,7 @@ export function createMapView(elements: MapViewElements) {
     if (!geometry) {
       return false;
     }
-    featureLayers.selectFeatureId(index);
+    featureLayers.selectFeatureId(selectedPnu);
     map.renderSync();
     infoPanel.renderFeatureInfo(feature);
 
@@ -235,17 +343,20 @@ export function createMapView(elements: MapViewElements) {
       const indexes: number[] = [];
       for (const feature of featureLayers.getAllFeatures()) {
         const geometry = feature.getGeometry();
-        const featureId = feature.getId();
-        if (!geometry || typeof featureId !== "number") {
+        const props = feature.getProperties() as Record<string, unknown>;
+        const listIndex = props.list_index;
+        if (!geometry || typeof listIndex !== "number") {
           continue;
         }
         if (intersectsViewport(geometry, extent)) {
-          indexes.push(featureId);
+          indexes.push(listIndex);
         }
       }
       return indexes;
     },
     getCurrentZoom: (): number | null => (map && typeof map.getView().getZoom() === "number" ? (map.getView().getZoom() as number) : null),
+    applyFeatureDiff,
+    clearRenderedFeatures,
     renderFeatures,
     resize: (): void => map?.updateSize(),
     loadDebugProbe,

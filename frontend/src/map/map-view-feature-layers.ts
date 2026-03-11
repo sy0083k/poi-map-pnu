@@ -15,8 +15,8 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
   const selectionPulseTickMs = 100;
   let vectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
   let selectedVectorLayer: VectorLayer<VectorSource<Feature<Geometry>>> | null = null;
-  let selectedFeatureId: number | null = null;
-  let featuresById = new globalThis.Map<number, Feature<Geometry>>();
+  let selectedFeatureId: string | null = null;
+  let featuresById = new globalThis.Map<string, Feature<Geometry>>();
   let selectionPulseTimerId: number | null = null;
   const reducedMotionMedia = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -78,7 +78,7 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
   };
 
   const addFeatureToActiveSource = (
-    featureId: number,
+    featureId: string,
     feature: Feature<Geometry>,
     sources: { baseSource: VectorSource<Feature<Geometry>>; selectedSource: VectorSource<Feature<Geometry>> }
   ): void => {
@@ -111,7 +111,7 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
     }
   };
 
-  const setFeatures = (next: globalThis.Map<number, Feature<Geometry>>): void => {
+  const setFeatures = (next: globalThis.Map<string, Feature<Geometry>>): void => {
     const sources = getSources();
     if (!sources) {
       featuresById = next;
@@ -139,7 +139,7 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
     syncSelectionPulseState();
   };
 
-  const selectFeatureId = (featureId: number | null): void => {
+  const selectFeatureId = (featureId: string | null): void => {
     if (selectedFeatureId === featureId) {
       return;
     }
@@ -175,7 +175,7 @@ export function createMapViewFeatureLayers(deps: LayerDeps) {
     selectedVectorLayer?.changed();
   };
 
-  const getFeatureById = (id: number): Feature<Geometry> | null => featuresById.get(id) ?? null;
+  const getFeatureById = (id: string): Feature<Geometry> | null => featuresById.get(id) ?? null;
   const getAllFeatures = (): Iterable<Feature<Geometry>> => featuresById.values();
 
   ensureLayers();

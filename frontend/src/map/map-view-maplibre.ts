@@ -3,8 +3,9 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibr
 import { fetchJson } from "../http";
 import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
+import { haveRenderedPropertiesChanged, normalizeRenderedRecordPnu } from "./rendered-land-records";
 
-import type { BaseType, CadastralCrs, LandFeature, LandFeatureCollection, LandFeatureProperties, MapConfig, ThemeType } from "./types";
+import type { BaseType, CadastralCrs, FeatureDiffOptions, LandFeature, LandFeatureCollection, LandFeatureProperties, MapConfig, RenderedLandRecord, RenderedLandRecordMap, ThemeType } from "./types";
 
 type MapViewElements = {
   infoPanelElement: HTMLElement;
@@ -26,7 +27,7 @@ type RenderOptions = {
 };
 
 type FeatureRecord = {
-  id: number;
+  pnu: string;
   feature: LandFeature;
   bbox: [number, number, number, number] | null;
 };
@@ -141,6 +142,8 @@ const SELECTION_PULSE_MIN_WIDTH = 4;
 const SELECTION_PULSE_MAX_WIDTH = 8;
 const SELECTION_PULSE_MIN_ALPHA = 0.2;
 const SELECTION_PULSE_MAX_ALPHA = 0.7;
+const DEFAULT_DIFF_CHUNK_SIZE = 100;
+const DEFAULT_DIFF_FRAME_BUDGET_MS = 8;
 
 function isMapDebugEnabled(): boolean {
   return new URLSearchParams(window.location.search).get("debugMap") === "1";
@@ -488,11 +491,38 @@ function toFeatureCollection(records: Iterable<FeatureRecord>): GeoJSON.FeatureC
     type: "FeatureCollection",
     features: Array.from(records, (record) => ({
       type: "Feature",
-      id: record.id,
+      id: record.pnu,
       geometry: record.feature.geometry as GeoJSON.Geometry,
       properties: record.feature.properties as GeoJSON.GeoJsonProperties
     }))
   };
+}
+
+function createFeatureUpdate(record: FeatureRecord): GeoJSON.Feature {
+  return {
+    type: "Feature",
+    id: record.pnu,
+    geometry: record.feature.geometry as GeoJSON.Geometry,
+    properties: record.feature.properties as GeoJSON.GeoJsonProperties
+  };
+}
+
+function chunkItems<T>(items: T[], size: number): T[][] {
+  if (items.length === 0) {
+    return [];
+  }
+  const chunkSize = Math.max(1, size);
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
+function nextAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
 }
 
 function createBasemapStyle(vworldKey: string): maplibregl.StyleSpecification {
@@ -745,12 +775,15 @@ export function createMapLibreMapView(elements: MapViewElements) {
   let onFeatureClick: ((payload: FeatureClickPayload) => void) | null = null;
   let onMoveEnd: (() => void) | null = null;
   let isLoaded = false;
-  const featureRecordsById = new Map<number, FeatureRecord>();
+  let currentDatasetKey = "";
+  const featureRecordsByPnu = new Map<string, FeatureRecord>();
+  let renderedRecordsByPnu = new Map<string, RenderedLandRecord>();
   const infoPanel = createMapViewInfoPanel({
     infoPanelElement: elements.infoPanelElement,
     infoPanelContent: elements.infoPanelContent
   });
-  let selectedFeatureId: number | null = null;
+  let selectedFeaturePnu: string | null = null;
+  let applyFeatureDiffRequestSeq = 0;
   let geometryValidationStats: GeometryValidationStats = {
     received: 0,
     accepted: 0,
@@ -779,7 +812,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
   };
 
   const animateSelectionPulse = (): void => {
-    if (!map || !isLoaded || selectedFeatureId === null || reducedMotionMedia.matches || !map.getLayer(LAND_SELECTED_PULSE_LAYER_ID)) {
+    if (!map || !isLoaded || selectedFeaturePnu === null || reducedMotionMedia.matches || !map.getLayer(LAND_SELECTED_PULSE_LAYER_ID)) {
       stopSelectionPulse();
       return;
     }
@@ -793,7 +826,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
   };
 
   const syncSelectionPulseState = (): void => {
-    if (!map || !isLoaded || selectedFeatureId === null || reducedMotionMedia.matches) {
+    if (!map || !isLoaded || selectedFeaturePnu === null || reducedMotionMedia.matches) {
       stopSelectionPulse();
       return;
     }
@@ -826,27 +859,111 @@ export function createMapLibreMapView(elements: MapViewElements) {
     }
   };
 
-  const syncSourceData = (): void => {
+  const syncSelectedSourceData = (): void => {
     if (!map || !isLoaded) {
       return;
     }
-    const source = map.getSource(LAND_SOURCE_ID) as GeoJSONSource | undefined;
     const selectedSource = map.getSource(LAND_SELECTED_SOURCE_ID) as GeoJSONSource | undefined;
-    if (!source || !selectedSource) {
+    if (!selectedSource) {
       return;
     }
 
-    source.setData(toFeatureCollection(featureRecordsById.values()));
-    if (selectedFeatureId !== null) {
-      const selected = featureRecordsById.get(selectedFeatureId);
+    if (selectedFeaturePnu !== null) {
+      const selected = featureRecordsByPnu.get(selectedFeaturePnu);
       selectedSource.setData(toFeatureCollection(selected ? [selected] : []));
       if (!selected) {
-        selectedFeatureId = null;
+        selectedFeaturePnu = null;
       }
     } else {
       selectedSource.setData(toFeatureCollection([]));
     }
     syncSelectionPulseState();
+  };
+
+  const syncSourceData = (): void => {
+    if (!map || !isLoaded) {
+      return;
+    }
+    const source = map.getSource(LAND_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!source) {
+      return;
+    }
+    source.setData(toFeatureCollection(featureRecordsByPnu.values()));
+    syncSelectedSourceData();
+  };
+
+  const clearRenderedFeatures = (): void => {
+    featureRecordsByPnu.clear();
+    renderedRecordsByPnu = new Map();
+    currentDatasetKey = "";
+    applyFeatureDiffRequestSeq += 1;
+    selectedFeaturePnu = null;
+    if (!map || !isLoaded) {
+      return;
+    }
+    const source = map.getSource(LAND_SOURCE_ID) as GeoJSONSource | undefined;
+    if (source) {
+      source.setData({ type: "FeatureCollection", features: [] });
+    }
+    syncSelectedSourceData();
+  };
+
+  const normalizeFeatureRecord = (
+    pnu: string,
+    record: RenderedLandRecord,
+    sourceProjection: CadastralCrs
+  ): FeatureRecord | null => {
+    const geometryType = typeof (record.geometry as { type?: unknown })?.type === "string"
+      ? String((record.geometry as { type?: unknown }).type)
+      : "unknown";
+    const normalizedGeometry = normalizeGeometryToWgs84(record.geometry, sourceProjection);
+    if (!normalizedGeometry.geometry) {
+      const coordinateSample =
+        record.geometry && typeof record.geometry === "object" && "coordinates" in (record.geometry as object)
+          ? summarizeCoordinateSample((record.geometry as { coordinates?: unknown }).coordinates)
+          : undefined;
+      addGeometryDrop(Number(record.properties.list_index ?? -1), normalizedGeometry.reason, geometryType, coordinateSample);
+      return null;
+    }
+    const bbox = geometryBbox(normalizedGeometry.geometry);
+    if (!bbox) {
+      addGeometryDrop(Number(record.properties.list_index ?? -1), "bbox_unavailable", geometryType);
+      return null;
+    }
+    return {
+      pnu,
+      feature: {
+        type: "Feature",
+        geometry: normalizedGeometry.geometry,
+        properties: record.properties
+      },
+      bbox
+    };
+  };
+
+  const replaceAllFeatureRecords = (
+    nextByPnu: RenderedLandRecordMap,
+    sourceProjection: CadastralCrs
+  ): number => {
+    resetGeometryValidationStats(nextByPnu.size);
+    featureRecordsByPnu.clear();
+    for (const [pnu, record] of nextByPnu.entries()) {
+      const normalized = normalizeFeatureRecord(pnu, record, sourceProjection);
+      if (!normalized) {
+        continue;
+      }
+      featureRecordsByPnu.set(pnu, normalized);
+      geometryValidationStats.accepted += 1;
+    }
+    renderedRecordsByPnu = new Map(nextByPnu);
+    if (geometryValidationStats.dropped > 0) {
+      console.warn(
+        `[maplibre] geometry validation dropped ${geometryValidationStats.dropped}/${geometryValidationStats.received} features`,
+        geometryValidationStats.dropReasons
+      );
+    }
+    syncSourceData();
+    return geometryValidationStats.accepted;
   };
 
   const init = (config: MapConfig): void => {
@@ -912,8 +1029,8 @@ export function createMapLibreMapView(elements: MapViewElements) {
       });
 
       if (!selected) {
-        selectedFeatureId = null;
-        syncSourceData();
+        selectedFeaturePnu = null;
+        syncSelectedSourceData();
         infoPanel.clear();
         return;
       }
@@ -950,46 +1067,146 @@ export function createMapLibreMapView(elements: MapViewElements) {
     if (sourceProjection !== "EPSG:4326") {
       console.warn(`[maplibre] expected EPSG:4326 GeoJSON but received ${sourceProjection}`);
     }
-    resetGeometryValidationStats(data.features.length);
-    featureRecordsById.clear();
+    const nextByPnu = new Map<string, RenderedLandRecord>();
     data.features.forEach((rawFeature, idx) => {
-      const nextId = typeof rawFeature.properties.list_index === "number" ? rawFeature.properties.list_index : idx;
-      const geometryType = typeof (rawFeature.geometry as { type?: unknown })?.type === "string"
-        ? String((rawFeature.geometry as { type?: unknown }).type)
-        : "unknown";
-      const normalizedGeometry = normalizeGeometryToWgs84(rawFeature.geometry, sourceProjection);
-      if (!normalizedGeometry.geometry) {
-        const coordinateSample =
-          rawFeature.geometry && typeof rawFeature.geometry === "object" && "coordinates" in rawFeature.geometry
-            ? summarizeCoordinateSample((rawFeature.geometry as { coordinates?: unknown }).coordinates)
-            : undefined;
-        addGeometryDrop(nextId, normalizedGeometry.reason, geometryType, coordinateSample);
+      const pnu = normalizeRenderedRecordPnu(rawFeature.properties.pnu ?? idx);
+      if (!pnu) {
         return;
       }
-      const bbox = geometryBbox(normalizedGeometry.geometry);
-      if (!bbox) {
-        addGeometryDrop(nextId, "bbox_unavailable", geometryType);
-        return;
-      }
-      const nextFeature: LandFeature = {
-        type: "Feature",
-        geometry: normalizedGeometry.geometry,
+      nextByPnu.set(pnu, {
+        pnu,
+        geometry: rawFeature.geometry,
         properties: rawFeature.properties
-      };
-      featureRecordsById.set(nextId, {
-        id: nextId,
-        feature: nextFeature,
-        bbox
       });
-      geometryValidationStats.accepted += 1;
     });
+    currentDatasetKey = "";
+    return replaceAllFeatureRecords(nextByPnu, sourceProjection);
+  };
+
+  const applyFeatureDiff = async (
+    nextByPnu: RenderedLandRecordMap,
+    options: FeatureDiffOptions
+  ): Promise<number> => {
+    const sourceProjection = options.dataProjection ?? "EPSG:4326";
+    if (sourceProjection !== "EPSG:4326") {
+      console.warn(`[maplibre] expected EPSG:4326 GeoJSON but received ${sourceProjection}`);
+    }
+
+    const requestSeq = applyFeatureDiffRequestSeq + 1;
+    applyFeatureDiffRequestSeq = requestSeq;
+    const chunkSize = options.chunkSize ?? DEFAULT_DIFF_CHUNK_SIZE;
+    const frameBudgetMs = options.frameBudgetMs ?? DEFAULT_DIFF_FRAME_BUDGET_MS;
+
+    if (!map || !isLoaded) {
+      currentDatasetKey = options.datasetKey;
+      return replaceAllFeatureRecords(nextByPnu, sourceProjection);
+    }
+
+    const source = map.getSource(LAND_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!source || currentDatasetKey !== options.datasetKey) {
+      currentDatasetKey = options.datasetKey;
+      return replaceAllFeatureRecords(nextByPnu, sourceProjection);
+    }
+
+    resetGeometryValidationStats(nextByPnu.size);
+
+    const toRemove: string[] = [];
+    const toAdd: FeatureRecord[] = [];
+    const toUpdate: FeatureRecord[] = [];
+
+    for (const existingPnu of featureRecordsByPnu.keys()) {
+      if (!nextByPnu.has(existingPnu)) {
+        toRemove.push(existingPnu);
+      }
+    }
+
+    for (const [pnu, nextRecord] of nextByPnu.entries()) {
+      const previousRecord = renderedRecordsByPnu.get(pnu);
+      const existingFeatureRecord = featureRecordsByPnu.get(pnu);
+      if (!previousRecord || !existingFeatureRecord) {
+        const normalized = normalizeFeatureRecord(pnu, nextRecord, sourceProjection);
+        if (!normalized) {
+          continue;
+        }
+        toAdd.push(normalized);
+        geometryValidationStats.accepted += 1;
+        continue;
+      }
+      if (
+        previousRecord.geometry === nextRecord.geometry &&
+        !haveRenderedPropertiesChanged(previousRecord.properties, nextRecord.properties)
+      ) {
+        geometryValidationStats.accepted += 1;
+        continue;
+      }
+      const normalized = normalizeFeatureRecord(pnu, nextRecord, sourceProjection);
+      if (!normalized) {
+        continue;
+      }
+      toUpdate.push(normalized);
+      geometryValidationStats.accepted += 1;
+    }
+
     if (geometryValidationStats.dropped > 0) {
       console.warn(
         `[maplibre] geometry validation dropped ${geometryValidationStats.dropped}/${geometryValidationStats.received} features`,
         geometryValidationStats.dropReasons
       );
     }
-    syncSourceData();
+
+    const updateInBatches = async <T>(items: T[], updater: (chunk: T[]) => void): Promise<void> => {
+      for (const chunk of chunkItems(items, chunkSize)) {
+        if (requestSeq !== applyFeatureDiffRequestSeq) {
+          return;
+        }
+        const startedAt = performance.now();
+        updater(chunk);
+        syncSelectedSourceData();
+        if (performance.now() - startedAt >= frameBudgetMs) {
+          await nextAnimationFrame();
+        }
+      }
+    };
+
+    await updateInBatches(toRemove, (chunk) => {
+      source.updateData({ remove: chunk });
+      chunk.forEach((pnu) => {
+        featureRecordsByPnu.delete(pnu);
+        if (selectedFeaturePnu === pnu) {
+          selectedFeaturePnu = null;
+        }
+      });
+    });
+    await updateInBatches(toAdd, (chunk) => {
+      source.updateData({ add: chunk.map(createFeatureUpdate) });
+      chunk.forEach((record) => {
+        featureRecordsByPnu.set(record.pnu, record);
+      });
+    });
+    await updateInBatches(toUpdate, (chunk) => {
+      source.updateData({
+        update: chunk.map((record) => ({
+          id: record.pnu,
+          newGeometry: record.feature.geometry as GeoJSON.Geometry,
+          removeAllProperties: true,
+          addOrUpdateProperties: Object.entries(record.feature.properties as Record<string, unknown>).map(([key, value]) => ({
+            key,
+            value
+          }))
+        }))
+      });
+      chunk.forEach((record) => {
+        featureRecordsByPnu.set(record.pnu, record);
+      });
+    });
+
+    if (requestSeq !== applyFeatureDiffRequestSeq) {
+      return geometryValidationStats.accepted;
+    }
+
+    renderedRecordsByPnu = new Map(nextByPnu);
+    currentDatasetKey = options.datasetKey;
+    syncSelectedSourceData();
     return geometryValidationStats.accepted;
   };
 
@@ -997,13 +1214,19 @@ export function createMapLibreMapView(elements: MapViewElements) {
     if (!map) {
       return false;
     }
-    const record = featureRecordsById.get(index);
+    let record: FeatureRecord | null = null;
+    for (const candidate of featureRecordsByPnu.values()) {
+      if (candidate.feature.properties.list_index === index) {
+        record = candidate;
+        break;
+      }
+    }
     if (!record) {
       return false;
     }
 
-    selectedFeatureId = index;
-    syncSourceData();
+    selectedFeaturePnu = record.pnu;
+    syncSelectedSourceData();
     infoPanel.renderProperties(record.feature.properties as LandFeatureProperties);
 
     if (!options.shouldFit || !record.bbox) {
@@ -1039,7 +1262,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
       return;
     }
     let extent: [number, number, number, number] | null = null;
-    for (const record of featureRecordsById.values()) {
+    for (const record of featureRecordsByPnu.values()) {
       if (!record.bbox) {
         continue;
       }
@@ -1065,8 +1288,8 @@ export function createMapLibreMapView(elements: MapViewElements) {
   };
 
   const clearInfoPanel = (): void => {
-    selectedFeatureId = null;
-    syncSourceData();
+    selectedFeaturePnu = null;
+    syncSelectedSourceData();
     infoPanel.clear();
   };
 
@@ -1156,14 +1379,19 @@ export function createMapLibreMapView(elements: MapViewElements) {
       const bounds = map.getBounds();
       const viewBbox: [number, number, number, number] = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const indexes: number[] = [];
-      for (const [featureId, record] of featureRecordsById.entries()) {
+      for (const record of featureRecordsByPnu.values()) {
         if (intersectsBounds(record.bbox, viewBbox)) {
-          indexes.push(featureId);
+          const listIndex = record.feature.properties.list_index;
+          if (typeof listIndex === "number") {
+            indexes.push(listIndex);
+          }
         }
       }
       return indexes;
     },
     getEngine: (): "maplibre" => "maplibre",
+    applyFeatureDiff,
+    clearRenderedFeatures,
     loadDebugProbe,
     renderFeatures,
     resize: (): void => {

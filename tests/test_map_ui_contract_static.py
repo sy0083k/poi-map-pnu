@@ -107,7 +107,7 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
         [
             "재산관리관 다중 검출:",
             "정확한 재산관리관을 입력하세요.",
-            'deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }',
+            "deps.mapView.clearRenderedFeatures();",
             "downloadClient.downloadSearchResultFile({",
         ],
     )
@@ -151,7 +151,8 @@ def test_select_highlight_render_contract() -> None:
     assert_contains_all(
         map_view_contract_text,
         [
-            "selectFeatureId(index);",
+            "applyFeatureDiff",
+            "selectFeatureId(selectedPnu);",
             "map.renderSync();",
             "window.requestAnimationFrame(() => {",
             'White: "white"',

@@ -201,9 +201,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         deps.listPanel.render([], () => {});
         deps.mapView.clearInfoPanelContentOnly();
         updateNavigation();
-        if (config) {
-          deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
-        }
+        deps.mapView.clearRenderedFeatures();
         deps.setMapStatus(`재산관리관 다중 검출: ${uniqueManagers.join(", ")}. 정확한 재산관리관을 입력하세요.`, "#1d4ed8");
         return;
       }
@@ -250,9 +248,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       updateNavigation();
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
       uploadedHighlightDatasetKey = "empty";
-      if (config) {
-        deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
-      }
+      deps.mapView.clearRenderedFeatures();
       deps.setMapStatus("표시할 파일을 적용하면 목록이 표시됩니다.", "#1f2937");
       return;
     }

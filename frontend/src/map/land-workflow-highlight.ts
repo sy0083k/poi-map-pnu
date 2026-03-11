@@ -1,6 +1,7 @@
 import { loadUploadedHighlights, type HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
+import { createRenderedLandRecordMap } from "./rendered-land-records";
 
-import type { LandFeatureCollection, LandListItem, MapConfig, ThemeType } from "./types";
+import type { FeatureDiffOptions, LandFeatureCollection, LandListItem, MapConfig, RenderedLandRecordMap, ThemeType } from "./types";
 
 type FeatureIndexEntry = {
   featuresByPnu: Map<string, unknown>;
@@ -23,7 +24,8 @@ type HighlightDeps = {
   getHighlightLoadAbortController: () => AbortController | null;
   setHighlightLoadAbortController: (value: AbortController | null) => void;
   mapView: {
-    renderFeatures: (data: LandFeatureCollection, options: { dataProjection: MapConfig["cadastralCrs"] }) => number;
+    applyFeatureDiff: (nextByPnu: RenderedLandRecordMap, options: FeatureDiffOptions) => Promise<number>;
+    clearRenderedFeatures: () => void;
     getCurrentExtent: () => number[] | null;
     getEngine: () => "openlayers" | "maplibre";
     setHighlightDebugInfo?: (info: HighlightLoadDebugInfo | null) => void;
@@ -79,7 +81,7 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
       deps.updateNavigation();
       return;
     }
-    deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection(deps, config) });
+    deps.mapView.clearRenderedFeatures();
     deps.mapView.setHighlightDebugInfo?.(null);
     deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
     deps.setLastRenderedSignature(`${datasetKey}:${deps.getUploadedHighlightFeatures().features.length}:empty`);
@@ -94,22 +96,15 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
 
   const featuresByPnu = getFeaturesByPnu(deps, datasetKey);
 
-  const withProperties: LandFeatureCollection = {
-    type: "FeatureCollection",
-    features: currentItems.flatMap((item, idx) => {
-      const geometry = featuresByPnu.get(normalizePnu(item.pnu));
-      if (!geometry) {
-        return [];
-      }
-      return [{ type: "Feature" as const, geometry, properties: { list_index: idx, id: item.id, pnu: item.pnu, address: item.address, land_type: item.land_type, area: item.area, property_manager: item.property_manager, source_fields: item.sourceFields ?? [] } }];
-    })
-  };
-
-  deps.mapView.renderFeatures(withProperties, { dataProjection: getRenderProjection(deps, config) });
+  const nextByPnu = createRenderedLandRecordMap(currentItems, featuresByPnu);
+  await deps.mapView.applyFeatureDiff(nextByPnu, {
+    dataProjection: getRenderProjection(deps, config),
+    datasetKey
+  });
   if (currentItems.length === 0) {
     deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건 준비됨`, "#166534");
   } else {
-    deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건, ${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${withProperties.features.length}건`, "#166534");
+    deps.setMapStatus(`업로드 하이라이트 ${deps.getUploadedHighlightFeatures().features.length}건, ${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${nextByPnu.size}건`, "#166534");
   }
   deps.setLastRenderedSignature(renderSignature);
   deps.updateNavigation();
@@ -126,6 +121,7 @@ export async function prepareUploadedHighlights(deps: HighlightDeps, items: Land
   if (uploadedPnus.length === 0) {
     deps.setUploadedHighlightFeatures({ type: "FeatureCollection", features: [] });
     deps.setUploadedHighlightDatasetKey("empty");
+    deps.mapView.clearRenderedFeatures();
     deps.mapView.setHighlightDebugInfo?.(null);
     return;
   }
