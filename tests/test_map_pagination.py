@@ -85,6 +85,18 @@ def _seed_render_item(
     )
 
 
+def _seed_render_item_for_pnu(
+    *,
+    pnu: str,
+    conn: object,
+) -> None:
+    _seed_render_item(
+        pnu=pnu,
+        bbox=(0.0, 0.0, 1.0, 1.0),
+        conn=conn,
+    )
+
+
 @pytest.mark.anyio
 async def test_lands_pagination_cursor(async_client: httpx.AsyncClient, db_path: object) -> None:
     _seed_lands(3)
@@ -126,6 +138,7 @@ async def test_lands_list_includes_dynamic_source_fields(async_client: httpx.Asy
     with db_connection(row_factory=True) as conn:
         init_test_db(conn)
         land_repository.delete_all(conn)
+        parcel_render_repository.init_schema(conn)
         land_repository.insert_land(
             conn,
             pnu="1111012345678901234",
@@ -135,12 +148,14 @@ async def test_lands_list_includes_dynamic_source_fields(async_client: httpx.Asy
             property_manager="홍길동",
             source_fields_json='[{"key":"고유번호","label":"고유번호","value":"1111012345678901234"},{"key":"비고","label":"비고","value":"테스트"}]',
         )
+        _seed_render_item_for_pnu(pnu="1111012345678901234", conn=conn)
         conn.commit()
 
     res = await async_client.get("/api/lands/list?limit=10")
     assert res.status_code == 200
     payload = res.json()
     assert len(payload["items"]) == 1
+    assert payload["totalCount"] == 1
     item = payload["items"][0]
     assert item["sourceFields"][0]["label"] == "고유번호"
     assert item["sourceFields"][1]["value"] == "테스트"
@@ -151,6 +166,7 @@ async def test_lands_list_supports_theme_query(async_client: httpx.AsyncClient, 
     with db_connection(row_factory=True) as conn:
         init_test_db(conn)
         land_repository.delete_all(conn, table_name=table_name_for_theme("city_owned"))
+        parcel_render_repository.init_schema(conn)
         land_repository.insert_land(
             conn,
             pnu="2222012345678901234",
@@ -161,6 +177,7 @@ async def test_lands_list_supports_theme_query(async_client: httpx.AsyncClient, 
             source_fields_json="[]",
             table_name=table_name_for_theme("city_owned"),
         )
+        _seed_render_item_for_pnu(pnu="2222012345678901234", conn=conn)
         conn.commit()
 
     city = await async_client.get("/api/lands/list?limit=10&theme=city_owned")
@@ -168,6 +185,7 @@ async def test_lands_list_supports_theme_query(async_client: httpx.AsyncClient, 
     assert city.status_code == 200
     assert default_theme.status_code == 200
     assert city.json()["items"][0]["address"] == "city-addr"
+    assert city.json()["totalCount"] == 1
     assert default_theme.json()["items"][0]["address"] == "city-addr"
 
 
@@ -188,6 +206,7 @@ async def test_lands_theme_query_v1_alias_matches(async_client: httpx.AsyncClien
     with db_connection(row_factory=True) as conn:
         init_test_db(conn)
         land_repository.delete_all(conn, table_name=table_name_for_theme("city_owned"))
+        parcel_render_repository.init_schema(conn)
         land_repository.insert_land(
             conn,
             pnu="2222012345678901234",
@@ -198,6 +217,7 @@ async def test_lands_theme_query_v1_alias_matches(async_client: httpx.AsyncClien
             source_fields_json="[]",
             table_name=table_name_for_theme("city_owned"),
         )
+        _seed_render_item_for_pnu(pnu="2222012345678901234", conn=conn)
         conn.commit()
 
     v0 = await async_client.get("/api/lands/list?limit=10&theme=city_owned")
@@ -255,6 +275,70 @@ async def test_lands_list_supports_bbox_query(async_client: httpx.AsyncClient, d
     assert res.status_code == 200
     payload = res.json()
     assert [item["address"] for item in payload["items"]] == ["inside-bbox"]
+    assert payload["totalCount"] == 2
+
+
+@pytest.mark.anyio
+async def test_lands_list_total_count_ignores_bbox_but_respects_filters(
+    async_client: httpx.AsyncClient, db_path: object
+) -> None:
+    with db_connection(row_factory=True) as conn:
+        init_test_db(conn)
+        land_repository.delete_all(conn, table_name=table_name_for_theme("city_owned"))
+        parcel_render_repository.init_schema(conn)
+        land_repository.insert_land(
+            conn,
+            pnu="4444012345678901234",
+            address="match-1",
+            land_type="전",
+            area=10.0,
+            property_manager="시유지",
+            source_fields_json="[]",
+            table_name=table_name_for_theme("city_owned"),
+        )
+        land_repository.insert_land(
+            conn,
+            pnu="4444012345678905678",
+            address="match-2",
+            land_type="전",
+            area=12.0,
+            property_manager="시유지",
+            source_fields_json="[]",
+            table_name=table_name_for_theme("city_owned"),
+        )
+        land_repository.insert_land(
+            conn,
+            pnu="4444012345678909999",
+            address="filtered-out",
+            land_type="답",
+            area=13.0,
+            property_manager="다른부서",
+            source_fields_json="[]",
+            table_name=table_name_for_theme("city_owned"),
+        )
+        inside_min = wgs84_to_mercator(126.0, 36.0)
+        inside_max = wgs84_to_mercator(126.1, 36.1)
+        outside_min = wgs84_to_mercator(128.0, 38.0)
+        outside_max = wgs84_to_mercator(128.1, 38.1)
+        _seed_render_item(
+            pnu="4444012345678901234",
+            bbox=(inside_min[0], inside_min[1], inside_max[0], inside_max[1]),
+            conn=conn,
+        )
+        _seed_render_item(
+            pnu="4444012345678905678",
+            bbox=(outside_min[0], outside_min[1], outside_max[0], outside_max[1]),
+            conn=conn,
+        )
+        conn.commit()
+
+    res = await async_client.get(
+        "/api/lands/list?limit=10&theme=city_owned&propertyManager=%EC%8B%9C%EC%9C%A0%EC%A7%80&bbox=125.9,35.9,126.2,36.2&bboxCrs=EPSG:4326"
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    assert [item["address"] for item in payload["items"]] == ["match-1"]
+    assert payload["totalCount"] == 2
 
 
 @pytest.mark.anyio

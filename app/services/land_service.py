@@ -106,6 +106,16 @@ def get_public_land_list_page(
         source_bbox = transform_bbox_to_crs(bbox, source_crs=bbox_crs, target_crs=cadastral_crs)
 
     with db_connection(row_factory=True) as conn:
+        total_count = land_repository.count_lands_without_geom_filtered(
+            conn,
+            search_term=normalized_filters.search_term,
+            min_area=normalized_filters.min_area,
+            max_area=max_area,
+            property_manager_term=normalized_filters.property_manager_term,
+            property_usage_term=normalized_filters.property_usage_term,
+            land_type_term=normalized_filters.land_type_term,
+            table_name=_table_name_for_theme(theme),
+        )
         rows = land_repository.fetch_lands_page_without_geom_filtered(
             conn,
             after_id=cursor,
@@ -141,6 +151,7 @@ def get_public_land_list_page(
     return {
         "items": items,
         "nextCursor": str(next_cursor) if has_more and next_cursor is not None else None,
+        "totalCount": total_count,
     }
 
 

@@ -69,12 +69,14 @@
      - 초기 진입은 현재 지도 extent를 1.5배 확장한 `bbox` 기준 첫 페이지만 조회한다.
      - 첫 페이지 이후 자동 전체 선적재는 수행하지 않으며, `목록 더 불러오기` 또는 후속 검색 요청에서만 다음 페이지를 이어받는다.
      - 1차 전환 기준: 주소/면적/재산관리관/재산용도/지목 필터는 서버 query(`searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`)로 처리한다.
+     - `/api/lands/list`는 `items[]`, `nextCursor`와 함께 `totalCount`를 반환하며, 이는 `bbox`를 제외한 현재 `theme + filter`에 매칭되고 `parcel_render_item`이 존재하는 전체 필지 수다.
      - 서버 필터 실패 시 프런트는 마지막 목록 스냅샷 기준 로컬 필터로 폴백한다.
    - `/file2map(national_public)`: 최초 진입 시 목록을 비워 두며, 사용자가 사이드바 상단에서 업로드한 엑셀 파일(또는 IndexedDB 복원본)이 있을 때만 목록을 표시한다.
      - 업로드 시 서버 parse API(`/api/file2map/upload/parse`)를 우선 호출해 파싱/검증/정규화를 수행한다.
      - 서버 parse 실패 시 클라이언트 로컬 파서로 자동 폴백한다.
    - 목록 항목에는 고정 필드 외에 업로드 원본 컬럼을 보존한 `sourceFields` 배열이 포함된다.
    - 유틸리티 사이드바 목록은 항상 `PNU` 오름차순으로 정렬한다.
+   - 유틸리티 사이드바 내비게이션 표시는 `현재 선택 인덱스 / 전체 검색 결과(totalCount)` 형식을 사용한다.
    - `조건에 맞는 토지 찾기` 실행 후 현재 지도 화면에 결과 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 스크롤한다.
 3. 클라이언트는 목록 PNU를 대상으로 하이라이트를 구성한다.
    - 기본 경로는 서버 API(`/api/cadastral/highlights`)이며, 서버는 bbox 요청 시 SQLite `render_grid_cell`/`render_grid_parcel` 인덱스로 후보 PNU를 먼저 줄인 뒤 `parcel_render_item`에서 geometry를 조회한다.

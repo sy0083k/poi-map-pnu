@@ -27,6 +27,7 @@
 - `/siyu` MapLibre 변환 정책: `CADASTRAL_FGB_CRS=EPSG:3857` geometry는 클라이언트에서 EPSG:4326으로 변환한 뒤 렌더링한다
 - `/siyu` 선택 유지 정책: 선택 후 fit으로 발생한 moveend는 주변 context만 갱신하고 선택 상태는 유지한다
 - `/siyu` 목록 정책: 초기 진입은 전체 목록 선적재를 하지 않고 `목록 더 불러오기`로 같은 query의 다음 페이지를 이어붙인다
+- `/api/lands/list` 계약: `items[]`, `nextCursor`, `totalCount`를 반환하며 `totalCount`는 `bbox`를 제외한 현재 `theme + filter + geom 존재` 기준 전체 건수다
 - `/siyu` 원본 FGB 진단 모드: `?debugFgb=1`에서 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 별도 오버레이로 1회 로드
 - 하이라이트 캐시 정책: 캐시 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 브라우저 캐시는 IndexedDB 스키마 갱신으로 무효화한다
 - `/siyu` 렌더 최적화: 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스를 재사용하고, 0건 검색은 조기 종료

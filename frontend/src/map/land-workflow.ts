@@ -126,6 +126,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   let currentListCursor: string | null = null;
   let currentListFilters: FilterValues | undefined;
   let currentListBbox: [number, number, number, number] | null = null;
+  let currentListTotalCount = 0;
   let lastViewportContextKey = "";
   const featuresByPnuIndexByDataset = new Map<
     string,
@@ -139,7 +140,11 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");
 
   const updateNavigation = (): void => {
-    deps.listPanel.updateNavigation(deps.state.getCurrentIndex(), deps.state.getCurrentItems().length);
+    deps.listPanel.updateNavigation(
+      deps.state.getCurrentIndex(),
+      currentListTotalCount,
+      deps.state.getCurrentItems().length
+    );
   };
 
   const findMinVisiblePnuIndex = (items: LandListItem[]): number | null => {
@@ -372,6 +377,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     currentListCursor = page.nextCursor;
     currentListFilters = options.filters;
     currentListBbox = options.bbox ?? null;
+    currentListTotalCount = page.totalCount;
     renderCurrentList();
     return nextItems;
   };
@@ -466,6 +472,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         currentListCursor = null;
         currentListFilters = values;
         currentListBbox = null;
+        currentListTotalCount = 0;
         return;
       }
     }
@@ -476,6 +483,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     currentListCursor = page.nextCursor;
     currentListFilters = values;
     currentListBbox = null;
+    currentListTotalCount = page.totalCount;
     deps.mapView.clearInfoPanel();
     renderCurrentList();
     await prepareContextHighlights(sortedItems, getInflatedViewportBbox());
@@ -494,10 +502,12 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     currentListCursor = null;
     currentListFilters = undefined;
     currentListBbox = null;
+    currentListTotalCount = 0;
     lastViewportContextKey = "";
 
     if (overrideItems) {
       currentListMode = "override";
+      currentListTotalCount = overrideItems.length;
       deps.listPanel.setStatus(`${themeLabel} 목록을 로컬 업로드 데이터로 표시합니다.`);
       deps.state.setOriginalItems(overrideItems);
       syncSelectedIndexAfterItemSet(overrideItems);
@@ -514,6 +524,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
 
     if (theme === "national_public") {
       currentListMode = "empty";
+      currentListTotalCount = 0;
       deps.state.setOriginalItems([]);
       deps.state.setCurrentItems([]);
       deps.listPanel.clear();
@@ -543,6 +554,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.state.setCurrentItems([]);
       currentListMode = "empty";
       currentListCursor = null;
+      currentListTotalCount = 0;
       cancelPendingHighlightRender();
       deps.listPanel.setLoadMore({ visible: false });
       const fallbackMessage =

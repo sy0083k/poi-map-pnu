@@ -104,16 +104,16 @@ export function createListPanel(elements: ListPanelElements) {
     });
   };
 
-  const updateNavigation = (currentIndex: number, total: number): void => {
+  const updateNavigation = (currentIndex: number, totalCount: number, loadedCount: number): void => {
     if (elements.navInfo) {
-      elements.navInfo.innerText = total > 0 ? `${currentIndex + 1} / ${total}` : "0 / 0";
+      elements.navInfo.innerText = totalCount > 0 && currentIndex >= 0 ? `${currentIndex + 1} / ${totalCount}` : `0 / ${totalCount}`;
     }
 
     if (elements.prevBtn) {
       elements.prevBtn.disabled = currentIndex <= 0;
     }
     if (elements.nextBtn) {
-      elements.nextBtn.disabled = currentIndex >= total - 1 || total === 0;
+      elements.nextBtn.disabled = currentIndex >= loadedCount - 1 || loadedCount === 0;
     }
 
     setSelected(currentIndex);

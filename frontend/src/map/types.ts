@@ -48,6 +48,7 @@ export type LandSourceField = {
 export type LandListPageResponse = {
   items: LandListItem[];
   nextCursor: string | null;
+  totalCount: number;
 };
 
 export type LandFeatureCollection = {

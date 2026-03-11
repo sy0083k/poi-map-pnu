@@ -135,12 +135,19 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
 def test_lands_list_client_sends_theme_query() -> None:
     client_ts = Path("frontend/src/map/lands-list-client.ts").read_text(encoding="utf-8")
     workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
+    types_ts = Path("frontend/src/map/types.ts").read_text(encoding="utf-8")
+    panel_ts = Path("frontend/src/map/list-panel.ts").read_text(encoding="utf-8")
     assert "export async function loadAllLandListItems(theme: ThemeType, filters?: FilterValues)" in client_ts
     assert "export async function loadFirstLandListPage(" in client_ts
     assert "export async function loadNextLandListPage(" in client_ts
     assert 'const query = new URLSearchParams({ limit: "500", theme: params.theme });' in client_ts
     assert 'query.set("propertyUsage", filters.propertyUsageTerm);' in client_ts
     assert 'query.set("bbox", params.bbox.join(","));' in client_ts
+    assert "totalCount: number;" in types_ts
+    assert "let currentListTotalCount = 0;" in workflow_ts
+    assert "currentListTotalCount = page.totalCount;" in workflow_ts
+    assert "deps.listPanel.updateNavigation(" in workflow_ts
+    assert "elements.navInfo.innerText = totalCount > 0 && currentIndex >= 0 ? `${currentIndex + 1} / ${totalCount}` : `0 / ${totalCount}`;" in panel_ts
     assert 'const getViewportBboxCrs = (): "EPSG:3857" | "EPSG:4326" =>' in workflow_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");' in workflow_ts
 

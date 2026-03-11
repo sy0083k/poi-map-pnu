@@ -69,8 +69,10 @@
 - `/api/lands`, `/api/lands/list` 호출 시 `theme=city_owned` 정상 응답, `theme=national_public` 400 응답 여부 점검
 - `/api/lands/list` 서버 필터 query(`searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`)가 `/siyu` UI 결과와 일치하는지 점검
 - `/siyu` 초기 진입 시 `/api/lands/list`가 현재 지도 주변 `bbox` 첫 페이지 기준으로 조회되고, 전체 목록이 즉시 선적재되지 않는지 점검
+- `/api/lands/list` 응답의 `totalCount`가 `bbox`를 제외한 현재 `theme + filter + geom 존재(parcel_render_item)` 기준 전체 건수를 반환하는지 점검
 - `/siyu` 사이드바 하단 `목록 더 불러오기` 클릭 시 같은 query/bbox의 다음 페이지가 이어붙는지 점검
 - `/api/lands/list` 서버 필터 실패 상황에서 `/siyu`가 마지막 목록 스냅샷 기준 로컬 폴백으로 동작하는지 점검
+- `/siyu` 사이드바 내비게이션이 `현재 선택 인덱스 / totalCount` 형식으로 표시되고, prev/next 버튼은 현재 로드된 목록 범위에서만 동작하는지 점검
 - `조건에 맞는 토지 찾기` 결과 목록이 항상 `PNU` 오름차순인지 점검
 - `조건에 맞는 토지 찾기` 결과에 현재 화면 내 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 자동 스크롤되는지 점검
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검

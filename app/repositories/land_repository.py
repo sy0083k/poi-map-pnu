@@ -20,6 +20,7 @@ from app.repositories.land_repository_queries import (
     update_geom_by_pnu,
 )
 from app.repositories.land_repository_query_filters import (
+    count_lands_without_geom_filtered,
     fetch_lands_page_without_geom_filtered,
 )
 from app.repositories.land_repository_schema import (
@@ -39,6 +40,7 @@ __all__ = [
     "fetch_lands_with_geom_page",
     "fetch_lands_page_without_geom",
     "fetch_lands_page_without_geom_filtered",
+    "count_lands_without_geom_filtered",
     "fetch_lands_by_ids",
     "delete_all",
     "insert_land",
