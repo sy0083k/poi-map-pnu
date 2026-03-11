@@ -165,6 +165,7 @@
 - `CADASTRAL_FGB_PATH` 실제 경로/권한 확인(하이라이트 준비 시 사용)
 - `CADASTRAL_FGB_PNU_FIELD` 필드명 설정 확인
 - `CADASTRAL_FGB_CRS` 값(EPSG:3857/EPSG:4326)과 실제 파일 CRS 정합 확인
+- `/siyu`에서 목록은 보이는데 경계가 안 보이면 viewport query `bboxCrs`와 하이라이트 geometry render projection(`CADASTRAL_FGB_CRS`)이 분리되어 있는지 먼저 확인
 - `/siyu`에서 렌더 원인 확인이 필요하면 `?debugMap=1` 쿼리로 접속 후 콘솔 `window.__mapDebug.getLandsSourceData()`/`window.__mapDebug.listLandsLayers()`로 source/layer 상태를 점검
 - 원본 FGB 자체 문제를 검색 흐름과 분리해 확인하려면 `/siyu?debugMap=1&debugFgb=1`로 접속 후 `window.__mapDebug.getDebugProbeSourceData()`/`window.__mapDebug.getDebugProbeMeta()`로 probe overlay 상태를 확인
 - debug probe API 단독 점검 시 `/api/cadastral/debug-probe?bbox=126.44,36.77,126.47,36.79&bboxCrs=EPSG:4326&limit=1000` 응답의 `meta.returned/truncated/sourceFile/outputCrs`를 확인

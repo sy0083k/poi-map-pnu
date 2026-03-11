@@ -49,7 +49,6 @@ type LandWorkflowDeps = {
 const MAX_DATASET_INDEX_CACHE_SIZE = 5;
 const MAX_INITIAL_HIGHLIGHTS = 300;
 const VIEWPORT_CONTEXT_INFLATE_FACTOR = 1.5;
-const VIEWPORT_BBOX_CRS = "EPSG:4326" as const;
 const LIST_PAGE_LIMIT_HINT = 500;
 
 function inflateExtent(
@@ -134,7 +133,9 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
   >();
   const overrideItemsByTheme = new Map<ThemeType, LandListItem[]>();
   const serverFilterTheme: ThemeType = "city_owned";
-  const getRenderProjection = (): MapConfig["cadastralCrs"] =>
+  const getRenderProjection = (): MapConfig["cadastralCrs"] => config?.cadastralCrs ?? "EPSG:4326";
+
+  const getViewportBboxCrs = (): "EPSG:3857" | "EPSG:4326" =>
     deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");
 
   const updateNavigation = (): void => {
@@ -293,7 +294,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     await waitForNextPaint();
     await prepareUploadedHighlights(highlightDeps, items, {
       bbox: bbox ?? undefined,
-      bboxCrs: bbox ? VIEWPORT_BBOX_CRS : undefined,
+      bboxCrs: bbox ? getViewportBboxCrs() : undefined,
       maxPnus: MAX_INITIAL_HIGHLIGHTS
     });
   };
@@ -345,14 +346,14 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         params.cursor,
         params.filters,
         params.bbox,
-        params.bbox ? VIEWPORT_BBOX_CRS : undefined
+        params.bbox ? getViewportBboxCrs() : undefined
       );
     }
     return deps.loadFirstLandListPage(
       params.theme,
       params.filters,
       params.bbox,
-      params.bbox ? VIEWPORT_BBOX_CRS : undefined
+      params.bbox ? getViewportBboxCrs() : undefined
     );
   };
 

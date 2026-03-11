@@ -129,12 +129,15 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
 
 def test_lands_list_client_sends_theme_query() -> None:
     client_ts = Path("frontend/src/map/lands-list-client.ts").read_text(encoding="utf-8")
+    workflow_ts = Path("frontend/src/map/land-workflow.ts").read_text(encoding="utf-8")
     assert "export async function loadAllLandListItems(theme: ThemeType, filters?: FilterValues)" in client_ts
     assert "export async function loadFirstLandListPage(" in client_ts
     assert "export async function loadNextLandListPage(" in client_ts
     assert 'const query = new URLSearchParams({ limit: "500", theme: params.theme });' in client_ts
     assert 'query.set("propertyUsage", filters.propertyUsageTerm);' in client_ts
     assert 'query.set("bbox", params.bbox.join(","));' in client_ts
+    assert 'const getViewportBboxCrs = (): "EPSG:3857" | "EPSG:4326" =>' in workflow_ts
+    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");' in workflow_ts
 
 
 def test_select_highlight_render_contract() -> None:
@@ -305,8 +308,9 @@ def test_siyu_maplibre_route_split_contract() -> None:
     assert "coordinateSample?: unknown;" in maplibre_view_ts
     assert "let lastHighlightLoad: HighlightLoadDebugInfo | null = null;" in maplibre_view_ts
     assert "const setHighlightDebugInfo = (info: HighlightLoadDebugInfo | null): void => {" in maplibre_view_ts
-    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326"' in workflow_ts
-    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs' in highlight_ts
+    assert 'const getViewportBboxCrs = (): "EPSG:3857" | "EPSG:4326" =>' in workflow_ts
+    assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : (config?.cadastralCrs ?? "EPSG:4326");' in workflow_ts
+    assert 'const getRenderProjection = (_deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] => config.cadastralCrs;' in highlight_ts
     assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in highlight_ts
     worker_ts = Path("frontend/src/map/cadastral-fgb-worker.ts").read_text(encoding="utf-8")
     assert "ArrayBuffer.isView(value)" in worker_ts

@@ -50,8 +50,7 @@ type HighlightDeps = {
 const normalizePnu = (raw: unknown): string => String(raw ?? "").replace(/\D/g, "");
 const DEFAULT_VISIBLE_SEED_SIZE = 200;
 const DEFAULT_BACKGROUND_CHUNK_SIZE = 150;
-const getRenderProjection = (deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] =>
-  deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs;
+const getRenderProjection = (_deps: HighlightDeps, config: MapConfig): MapConfig["cadastralCrs"] => config.cadastralCrs;
 
 const getRuntimeDatasetKey = (deps: HighlightDeps): string => {
   const active = deps.getUploadedHighlightDatasetKey();
@@ -352,39 +351,56 @@ export async function prepareUploadedHighlights(
 
   try {
     deps.setMapStatus("업로드 하이라이트를 준비하는 중입니다...");
-    const loaded = await loadUploadedHighlights({
-      fgbUrl: config.cadastralFgbUrl,
-      pnuField: config.cadastralPnuField,
-      cadastralCrs: config.cadastralCrs,
-      outputCrs: getRenderProjection(deps, config),
-      uploadedPnus,
-      theme: deps.getCurrentTheme(),
+    const loadHighlights = async (params?: {
+      bbox?: [number, number, number, number];
+      bboxCrs?: "EPSG:3857" | "EPSG:4326";
+    }) =>
+      loadUploadedHighlights({
+        fgbUrl: config.cadastralFgbUrl,
+        pnuField: config.cadastralPnuField,
+        cadastralCrs: config.cadastralCrs,
+        outputCrs: getRenderProjection(deps, config),
+        uploadedPnus,
+        theme: deps.getCurrentTheme(),
+        bbox: params?.bbox,
+        bboxCrs: params?.bboxCrs,
+        signal: controller.signal,
+        onFeatures: (features, progress) => {
+          if (seq !== deps.getUploadedHighlightsRequestSeq() || features.length === 0) {
+            return;
+          }
+          deps.setUploadedHighlightFeatures({
+            type: "FeatureCollection",
+            features: [...deps.getUploadedHighlightFeatures().features, ...features]
+          });
+          deps.deleteFeaturesByPnuIndex(getRuntimeDatasetKey(deps));
+          if (!firstVisibleApplied) {
+            firstVisibleApplied = true;
+          }
+          scheduleReload();
+          deps.setMapStatus(progress.fromCache ? `하이라이트 캐시 ${progress.matched}건 적용` : `하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`, "#166534");
+        },
+        onProgress: (progress) => {
+          if (seq === deps.getUploadedHighlightsRequestSeq() && !progress.done) {
+            deps.setMapStatus(`하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`, "#166534");
+          }
+        }
+      });
+
+    let loaded = await loadHighlights({
       bbox: options?.bbox,
-      bboxCrs: options?.bboxCrs,
-      signal: controller.signal,
-      onFeatures: (features, progress) => {
-        if (seq !== deps.getUploadedHighlightsRequestSeq() || features.length === 0) {
-          return;
-        }
-        deps.setUploadedHighlightFeatures({
-          type: "FeatureCollection",
-          features: [...deps.getUploadedHighlightFeatures().features, ...features]
-        });
-        deps.deleteFeaturesByPnuIndex(getRuntimeDatasetKey(deps));
-        if (!firstVisibleApplied) {
-          firstVisibleApplied = true;
-          scheduleReload();
-        } else {
-          scheduleReload();
-        }
-        deps.setMapStatus(progress.fromCache ? `하이라이트 캐시 ${progress.matched}건 적용` : `하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`, "#166534");
-      },
-      onProgress: (progress) => {
-        if (seq === deps.getUploadedHighlightsRequestSeq() && !progress.done) {
-          deps.setMapStatus(`하이라이트 매칭 ${progress.matched}/${progress.total}건 (스캔 ${progress.scanned.toLocaleString()}건)`, "#166534");
-        }
-      }
+      bboxCrs: options?.bboxCrs
     });
+    if (
+      options?.bbox &&
+      loaded.collection.features.length === 0 &&
+      items.length > 0 &&
+      seq === deps.getUploadedHighlightsRequestSeq()
+    ) {
+      deps.setMapStatus("현재 화면 bbox에서 하이라이트를 찾지 못해 전체 PNU로 다시 확인하는 중입니다...", "#166534");
+      deps.setUploadedHighlightFeatures({ type: "FeatureCollection", features: [] });
+      loaded = await loadHighlights();
+    }
 
     if (seq !== deps.getUploadedHighlightsRequestSeq()) {
       return;
