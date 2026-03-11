@@ -20,8 +20,8 @@
 - 좌표계 기준: `CADASTRAL_FGB_CRS` (`EPSG:3857` 기본)
 - 공개 지도 API: `/api/cadastral/fgb` (`/api/v1/cadastral/fgb` alias)
 - FGB 원본 진단 API: `/api/cadastral/debug-probe` (`/api/v1/cadastral/debug-probe` alias)
-- 하이라이트 성능: 기본 경로는 SQLite `parcel_render_item` 기반 `/api/cadastral/highlights` 응답을 사용하고, 실패 시 Web Worker 파싱으로 폴백하며 결과는 IndexedDB 캐시(`theme+pnuSetHash+bbox+ETag`)로 재사용
-- `/siyu` 하이라이트 계약: 서버는 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조와 `meta.responseCrs`를 반환하고 클라이언트가 내부 `FeatureCollection`으로 재조립해 렌더링
+- 하이라이트 성능: `/siyu` 기본 하이라이트(`cadastral-map-*`)는 PMTiles 벡터 타일(`pnu`, `mngr`) 소스 + PNU 필터로 렌더링하고, 선택 강조 geometry만 `/api/cadastral/highlights`로 보강한다
+- `/api/config` 계약: `/siyu` 런타임용 `cadastralPmtilesUrl`을 포함한다
 - `/siyu` 원본 FGB 진단 모드: `?debugFgb=1`에서 현재 화면 bbox의 `data/LSMD_CONT_LDREG_44210_202602.fgb`를 별도 오버레이로 1회 로드
 - 하이라이트 캐시 정책: 캐시 키 버전 `v3`(bbox 2자리 정규화 + CRS)를 기본 사용하고, 구버전 브라우저 캐시는 IndexedDB 스키마 갱신으로 무효화한다
 - `/siyu` 렌더 최적화: 데이터셋 키(`theme+pnuSetHash+bbox+ETag`)별 `Map<pnu, geometry>` 인덱스를 재사용하고, 0건 검색은 조기 종료

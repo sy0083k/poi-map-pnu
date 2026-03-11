@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "maplibre-gl": "^4.7.1",
+    "pmtiles": "^3.2.1",
     "viewerjs": "^1.11.7"
   }
 }

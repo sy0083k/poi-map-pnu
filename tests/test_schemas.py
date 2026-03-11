@@ -21,6 +21,7 @@ def test_response_schemas() -> None:
         center=(1.0, 2.0),
         zoom=10,
         cadastralFgbUrl="/api/cadastral/fgb",
+        cadastralPmtilesUrl="/static/data/cadastral.pmtiles",
         cadastralPnuField="PNU",
         cadastralCrs="EPSG:3857",
         cadastralMinRenderZoom=15,

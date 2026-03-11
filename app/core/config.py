@@ -22,6 +22,7 @@ class Settings:
     map_default_zoom: int
     vworld_wmts_key: str
     cadastral_fgb_path: str
+    cadastral_pmtiles_url: str
     cadastral_fgb_pnu_field: str
     cadastral_fgb_crs: str
     cadastral_min_render_zoom: int
@@ -158,6 +159,11 @@ def get_settings() -> Settings:
             "data/LSMD_CONT_LDREG_44210_202512.fgb",
         ).strip()
         or "data/LSMD_CONT_LDREG_44210_202512.fgb",
+        cadastral_pmtiles_url=os.getenv(
+            "CADASTRAL_PMTILES_URL",
+            "/static/data/cadastral.pmtiles",
+        ).strip()
+        or "/static/data/cadastral.pmtiles",
         cadastral_fgb_pnu_field=os.getenv("CADASTRAL_FGB_PNU_FIELD", "PNU").strip() or "PNU",
         cadastral_fgb_crs=cadastral_fgb_crs,
         cadastral_min_render_zoom=cadastral_min_render_zoom,

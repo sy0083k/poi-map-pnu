@@ -31,6 +31,7 @@ class MapConfigResponse(BaseModel):
     center: tuple[float, float]
     zoom: int
     cadastralFgbUrl: str
+    cadastralPmtilesUrl: str
     cadastralPnuField: str
     cadastralCrs: str
     cadastralMinRenderZoom: int

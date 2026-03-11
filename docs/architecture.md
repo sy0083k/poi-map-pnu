@@ -64,6 +64,7 @@
 
 ## 지도 데이터 흐름
 1. 클라이언트가 `/api/config`로 지도 설정을 조회한다.
+   - `/siyu`용 MapLibre 초기화 설정에는 `cadastralPmtilesUrl`이 포함된다.
 2. 테마별 목록 소스를 결정한다.
    - `/siyu(city_owned)`: `/api/lands/list?theme=city_owned`로 목록을 조회한다.
      - 1차 전환 기준: 주소/면적/재산관리관/재산용도/지목 필터는 서버 query(`searchTerm`, `minArea`, `maxArea`, `propertyManager`, `propertyUsage`, `landType`)로 처리한다.
@@ -75,7 +76,8 @@
    - 유틸리티 사이드바 목록은 항상 `PNU` 오름차순으로 정렬한다.
    - `조건에 맞는 토지 찾기` 실행 후 현재 지도 화면에 결과 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 스크롤한다.
 3. 클라이언트는 목록 PNU를 대상으로 하이라이트를 구성한다.
-   - 기본 경로는 서버 API(`/api/cadastral/highlights`)이며, 서버는 SQLite `parcel_render_item` 렌더 인덱스에서 `PNU IN (...)` 조회를 수행한다.
+   - `/siyu(city_owned)` 기본 하이라이트(`cadastral-map-fill`, `cadastral-map-line`)는 PMTiles 벡터 타일 소스(`pnu`, `mngr`)를 사용하고, 현재 검색 결과 PNU 집합을 MapLibre 레이어 필터로 적용한다.
+   - 선택 강조(`parcels-selected-*`) geometry는 서버 API(`/api/cadastral/highlights`)에서 필요한 PNU만 조회하며, 서버는 SQLite `parcel_render_item` 렌더 인덱스에서 `PNU IN (...)` 조회를 수행한다.
    - 관리자 업로드/로컬 업로드 기반 하이라이트는 초기 로딩에서 `bbox`를 전달하지 않고 전체 업로드 PNU 매칭 결과를 우선 확보한다(부분 응답 고정 방지).
    - `parcel_render_item`은 FGB 교체 시 재생성되는 렌더 전용 캐시 테이블이며, `geom_geojson_full/mid/low`와 bbox/center 메타를 보관한다.
    - 서버 경로 실패 시 클라이언트 Web Worker 파싱으로 자동 폴백한다.
@@ -86,6 +88,7 @@
    - `/siyu?debugFgb=1` 진단 모드에서는 현재 화면 bbox를 `GET /api/cadastral/debug-probe?bbox=...&bboxCrs=EPSG:4326&limit=1000`으로 조회해 검색 결과와 무관한 원본 FGB 오버레이를 별도 source/layer로 렌더링한다.
    - `/siyu` 검색/재조회 렌더 단계에서는 위 캐시 키(`theme+pnuSetHash+bbox+ETag`)를 데이터셋 식별자로 재사용해 `Map<pnu, geometry>` 인덱스를 데이터셋 단위로 재사용하고, 동일 데이터셋 반복 검색 시 전체 재구축을 피한다.
 4. 지도 렌더링은 하이라이트 레이어만 사용하며, 비하이라이트 필지(배경 연속지적도)는 표시하지 않는다.
+   - `/siyu` 기본 하이라이트는 GeoJSON 전체 재조립 대신 PMTiles source filter 갱신으로 반영한다.
    - 피처 반영은 `clear+전체 재추가` 대신 ID 기반 diff(추가/삭제/교체)로 처리해 대량 렌더 블로킹을 완화한다.
    - `0건` 검색 경로에서는 상세 패널만 정리하고, 선택 해제로 인한 불필요한 전체 재렌더를 피한다.
 5. 지도 이동 시에는 하이라이트 캐시를 재사용한다.
@@ -94,7 +97,7 @@
    - `/file2map(national_public)` + 로컬 업로드 모드: 현재 검색 결과를 브라우저에서 직접 Excel(`.xlsx`)로 생성해 다운로드한다.
 7. 지도 엔진별 투영 정책을 유지한다.
    - `/api/cadastral/highlights` 응답은 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조를 반환하고 `meta.responseCrs`는 `CADASTRAL_FGB_CRS`와 동일하다.
-   - `/siyu`(MapLibre)와 `/file2map`, `/photo2map`(OpenLayers)은 모두 서버 응답 geometry를 내부 `FeatureCollection`으로 재조립해 렌더링한다.
+   - `/siyu`(MapLibre)는 기본 하이라이트를 PMTiles로 렌더링하고, 선택 강조 geometry만 내부 `FeatureCollection`으로 재조립한다. `/file2map`, `/photo2map`(OpenLayers)은 기존처럼 서버 응답 geometry를 내부 `FeatureCollection`으로 재조립해 렌더링한다.
 8. 토지 선택 시 상세정보는 지도 팝업이 아니라 우상단 패널에서 동적으로 렌더링하며, 패널은 2열(속성/값) 그리드로 속성/값 Pair를 동일 라인(y축)에 정렬한다.
    - `/siyu(city_owned)`에서는 상세 패널 제목을 `재산 상세 정보`로 표시한다.
    - 웹앱 초기화 시 상세 패널은 숨김 상태로 시작한다.

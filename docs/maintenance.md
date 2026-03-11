@@ -28,6 +28,7 @@
 - 헤더 탑레벨 `사진→지도` 클릭 시 `/photo2map`으로 이동하는지 점검
 - 주제도 전환 시 URL이 `파일→지도=/file2map`, `시유지=/siyu`로 동기화되고, 직접 URL 진입/새로고침/브라우저 뒤로가기에 테마가 일치하는지 점검
 - `/siyu`는 MapLibre 엔진, `/file2map`·`/photo2map`은 OpenLayers 엔진으로 초기화되는지 점검
+- `/api/config` 응답에 `cadastralPmtilesUrl`이 포함되고, `/siyu` 네트워크 탭에서 해당 PMTiles URL 요청이 발생하는지 점검
 - `/siyu` 접속 시 지도 우하단 MapLibre 기본 attribution/link UI가 비노출인지 점검하고, VWorld 등 배경지도 출처 표시는 운영 정책대로 유지되는지 확인
 - `/siyu` 접속 시 브라우저 콘솔에 MapLibre worker 관련 CSP 차단 에러가 없고, 응답 `Content-Security-Policy`에 `worker-src 'self' blob:`가 포함되는지 점검
 - `/file2map`에서 `주제도 > 시유지` 선택 시 경로 전환(`/siyu`) 후 전체 페이지 재초기화로 엔진이 전환되는지 점검
@@ -73,6 +74,8 @@
 - `조건에 맞는 토지 찾기` 결과에 현재 화면 내 토지가 있으면, 화면 내 토지 중 `PNU` 최소 항목이 목록 상단에 보이도록 자동 스크롤되는지 점검
 - `/api/web-events`에서 `pagePath`가 허용 경로(`/, /siyu, /file2map, /photo2map, /readme`)만 수집되는지 점검
 - `/api/cadastral/highlights` 호출 시 요청 `PNU+bbox` 기준 `items[]`, `matched/bboxApplied/bboxFiltered/source/sourceFgbEtag` 메타가 정상 응답되는지 점검
+- `/siyu` 첫 진입 시 `cadastral-map-*` 레이어가 PMTiles source + PNU filter로 렌더링되고, 목록 필터 변경 시 전체 GeoJSON 재조립 없이 필터만 갱신되는지 점검
+- `/siyu`에서 필지 클릭 시 `pnu` 기반 역매핑으로 목록 선택/상세 패널/선택 강조가 유지되는지 점검
 - 관리자 업로드/로컬 업로드 기반 하이라이트 초기 로딩 시 `bbox` 없이 전체 업로드 PNU 매칭이 적용되어, 초기 화면 밖 필지도 줌 아웃/이동 시 누락 없이 표시되는지 점검
 - `/api/cadastral/highlights` 실패 시 클라이언트 워커 폴백으로 하이라이트가 계속 표시되는지 점검
 - `/admin/stats/web`에 `topReferrers`, `topUtmSources`, `topUtmCampaigns`, `deviceBreakdown`, `browserBreakdown`, `topPagePaths`, `channelBreakdown`가 정상 집계되는지 점검
@@ -198,6 +201,7 @@
 
 ### 설정 변경 미반영
 - 일반 설정 변경은 `.env` 갱신 후 앱 재시작 필요
+- `CADASTRAL_PMTILES_URL` 변경도 `.env` 갱신 후 앱 재시작 필요
 - 예외: `/admin/upload/cadastral-fgb`는 성공 시 `CADASTRAL_FGB_PATH`를 런타임에 즉시 반영하고 `parcel_render_item` 재생성 및 하이라이트 캐시 무효화를 함께 수행함
 
 ## 백업/복구

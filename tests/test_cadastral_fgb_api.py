@@ -139,6 +139,7 @@ async def test_config_includes_cadastral_crs(async_client: httpx.AsyncClient) ->
     assert response.status_code == 200
     payload = response.json()
     assert payload["cadastralCrs"] == "EPSG:3857"
+    assert payload["cadastralPmtilesUrl"] == "/static/data/cadastral.pmtiles"
 
 
 @pytest.mark.anyio

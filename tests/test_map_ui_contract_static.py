@@ -207,9 +207,11 @@ def test_siyu_maplibre_route_split_contract() -> None:
     assert_contains_all(
         maplibre_view_ts,
         [
-            'import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";',
+            'import maplibregl, { type FilterSpecification, type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";',
+            'import { Protocol } from "pmtiles";',
             "attributionControl: false",
             "LAND_SOURCE_ID = \"lands-source\"",
+            'const LAND_SOURCE_LAYER = "parcel";',
             'const LAND_FILL_LAYER_ID = "cadastral-map-fill";',
             'const LAND_LINE_LAYER_ID = "cadastral-map-line";',
             'const LAND_SELECTED_HALO_LAYER_ID = "parcels-selected-halo";',
@@ -248,6 +250,8 @@ def test_siyu_maplibre_route_split_contract() -> None:
             "const DEBUG_REFERENCE_LNG_LAT: [number, number] = [126.45208, 36.783454];",
             "function ensureDebugProbeLayers(map: MapLibreMap): void {",
             "function ensureDebugReferenceMarker(map: MapLibreMap): void {",
+            'maplibregl.addProtocol("pmtiles", protocol.tile);',
+            'url: `pmtiles://${pmtilesUrl}`',
             'const existingDomMarker = document.getElementById("debug-reference-dom-marker");',
             'new maplibregl.Marker({ element: markerElement }).setLngLat(DEBUG_REFERENCE_LNG_LAT).addTo(map);',
             "if (!map.getSource(DEBUG_REFERENCE_MARKER_SOURCE_ID)) {",
@@ -282,6 +286,7 @@ def test_siyu_maplibre_route_split_contract() -> None:
     assert "const setHighlightDebugInfo = (info: HighlightLoadDebugInfo | null): void => {" in maplibre_view_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326"' in workflow_ts
     assert 'deps.mapView.getEngine() === "maplibre" ? "EPSG:4326" : config.cadastralCrs' in highlight_ts
+    assert 'deps.mapView.setVisibleItems(currentItems);' in highlight_ts
     assert "deps.mapView.setHighlightDebugInfo?.(loaded.debugInfo);" in highlight_ts
     worker_ts = Path("frontend/src/map/cadastral-fgb-worker.ts").read_text(encoding="utf-8")
     assert "ArrayBuffer.isView(value)" in worker_ts

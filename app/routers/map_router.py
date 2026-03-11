@@ -30,6 +30,7 @@ def create_router() -> APIRouter:
             "center": [config.CENTER_LON, config.CENTER_LAT],
             "zoom": config.DEFAULT_ZOOM,
             "cadastralFgbUrl": "/api/cadastral/fgb",
+            "cadastralPmtilesUrl": config.CADASTRAL_PMTILES_URL,
             "cadastralPnuField": config.CADASTRAL_FGB_PNU_FIELD,
             "cadastralCrs": config.CADASTRAL_FGB_CRS,
             "cadastralMinRenderZoom": config.CADASTRAL_MIN_RENDER_ZOOM,

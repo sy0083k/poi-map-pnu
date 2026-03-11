@@ -130,6 +130,7 @@ class Config:
     DEFAULT_ZOOM = settings.map_default_zoom
     VWORLD_WMTS_KEY = settings.vworld_wmts_key
     CADASTRAL_FGB_PATH = settings.cadastral_fgb_path
+    CADASTRAL_PMTILES_URL = settings.cadastral_pmtiles_url
     CADASTRAL_FGB_PNU_FIELD = settings.cadastral_fgb_pnu_field
     CADASTRAL_FGB_CRS = settings.cadastral_fgb_crs
     CADASTRAL_MIN_RENDER_ZOOM = settings.cadastral_min_render_zoom

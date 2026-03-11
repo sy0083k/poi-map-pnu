@@ -26,6 +26,7 @@ type HighlightDeps = {
     renderFeatures: (data: LandFeatureCollection, options: { dataProjection: MapConfig["cadastralCrs"] }) => number;
     getCurrentExtent: () => number[] | null;
     getEngine: () => "openlayers" | "maplibre";
+    setVisibleItems: (items: LandListItem[]) => void;
     setHighlightDebugInfo?: (info: HighlightLoadDebugInfo | null) => void;
   };
   setMapStatus: (message: string, color?: string) => void;
@@ -70,6 +71,20 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
   }
 
   const currentItems = deps.getCurrentItems();
+  deps.mapView.setVisibleItems(currentItems);
+  if (deps.mapView.getEngine() === "maplibre") {
+    if (currentItems.length === 0) {
+      deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection(deps, config) });
+      deps.mapView.setHighlightDebugInfo?.(null);
+      deps.setMapStatus("시유지 강조 0건", "#1f2937");
+      deps.updateNavigation();
+      return;
+    }
+    deps.setMapStatus(`${deps.getThemeLabel(deps.getCurrentTheme())} 강조 ${currentItems.length}건`, "#166534");
+    deps.updateNavigation();
+    return;
+  }
+
   if (currentItems.length === 0) {
     deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection(deps, config) });
     deps.mapView.setHighlightDebugInfo?.(null);
@@ -103,6 +118,13 @@ export async function reloadCadastralLayers(deps: HighlightDeps): Promise<void> 
 export async function prepareUploadedHighlights(deps: HighlightDeps, items: LandListItem[]): Promise<void> {
   const config = deps.getConfig();
   if (!config) {
+    return;
+  }
+  if (deps.mapView.getEngine() === "maplibre" && deps.getCurrentTheme() === "city_owned") {
+    deps.getHighlightLoadAbortController()?.abort();
+    deps.setUploadedHighlightFeatures({ type: "FeatureCollection", features: [] });
+    deps.setUploadedHighlightDatasetKey(`pmtiles:${deps.getCurrentTheme()}:${items.length}`);
+    deps.mapView.setHighlightDebugInfo?.(null);
     return;
   }
 

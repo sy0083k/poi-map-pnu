@@ -5,6 +5,7 @@ export type MapConfig = {
   center: [number, number];
   zoom: number;
   cadastralFgbUrl: string;
+  cadastralPmtilesUrl: string;
   cadastralPnuField: string;
   cadastralCrs: CadastralCrs;
   cadastralMinRenderZoom: number;

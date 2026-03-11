@@ -141,7 +141,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     config = nextConfig;
   };
 
-  const selectItem = (index: number, options: SelectOptions): void => {
+  const selectItem = async (index: number, options: SelectOptions): Promise<void> => {
     const currentItems = deps.state.getCurrentItems();
     if (index < 0 || index >= currentItems.length) {
       return;
@@ -151,7 +151,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       const selected = currentItems[index];
       deps.telemetry.trackLandClickEvent(selected?.address || "", options.clickSource, selected?.id);
     }
-    const moved = deps.mapView.selectFeatureByIndex(index, { shouldFit: options.shouldFit });
+    const moved = await deps.mapView.selectFeatureByIndex(index, { shouldFit: options.shouldFit });
     if (!moved) {
       deps.setMapStatus("선택한 필지 하이라이트를 찾지 못했습니다.", "#b45309");
     }
@@ -191,6 +191,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
         deps.mapView.clearInfoPanelContentOnly();
         updateNavigation();
         if (config) {
+          deps.mapView.setVisibleItems([]);
           deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
         }
         deps.setMapStatus(`재산관리관 다중 검출: ${uniqueManagers.join(", ")}. 정확한 재산관리관을 입력하세요.`, "#1d4ed8");
@@ -199,7 +200,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     }
 
     deps.state.setCurrentItems(sortedItems);
-    deps.listPanel.render(sortedItems, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
+    deps.listPanel.render(sortedItems, (idx) => { void selectItem(idx, { shouldFit: true, clickSource: "list_click" }); });
     if (sortedItems.length === 0) {
       deps.mapView.clearInfoPanelContentOnly();
     } else {
@@ -236,6 +237,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
       uploadedHighlightDatasetKey = "empty";
       if (config) {
+        deps.mapView.setVisibleItems([]);
         deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
       }
       deps.setMapStatus("표시할 파일을 적용하면 목록이 표시됩니다.", "#1f2937");
@@ -250,7 +252,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       const sortedItems = sortItemsByPnuAscending(items);
       deps.state.setOriginalItems(sortedItems);
       deps.state.setCurrentItems(sortedItems);
-      deps.listPanel.render(sortedItems, (idx) => selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
+      deps.listPanel.render(sortedItems, (idx) => { void selectItem(idx, { shouldFit: true, clickSource: "list_click" }); });
       deps.mapView.clearInfoPanel();
       updateNavigation();
       await reloadCadastralLayers(highlightDeps);
@@ -279,7 +281,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     if (nextIndex < 0 || nextIndex >= deps.state.getCurrentItems().length) {
       return;
     }
-    selectItem(nextIndex, { shouldFit: true, clickSource: direction < 0 ? "nav_prev" : "nav_next" });
+    void selectItem(nextIndex, { shouldFit: true, clickSource: direction < 0 ? "nav_prev" : "nav_next" });
   };
 
   const downloadCurrentSearchResults = (): void =>

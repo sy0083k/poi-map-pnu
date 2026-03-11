@@ -8,7 +8,7 @@ export function bindLandMapEvents(deps: {
     clearInfoPanel: () => void;
   };
   workflow: {
-    selectItem: (index: number, options: { shouldFit: boolean; clickSource?: "map_click" | "list_click" | "nav_prev" | "nav_next" }) => void;
+    selectItem: (index: number, options: { shouldFit: boolean; clickSource?: "map_click" | "list_click" | "nav_prev" | "nav_next" }) => Promise<void>;
     applyFilters: (trackEvent?: boolean) => Promise<void>;
     resetFilters: (syncDesktopToMobileInputs: () => void) => void;
     downloadCurrentSearchResults: () => void;
@@ -34,7 +34,7 @@ export function bindLandMapEvents(deps: {
   applyLegendUiState: (theme: "national_public" | "city_owned") => void;
   resetLegendDismissed: () => void;
 }): void {
-  deps.mapView.setFeatureClickHandler(({ index }) => deps.workflow.selectItem(index, { shouldFit: false, clickSource: "map_click" }));
+  deps.mapView.setFeatureClickHandler(({ index }) => { void deps.workflow.selectItem(index, { shouldFit: false, clickSource: "map_click" }); });
   deps.mapView.setMoveEndHandler(() => {});
 
   document.getElementById("btn-search")?.addEventListener("click", () => void deps.workflow.applyFilters(true));

@@ -10,7 +10,7 @@ import { createMapViewFeatureLayers } from "./map-view-feature-layers";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
 import { createMapViewStyles } from "./map-view-styles";
 import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
-import type { BaseType, CadastralCrs, LandFeatureCollection, MapConfig, ThemeType } from "./types";
+import type { BaseType, CadastralCrs, LandFeatureCollection, LandListItem, MapConfig, ThemeType } from "./types";
 
 type MapViewElements = {
   infoPanelElement: HTMLElement;
@@ -131,7 +131,7 @@ export function createMapView(elements: MapViewElements) {
     return parsed.length;
   };
 
-  const selectFeatureByIndex = (index: number, options: SelectOptions): boolean => {
+  const selectFeatureByIndex = async (index: number, options: SelectOptions): Promise<boolean> => {
     if (!map || !featureLayers) {
       return false;
     }
@@ -215,7 +215,7 @@ export function createMapView(elements: MapViewElements) {
   elements.infoPanelCloseButton?.addEventListener("click", () => infoPanel.dismiss());
   infoPanel.clear();
 
-  return {
+    return {
     changeLayer,
     clearInfoPanel,
     clearInfoPanelContentOnly,
@@ -250,6 +250,7 @@ export function createMapView(elements: MapViewElements) {
     resize: (): void => map?.updateSize(),
     loadDebugProbe,
     setHighlightDebugInfo,
+    setVisibleItems: (_items: LandListItem[]): void => {},
     selectFeatureByIndex,
     setFeatureClickHandler: (handler: (payload: FeatureClickPayload) => void): void => { onFeatureClick = handler; },
     setMoveEndHandler: (handler: (() => void) | null): void => { onMoveEnd = handler; },

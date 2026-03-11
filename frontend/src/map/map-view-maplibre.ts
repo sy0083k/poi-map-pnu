@@ -1,10 +1,12 @@
-import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";
+import maplibregl, { type FilterSpecification, type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";
+import { Protocol } from "pmtiles";
 
 import { fetchJson } from "../http";
 import type { HighlightLoadDebugInfo } from "./cadastral-fgb-layer";
+import type { CadastralHighlightsApiResponse } from "./cadastral-highlights-client";
 import { createMapViewInfoPanel } from "./map-view-info-panel";
 
-import type { BaseType, CadastralCrs, LandFeature, LandFeatureCollection, LandFeatureProperties, MapConfig, ThemeType } from "./types";
+import type { BaseType, CadastralCrs, LandFeature, LandFeatureCollection, LandFeatureProperties, LandListItem, MapConfig, ThemeType } from "./types";
 
 type MapViewElements = {
   infoPanelElement: HTMLElement;
@@ -86,7 +88,7 @@ const DEFAULT_FILL_COLOR = "rgba(255, 51, 51, 0.2)";
 
 const MANAGER_LINE_COLOR_EXPRESSION: any[] = [
   "match",
-  ["coalesce", ["to-string", ["get", "property_manager"]], ""],
+  ["coalesce", ["to-string", ["get", "property_manager"]], ["to-string", ["get", "mngr"]], ""],
   "도로과",
   "#ff7f00",
   "건설과",
@@ -100,7 +102,7 @@ const MANAGER_LINE_COLOR_EXPRESSION: any[] = [
 
 const MANAGER_FILL_COLOR_EXPRESSION: any[] = [
   "match",
-  ["coalesce", ["to-string", ["get", "property_manager"]], ""],
+  ["coalesce", ["to-string", ["get", "property_manager"]], ["to-string", ["get", "mngr"]], ""],
   "도로과",
   "rgba(255, 127, 0, 0.2)",
   "건설과",
@@ -120,6 +122,7 @@ const BASEMAP_MAX_ZOOM: Record<BaseType, number> = {
 };
 
 const LAND_SOURCE_ID = "lands-source";
+const LAND_SOURCE_LAYER = "parcel";
 const LAND_SELECTED_SOURCE_ID = "lands-selected-source";
 const LAND_FILL_LAYER_ID = "cadastral-map-fill";
 const LAND_LINE_LAYER_ID = "cadastral-map-line";
@@ -141,6 +144,21 @@ const SELECTION_PULSE_MIN_WIDTH = 4;
 const SELECTION_PULSE_MAX_WIDTH = 8;
 const SELECTION_PULSE_MIN_ALPHA = 0.2;
 const SELECTION_PULSE_MAX_ALPHA = 0.7;
+const EMPTY_PNU_FILTER = ["==", ["get", "pnu"], "__pmtiles-empty__"] as FilterSpecification;
+let pmtilesProtocolRegistered = false;
+
+function normalizePnu(raw: unknown): string {
+  return String(raw ?? "").replace(/\D/g, "");
+}
+
+function ensurePmtilesProtocolRegistered(): void {
+  if (pmtilesProtocolRegistered) {
+    return;
+  }
+  const protocol = new Protocol();
+  maplibregl.addProtocol("pmtiles", protocol.tile);
+  pmtilesProtocolRegistered = true;
+}
 
 function isMapDebugEnabled(): boolean {
   return new URLSearchParams(window.location.search).get("debugMap") === "1";
@@ -521,11 +539,11 @@ function getFillColorExpression(theme: ThemeType): any {
   return (theme === "city_owned" ? MANAGER_FILL_COLOR_EXPRESSION : DEFAULT_FILL_COLOR) as any;
 }
 
-function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
+function ensureLandLayers(map: MapLibreMap, theme: ThemeType, pmtilesUrl: string): void {
   if (!map.getSource(LAND_SOURCE_ID)) {
     map.addSource(LAND_SOURCE_ID, {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] }
+      type: "vector",
+      url: `pmtiles://${pmtilesUrl}`
     });
   }
   if (!map.getSource(LAND_SELECTED_SOURCE_ID)) {
@@ -540,6 +558,8 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
       id: LAND_FILL_LAYER_ID,
       type: "fill",
       source: LAND_SOURCE_ID,
+      "source-layer": LAND_SOURCE_LAYER,
+      filter: EMPTY_PNU_FILTER,
       paint: {
         "fill-color": getFillColorExpression(theme),
         "fill-opacity": 1
@@ -552,6 +572,8 @@ function ensureLandLayers(map: MapLibreMap, theme: ThemeType): void {
       id: LAND_LINE_LAYER_ID,
       type: "line",
       source: LAND_SOURCE_ID,
+      "source-layer": LAND_SOURCE_LAYER,
+      filter: EMPTY_PNU_FILTER,
       paint: {
         "line-color": getLineColorExpression(theme),
         "line-width": 3
@@ -740,16 +762,20 @@ function setBasemapVisibility(map: MapLibreMap, type: BaseType): void {
 
 export function createMapLibreMapView(elements: MapViewElements) {
   let map: MapLibreMap | null = null;
+  let currentConfig: MapConfig | null = null;
   let currentTheme: ThemeType = "city_owned";
   let currentBasemap: BaseType = "Satellite";
   let onFeatureClick: ((payload: FeatureClickPayload) => void) | null = null;
   let onMoveEnd: (() => void) | null = null;
   let isLoaded = false;
   const featureRecordsById = new Map<number, FeatureRecord>();
+  const currentItemsByIndex = new Map<number, LandListItem>();
+  const currentIndexByPnu = new Map<string, number>();
   const infoPanel = createMapViewInfoPanel({
     infoPanelElement: elements.infoPanelElement,
     infoPanelContent: elements.infoPanelContent
   });
+  let currentVisiblePnus: string[] = [];
   let selectedFeatureId: number | null = null;
   let geometryValidationStats: GeometryValidationStats = {
     received: 0,
@@ -762,6 +788,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
   let debugProbeMeta: DebugProbeMeta | null = null;
   let resolveMapReady: (() => void) | null = null;
   let selectionPulseAnimationFrameId: number | null = null;
+  let selectionLoadAbortController: AbortController | null = null;
   const reducedMotionMedia = window.matchMedia("(prefers-reduced-motion: reduce)");
   const mapReadyPromise = new Promise<void>((resolve) => {
     resolveMapReady = resolve;
@@ -826,17 +853,34 @@ export function createMapLibreMapView(elements: MapViewElements) {
     }
   };
 
-  const syncSourceData = (): void => {
+  const buildVisiblePnuFilter = (): FilterSpecification => {
+    if (currentVisiblePnus.length === 0) {
+      return EMPTY_PNU_FILTER;
+    }
+    return ["in", "pnu", ...currentVisiblePnus] as FilterSpecification;
+  };
+
+  const syncVisibleLandFilter = (): void => {
     if (!map || !isLoaded) {
       return;
     }
-    const source = map.getSource(LAND_SOURCE_ID) as GeoJSONSource | undefined;
-    const selectedSource = map.getSource(LAND_SELECTED_SOURCE_ID) as GeoJSONSource | undefined;
-    if (!source || !selectedSource) {
+    const filter = buildVisiblePnuFilter();
+    if (map.getLayer(LAND_FILL_LAYER_ID)) {
+      map.setFilter(LAND_FILL_LAYER_ID, filter);
+    }
+    if (map.getLayer(LAND_LINE_LAYER_ID)) {
+      map.setFilter(LAND_LINE_LAYER_ID, filter);
+    }
+  };
+
+  const syncSelectedSourceData = (): void => {
+    if (!map || !isLoaded) {
       return;
     }
-
-    source.setData(toFeatureCollection(featureRecordsById.values()));
+    const selectedSource = map.getSource(LAND_SELECTED_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!selectedSource) {
+      return;
+    }
     if (selectedFeatureId !== null) {
       const selected = featureRecordsById.get(selectedFeatureId);
       selectedSource.setData(toFeatureCollection(selected ? [selected] : []));
@@ -850,6 +894,8 @@ export function createMapLibreMapView(elements: MapViewElements) {
   };
 
   const init = (config: MapConfig): void => {
+    currentConfig = config;
+    ensurePmtilesProtocolRegistered();
     map = new maplibregl.Map({
       container: "map",
       style: createBasemapStyle(config.vworldKey),
@@ -866,14 +912,15 @@ export function createMapLibreMapView(elements: MapViewElements) {
         return;
       }
       isLoaded = true;
-      ensureLandLayers(map, currentTheme);
+      ensureLandLayers(map, currentTheme, config.cadastralPmtilesUrl);
       if (isDebugFgbEnabled()) {
         ensureDebugProbeLayers(map);
       }
       ensureDebugReferenceMarker(map);
       updateLandPaints(map, currentTheme);
       setBasemapVisibility(map, currentBasemap);
-      syncSourceData();
+      syncVisibleLandFilter();
+      syncSelectedSourceData();
       installMapDebugHooks(map, {
         getGeometryStats: () => ({
           received: geometryValidationStats.received,
@@ -911,18 +958,29 @@ export function createMapLibreMapView(elements: MapViewElements) {
         return typeof raw === "number" || (typeof raw === "string" && raw.trim() !== "" && Number.isFinite(Number(raw)));
       });
 
-      if (!selected) {
+      const selectedPnu = features.find((candidate) => {
+        const raw = candidate.properties?.pnu;
+        return typeof raw === "number" || (typeof raw === "string" && raw.trim() !== "");
+      });
+
+      if (!selected && !selectedPnu) {
         selectedFeatureId = null;
-        syncSourceData();
+        syncSelectedSourceData();
         infoPanel.clear();
         return;
       }
 
-      const listIndexRaw = selected.properties?.list_index;
-      const listIndex = typeof listIndexRaw === "number" ? listIndexRaw : Number(listIndexRaw);
-      if (!Number.isFinite(listIndex) || !onFeatureClick) {
+      const listIndexRaw = selected?.properties?.list_index;
+      const listIndexCandidate =
+        typeof listIndexRaw === "number"
+          ? listIndexRaw
+          : Number.isFinite(Number(listIndexRaw))
+            ? Number(listIndexRaw)
+            : currentIndexByPnu.get(normalizePnu(selectedPnu?.properties?.pnu));
+      if (!Number.isFinite(listIndexCandidate) || !onFeatureClick) {
         return;
       }
+      const listIndex = Number(listIndexCandidate);
       onFeatureClick({
         index: listIndex,
         coordinate: [event.lngLat.lng, event.lngLat.lat]
@@ -989,21 +1047,107 @@ export function createMapLibreMapView(elements: MapViewElements) {
         geometryValidationStats.dropReasons
       );
     }
-    syncSourceData();
+    syncSelectedSourceData();
     return geometryValidationStats.accepted;
   };
 
-  const selectFeatureByIndex = (index: number, options: SelectOptions): boolean => {
+  const setVisibleItems = (items: LandListItem[]): void => {
+    currentItemsByIndex.clear();
+    currentIndexByPnu.clear();
+    currentVisiblePnus = [];
+    items.forEach((item, index) => {
+      currentItemsByIndex.set(index, item);
+      const normalizedPnu = normalizePnu(item.pnu);
+      if (!normalizedPnu) {
+        return;
+      }
+      currentIndexByPnu.set(normalizedPnu, index);
+      currentVisiblePnus.push(normalizedPnu);
+    });
+    syncVisibleLandFilter();
+    if (selectedFeatureId !== null && !currentItemsByIndex.has(selectedFeatureId)) {
+      selectedFeatureId = null;
+      syncSelectedSourceData();
+    }
+  };
+
+  const loadSelectionRecord = async (index: number): Promise<FeatureRecord | null> => {
+    const item = currentItemsByIndex.get(index);
+    if (!item || !currentConfig) {
+      return null;
+    }
+    selectionLoadAbortController?.abort();
+    const controller = new AbortController();
+    selectionLoadAbortController = controller;
+    try {
+      const payload = await fetchJson<CadastralHighlightsApiResponse>("/api/cadastral/highlights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          theme: currentTheme,
+          pnus: [normalizePnu(item.pnu)]
+        }),
+        signal: controller.signal,
+        timeoutMs: 30000
+      });
+      const selectedItem = payload.items[0];
+      if (!selectedItem) {
+        return null;
+      }
+      const loadedCount = renderFeatures(
+        {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: selectedItem.geometry,
+              properties: {
+                list_index: index,
+                id: item.id,
+                pnu: item.pnu,
+                address: item.address,
+                land_type: item.land_type,
+                area: item.area,
+                property_manager: item.property_manager,
+                source_fields: item.sourceFields ?? []
+              }
+            }
+          ]
+        },
+        { dataProjection: "EPSG:4326" }
+      );
+      return loadedCount > 0 ? (featureRecordsById.get(index) ?? null) : null;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return null;
+      }
+      console.warn("[maplibre] failed to load selection geometry", error);
+      return null;
+    } finally {
+      if (selectionLoadAbortController === controller) {
+        selectionLoadAbortController = null;
+      }
+    }
+  };
+
+  const selectFeatureByIndex = async (index: number, options: SelectOptions): Promise<boolean> => {
     if (!map) {
       return false;
     }
-    const record = featureRecordsById.get(index);
+    const item = currentItemsByIndex.get(index);
+    if (!item) {
+      return false;
+    }
+    let record = featureRecordsById.get(index) ?? null;
+    if (!record) {
+      record = await loadSelectionRecord(index);
+    }
     if (!record) {
       return false;
     }
 
     selectedFeatureId = index;
-    syncSourceData();
+    syncSelectedSourceData();
     infoPanel.renderProperties(record.feature.properties as LandFeatureProperties);
 
     if (!options.shouldFit || !record.bbox) {
@@ -1066,7 +1210,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
 
   const clearInfoPanel = (): void => {
     selectedFeatureId = null;
-    syncSourceData();
+    syncSelectedSourceData();
     infoPanel.clear();
   };
 
@@ -1153,15 +1297,23 @@ export function createMapLibreMapView(elements: MapViewElements) {
       if (!map) {
         return [];
       }
-      const bounds = map.getBounds();
-      const viewBbox: [number, number, number, number] = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
-      const indexes: number[] = [];
-      for (const [featureId, record] of featureRecordsById.entries()) {
-        if (intersectsBounds(record.bbox, viewBbox)) {
-          indexes.push(featureId);
+      const canvas = map.getCanvas();
+      const features = map.queryRenderedFeatures(
+        [
+          [0, 0],
+          [canvas.clientWidth, canvas.clientHeight]
+        ],
+        { layers: [LAND_FILL_LAYER_ID, LAND_LINE_LAYER_ID] }
+      );
+      const indexes = new Set<number>();
+      for (const feature of features) {
+        const pnu = normalizePnu(feature.properties?.pnu);
+        const index = currentIndexByPnu.get(pnu);
+        if (typeof index === "number") {
+          indexes.add(index);
         }
       }
-      return indexes;
+      return Array.from(indexes);
     },
     getEngine: (): "maplibre" => "maplibre",
     loadDebugProbe,
@@ -1170,6 +1322,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
       map?.resize();
     },
     setHighlightDebugInfo,
+    setVisibleItems,
     selectFeatureByIndex,
     setFeatureClickHandler: (handler: (payload: FeatureClickPayload) => void): void => {
       onFeatureClick = handler;
