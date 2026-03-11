@@ -1114,7 +1114,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
             }
           ]
         },
-        { dataProjection: "EPSG:4326" }
+        { dataProjection: currentConfig.cadastralCrs }
       );
       return loadedCount > 0 ? (featureRecordsById.get(index) ?? null) : null;
     } catch (error) {

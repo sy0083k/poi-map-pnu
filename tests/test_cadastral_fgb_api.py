@@ -139,7 +139,26 @@ async def test_config_includes_cadastral_crs(async_client: httpx.AsyncClient) ->
     assert response.status_code == 200
     payload = response.json()
     assert payload["cadastralCrs"] == "EPSG:3857"
-    assert payload["cadastralPmtilesUrl"] == "/static/data/cadastral.pmtiles"
+    assert payload["cadastralPmtilesUrl"] == "/api/cadastral/pmtiles"
+
+
+@pytest.mark.anyio
+async def test_cadastral_pmtiles_served_with_range_support(
+    async_client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from app.services import cadastral_fgb_service
+
+    small_pmtiles = tmp_path / "sample.pmtiles"
+    small_pmtiles.write_bytes(b"0123456789")
+    monkeypatch.setattr(cadastral_fgb_service, "_resolve_fgb_path", lambda **_kwargs: small_pmtiles)
+
+    response = await async_client.get("/api/cadastral/pmtiles", headers={"Range": "bytes=2-5"})
+
+    assert response.status_code == 206
+    assert response.headers.get("content-range") == "bytes 2-5/10"
+    assert response.content == b"2345"
 
 
 @pytest.mark.anyio

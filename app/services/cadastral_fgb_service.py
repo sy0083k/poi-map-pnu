@@ -9,15 +9,47 @@ from fastapi.responses import Response, StreamingResponse
 STREAMING_THRESHOLD_BYTES = 8 * 1024 * 1024
 
 
+def build_pmtiles_file_response(
+    *,
+    base_dir: str,
+    configured_path: str,
+    range_header: str | None = None,
+) -> Response:
+    return _build_binary_file_response(
+        base_dir=base_dir,
+        configured_path=configured_path,
+        range_header=range_header,
+        media_type="application/octet-stream",
+        missing_detail="PMTiles 파일을 찾을 수 없습니다.",
+    )
+
+
 def build_fgb_file_response(
     *,
     base_dir: str,
     configured_path: str,
     range_header: str | None = None,
 ) -> Response:
+    return _build_binary_file_response(
+        base_dir=base_dir,
+        configured_path=configured_path,
+        range_header=range_header,
+        media_type="application/x-flatgeobuf",
+        missing_detail="연속지적도 파일을 찾을 수 없습니다.",
+    )
+
+
+def _build_binary_file_response(
+    *,
+    base_dir: str,
+    configured_path: str,
+    range_header: str | None,
+    media_type: str,
+    missing_detail: str,
+) -> Response:
     file_path = _resolve_fgb_path(base_dir=base_dir, configured_path=configured_path)
     if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="연속지적도 파일을 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail=missing_detail)
 
     file_size = file_path.stat().st_size
     common_headers = {
@@ -38,7 +70,7 @@ def build_fgb_file_response(
             }
             return Response(
                 content=payload,
-                media_type="application/x-flatgeobuf",
+                media_type=media_type,
                 status_code=206,
                 headers=headers,
             )
@@ -50,7 +82,7 @@ def build_fgb_file_response(
         }
         return StreamingResponse(
             _iter_file_range(file_path=file_path, start=start, end=end),
-            media_type="application/x-flatgeobuf",
+            media_type=media_type,
             status_code=206,
             headers=headers,
         )
@@ -60,14 +92,14 @@ def build_fgb_file_response(
         headers = {**common_headers, "Content-Length": str(len(payload))}
         return Response(
             content=payload,
-            media_type="application/x-flatgeobuf",
+            media_type=media_type,
             headers=headers,
         )
 
     headers = {**common_headers, "Content-Length": str(file_size)}
     return StreamingResponse(
         _iter_file(file_path=file_path),
-        media_type="application/x-flatgeobuf",
+        media_type=media_type,
         headers=headers,
     )
 

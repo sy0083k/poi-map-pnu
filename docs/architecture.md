@@ -18,6 +18,7 @@
 
 ## 공개 엔드포인트
 - `GET /api/config`
+- `GET /api/cadastral/pmtiles`
 - `GET /api/cadastral/fgb`
 - `GET /api/cadastral/debug-probe`
 - `POST /api/cadastral/highlights`

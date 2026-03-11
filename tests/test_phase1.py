@@ -98,7 +98,7 @@ class AppSmokeTests(unittest.TestCase):
                     payload = cfg.json()
                     self.assertIn("center", payload)
                     self.assertEqual(payload["cadastralCrs"], "EPSG:3857")
-                    self.assertEqual(payload["cadastralPmtilesUrl"], "/static/data/cadastral.pmtiles")
+                    self.assertEqual(payload["cadastralPmtilesUrl"], "/api/cadastral/pmtiles")
 
                     readme_page = await client.get("/readme")
                     self.assertEqual(readme_page.status_code, 200)

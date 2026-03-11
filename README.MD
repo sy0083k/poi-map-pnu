@@ -239,7 +239,7 @@ uvicorn app.main:app --reload
 - `VWORLD_WMTS_KEY`는 일반/위성/하이브리드 베이스맵(WMTS) 렌더링용 예외 공개 키입니다.
 - 연속지적도는 `CADASTRAL_FGB_PATH` 파일에서 조회하며, PNU 매칭 필드는 `CADASTRAL_FGB_PNU_FIELD`를 사용합니다.
 - 클라이언트 렌더링은 엔진별 투영 정책을 사용합니다. `/siyu`(MapLibre)는 하이라이트 좌표를 EPSG:4326으로 변환해 렌더링하고, `/file2map`·`/photo2map`(OpenLayers)은 `CADASTRAL_FGB_CRS`를 `dataProjection`으로 사용해 투영 오인을 방지합니다.
-- `/api/config`는 `/siyu` 런타임이 사용할 `cadastralPmtilesUrl`을 함께 반환하며, 경로 변경은 `.env` 수정 후 앱 재시작이 필요합니다.
+- `/api/config`는 `/siyu` 런타임이 사용할 `cadastralPmtilesUrl`을 함께 반환하며, 기본값은 `/api/cadastral/pmtiles`입니다. 경로 변경은 `.env` 수정 후 앱 재시작이 필요합니다.
 - 프록시 환경에서는 `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`를 정확히 설정해야 합니다.
 - 동일 브라우저/도메인에서 여러 앱을 운영하는 경우 앱별로 `SECRET_KEY`, `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`를 반드시 분리해야 세션 교차 인식을 방지할 수 있습니다.
 - 이벤트 수집 API는 레이트리밋이 적용됩니다.

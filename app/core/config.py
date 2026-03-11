@@ -161,9 +161,9 @@ def get_settings() -> Settings:
         or "data/LSMD_CONT_LDREG_44210_202512.fgb",
         cadastral_pmtiles_url=os.getenv(
             "CADASTRAL_PMTILES_URL",
-            "/static/data/cadastral.pmtiles",
+            "/api/cadastral/pmtiles",
         ).strip()
-        or "/static/data/cadastral.pmtiles",
+        or "/api/cadastral/pmtiles",
         cadastral_fgb_pnu_field=os.getenv("CADASTRAL_FGB_PNU_FIELD", "PNU").strip() or "PNU",
         cadastral_fgb_crs=cadastral_fgb_crs,
         cadastral_min_render_zoom=cadastral_min_render_zoom,

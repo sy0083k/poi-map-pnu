@@ -36,6 +36,15 @@ def create_router() -> APIRouter:
             "cadastralMinRenderZoom": config.CADASTRAL_MIN_RENDER_ZOOM,
         }
 
+    @router.get("/cadastral/pmtiles")
+    async def get_cadastral_pmtiles(request: Request):
+        config = request.app.state.config
+        return cadastral_fgb_service.build_pmtiles_file_response(
+            base_dir=config.BASE_DIR,
+            configured_path="data/seosan_land.pmtiles",
+            range_header=request.headers.get("range"),
+        )
+
     @router.get("/cadastral/fgb")
     async def get_cadastral_fgb(request: Request):
         config = request.app.state.config
