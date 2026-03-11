@@ -122,7 +122,7 @@ const BASEMAP_MAX_ZOOM: Record<BaseType, number> = {
 };
 
 const LAND_SOURCE_ID = "lands-source";
-const LAND_SOURCE_LAYER = "parcel";
+const LAND_SOURCE_LAYER = "cadastre";
 const LAND_SELECTED_SOURCE_ID = "lands-selected-source";
 const LAND_FILL_LAYER_ID = "cadastral-map-fill";
 const LAND_LINE_LAYER_ID = "cadastral-map-line";
@@ -145,6 +145,8 @@ const SELECTION_PULSE_MAX_WIDTH = 8;
 const SELECTION_PULSE_MIN_ALPHA = 0.2;
 const SELECTION_PULSE_MAX_ALPHA = 0.7;
 const EMPTY_PNU_FILTER = ["==", ["get", "pnu"], "__pmtiles-empty__"] as FilterSpecification;
+const WEB_MERCATOR_MAX = 20_037_508.342789244;
+const WEB_MERCATOR_TO_DEGREES = 180 / Math.PI;
 let pmtilesProtocolRegistered = false;
 
 function normalizePnu(raw: unknown): string {
@@ -260,6 +262,10 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 function isCoordinateContainer(value: unknown): value is Iterable<unknown> {
   return Array.isArray(value) || ArrayBuffer.isView(value) || (!!value && typeof value === "object" && Symbol.iterator in value);
 }
@@ -292,17 +298,34 @@ function toWgs84Position(value: unknown, sourceCrs: CadastralCrs): [number, numb
   if (!isFiniteNumber(rawX) || !isFiniteNumber(rawY)) {
     return null;
   }
-  if (sourceCrs !== "EPSG:4326") {
+  if (sourceCrs === "EPSG:4326") {
+    const converted = [rawX, rawY] as [number, number];
+    if (!Number.isFinite(converted[0]) || !Number.isFinite(converted[1])) {
+      return null;
+    }
+    if (converted[0] < -180 || converted[0] > 180 || converted[1] < -90 || converted[1] > 90) {
+      return null;
+    }
+    return converted;
+  }
+
+  if (sourceCrs !== "EPSG:3857") {
     return null;
   }
-  const converted = [rawX, rawY] as [number, number];
-  if (!Number.isFinite(converted[0]) || !Number.isFinite(converted[1])) {
+
+  if (Math.abs(rawX) > WEB_MERCATOR_MAX || Math.abs(rawY) > WEB_MERCATOR_MAX) {
     return null;
   }
-  if (converted[0] < -180 || converted[0] > 180 || converted[1] < -90 || converted[1] > 90) {
+  const longitude = (rawX / WEB_MERCATOR_MAX) * 180;
+  const latitudeRadians = 2 * Math.atan(Math.exp((clamp(rawY, -WEB_MERCATOR_MAX, WEB_MERCATOR_MAX) / WEB_MERCATOR_MAX) * Math.PI)) - Math.PI / 2;
+  const latitude = latitudeRadians * WEB_MERCATOR_TO_DEGREES;
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
     return null;
   }
-  return converted;
+  if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
+    return null;
+  }
+  return [longitude, latitude];
 }
 
 function normalizePositionArray(value: unknown, sourceCrs: CadastralCrs): [number, number][] | null {
@@ -1005,8 +1028,8 @@ export function createMapLibreMapView(elements: MapViewElements) {
 
   const renderFeatures = (data: LandFeatureCollection, options?: RenderOptions): number => {
     const sourceProjection = options?.dataProjection ?? "EPSG:4326";
-    if (sourceProjection !== "EPSG:4326") {
-      console.warn(`[maplibre] expected EPSG:4326 GeoJSON but received ${sourceProjection}`);
+    if (sourceProjection !== "EPSG:4326" && sourceProjection !== "EPSG:3857") {
+      console.warn(`[maplibre] expected EPSG:4326 or EPSG:3857 GeoJSON but received ${sourceProjection}`);
     }
     resetGeometryValidationStats(data.features.length);
     featureRecordsById.clear();
