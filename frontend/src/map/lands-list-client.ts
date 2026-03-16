@@ -28,7 +28,11 @@ function appendFilterQuery(query: URLSearchParams, filters?: FilterValues): void
   }
 }
 
-export async function loadAllLandListItems(theme: ThemeType, filters?: FilterValues): Promise<LandListItem[]> {
+export async function loadAllLandListItems(
+  theme: ThemeType,
+  filters?: FilterValues,
+  onPage?: (pageItems: LandListItem[]) => void
+): Promise<LandListItem[]> {
   const allItems: LandListItem[] = [];
   let cursor: string | null = null;
 
@@ -43,6 +47,9 @@ export async function loadAllLandListItems(theme: ThemeType, filters?: FilterVal
       timeoutMs: 20000
     });
     allItems.push(...page.items);
+    if (onPage && page.items.length > 0) {
+      onPage(page.items);
+    }
 
     if (!page.nextCursor) {
       break;

@@ -34,7 +34,11 @@ type LandWorkflowDeps = {
   downloadClient: DownloadClient;
   setMapStatus: (message: string, color?: string) => void;
   getThemeLabel: (theme: ThemeType) => string;
-  loadLandListItems: (theme: ThemeType, filters?: ReturnType<Filters["getValues"]>) => Promise<LandListItem[]>;
+  loadLandListItems: (
+    theme: ThemeType,
+    filters?: ReturnType<Filters["getValues"]>,
+    onPage?: (pageItems: LandListItem[]) => void
+  ) => Promise<LandListItem[]>;
 };
 
 export function createLandWorkflow(deps: LandWorkflowDeps) {
@@ -255,7 +259,26 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     }
     try {
       deps.listPanel.setStatus(`${themeLabel} 목록을 불러오는 중입니다...`);
-      const items = await deps.loadLandListItems(theme);
+
+      let accumulated: LandListItem[] = [];
+      let firstPageDone = false;
+
+      const items = await deps.loadLandListItems(theme, undefined, (pageItems) => {
+        if (seq !== themeLoadRequestSeq) return;
+        accumulated = sortItemsByPnuAscending([...accumulated, ...pageItems]);
+        deps.state.setOriginalItems(accumulated);
+        deps.state.setCurrentItems(accumulated);
+        deps.listPanel.render(accumulated, (idx) =>
+          void selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
+        deps.mapView.clearInfoPanel();
+        updateNavigation();
+        if (!firstPageDone) {
+          firstPageDone = true;
+          void reloadCadastralLayers(highlightDeps);
+          void prepareUploadedHighlights(highlightDeps, accumulated);
+        }
+      });
+
       if (seq !== themeLoadRequestSeq) {
         return;
       }
