@@ -223,7 +223,14 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     updateNavigation();
     await reloadCadastralLayers(highlightDeps);
     if (trackEvent && sortedItems.length > 0) {
-      await selectItem(0, { shouldFit: true, clickSource: "filter_auto_select" });
+      const topVisibleIndex = findMinVisiblePnuIndex(deps.state.getCurrentItems());
+      if (topVisibleIndex === null) {
+        // 뷰포트에 폴리곤 없음 → 첫 번째 항목으로 자동 이동
+        await selectItem(0, { shouldFit: true, clickSource: "filter_auto_select" });
+      } else {
+        // 뷰포트에 이미 폴리곤 있음 → 스크롤만
+        deps.listPanel.scrollTo(topVisibleIndex, { alignToTop: true });
+      }
     }
   };
 
