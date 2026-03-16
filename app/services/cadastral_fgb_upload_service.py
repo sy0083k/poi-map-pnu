@@ -13,7 +13,7 @@ from app.services import admin_settings_service, cadastral_fgb_service, parcel_r
 from app.services.cadastral_highlight_cache import clear_cached_responses
 
 ALLOWED_CONTENT_TYPES = {
-    "application/octet-stream",
+    "application/octet-stream",  # FGB has no registered MIME type; actual validation is done via magic bytes
     "application/x-flatgeobuf",
     "application/binary",
 }

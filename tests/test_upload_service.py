@@ -169,6 +169,23 @@ def test_upload_service_rejects_bad_content_type(
     assert exc.value.status_code == 400
 
 
+def test_upload_service_rejects_octet_stream_content_type(
+    build_app: Any, db_path: Any
+) -> None:
+    """application/octet-stream must be rejected for Excel uploads (RISK-014)."""
+    app = build_app()
+    request = _make_request(app, csrf_token="csrf")
+    file = _make_upload_file("upload.xlsx", b"dummy", "application/octet-stream")
+    with pytest.raises(HTTPException) as exc:
+        upload_service.handle_excel_upload(
+            request=request,
+            background_tasks=BackgroundTasks(),
+            csrf_token="csrf",
+            file=file,
+        )
+    assert exc.value.status_code == 400
+
+
 def test_upload_service_rejects_wrong_magic_bytes_xlsx(build_app: Any, db_path: Any) -> None:
     app = build_app()
     request = _make_request(app, csrf_token="csrf")

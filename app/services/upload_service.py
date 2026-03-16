@@ -19,7 +19,6 @@ ThemeType = Literal["city_owned"]
 ALLOWED_CONTENT_TYPES = {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-excel",
-    "application/octet-stream",
 }
 
 

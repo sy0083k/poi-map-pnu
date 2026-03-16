@@ -53,6 +53,8 @@
 - 통제: `/api/cadastral/highlights` 입력 PNU 개수 상한(최대 10,000) + bbox 형식/범위 검증 + SQLite `parcel_render_item` 조회 + 서버 응답 캐시(TTL) + 클라이언트 폴백
 - 위협: 관리자 FGB 초대형 파일 업로드로 디스크/처리 시간 소모
 - 통제: 확장자/콘텐츠타입/파일크기 상한(1GB)/파서 검증 후 교체, 실패 시 기존 운영 파일 유지
+- 위협: 업로드 MIME 스푸핑(Content-Type 위조로 비정상 파일 통과)
+- 통제: Excel 업로드(`upload_service.py`)는 `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` / `application/vnd.ms-excel` 두 타입만 허용(`application/octet-stream` 제거). FGB 업로드(`cadastral_fgb_upload_service.py`)는 IANA 등록 MIME 타입 없어 `application/octet-stream` 유지하되, 매직 바이트(`fgb\x03`) 검증이 실질적 보안 경계.
 
 ### Elevation of Privilege
 - 위협: 관리자 경로 우회 접근
