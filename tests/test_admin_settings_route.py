@@ -110,3 +110,73 @@ async def test_admin_settings_rejects_invalid_trusted_proxy_ips(
 
     assert response.status_code == 400
     assert "TRUSTED_PROXY_IPS" in response.text
+
+
+@pytest.mark.anyio
+@pytest.mark.integration
+async def test_password_change_rejects_weak_password(
+    async_client: httpx.AsyncClient,
+) -> None:
+    await _login_as_admin(async_client)
+    csrf_token = await _get_admin_csrf(async_client)
+
+    response = await async_client.post(
+        "/admin/password",
+        data={
+            "csrf_token": csrf_token,
+            "current_password": "admin-password",
+            "new_password": "aaaaaaaa",
+            "new_password_confirm": "aaaaaaaa",
+        },
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.anyio
+@pytest.mark.integration
+async def test_password_change_rejects_short_password(
+    async_client: httpx.AsyncClient,
+) -> None:
+    await _login_as_admin(async_client)
+    csrf_token = await _get_admin_csrf(async_client)
+
+    response = await async_client.post(
+        "/admin/password",
+        data={
+            "csrf_token": csrf_token,
+            "current_password": "admin-password",
+            "new_password": "Ab1!",
+            "new_password_confirm": "Ab1!",
+        },
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.anyio
+@pytest.mark.integration
+async def test_password_change_accepts_strong_password(
+    async_client: httpx.AsyncClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.admin_settings_service.update_admin_password_hash",
+        lambda *_args, **_kwargs: None,
+    )
+
+    await _login_as_admin(async_client)
+    csrf_token = await _get_admin_csrf(async_client)
+
+    response = await async_client.post(
+        "/admin/password",
+        data={
+            "csrf_token": csrf_token,
+            "current_password": "admin-password",
+            "new_password": "NewPass1!",
+            "new_password_confirm": "NewPass1!",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (200, 303)

@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-23  
-최종 수정일: 2026-03-10  
+최종 수정일: 2026-03-16  
 운영 주기: 매주 1회 (월요일 기준)
 
 ## 목적
@@ -36,6 +36,15 @@
 | RISK-007 | P1 | 관리자 세션 쿠키 앱 간 교차 인식 | done | team | 2026-03-02 | 세션 쿠키명/네임스페이스 분리와 인증 검증 강화로 동일 도메인 다중 앱 간 세션 재사용이 차단된다. | 관련: `app/main.py`, `app/dependencies.py`, `app/services/auth_service.py` |
 | RISK-008 | P1 | 확장 웹 로그(Referrer/UTM/디바이스) 보존·파기 정책 미정 | doing | team | 2026-03-14 | 수집 필드별 보존 기간/파기 절차/반출 통제 정책이 문서화되고 운영 점검 항목에 반영된다. 채널 분류 규칙과 개인정보 최소화(원문 referrer 미저장) 기준이 명시된다. | 관련: `app/services/web_stats_service.py`, `app/repositories/web_visit_repository.py`, `docs/maintenance.md` |
 | RISK-009 | P0 | Deploy 워크플로 마지막 단계 TODO 미구현 | done | team | 2026-03-07 | `.github/workflows/deploy.yml`이 수동 배포 트리거/품질 게이트/SSH+Compose 배포/헬스체크 실패 자동 롤백을 포함해 실행 가능한 상태가 된다. | 관련: `.github/workflows/deploy.yml`, `README.MD`, `docs/maintenance.md` |
+| RISK-010 | P0 | 관리자 비밀번호 복잡도 정책 미구현 | done | team | 2026-03-16 | 비밀번호 변경 시 최소 8자 + 대·소문자·숫자·특수문자 중 3종 이상 조건을 검증하고 관련 단위 테스트가 통과한다. | 관련: `app/services/admin_settings_service.py` — `_check_password_complexity()` 헬퍼 추가, 단위 6개·통합 3개 테스트 전량 통과 |
+| RISK-011 | P0 | SECRET_KEY 최소 강도 검증 없음 | todo | unassigned | 2026-03-30 | 서버 기동 시 SECRET_KEY가 32자 미만이면 기동을 차단하고 오류 메시지를 출력한다. | 관련: `app/core/config.py` — `_get_required_env("SECRET_KEY")` |
+| RISK-012 | P1 | CSP style-src unsafe-inline 허용 | todo | unassigned | 2026-04-16 | style-src에서 unsafe-inline을 제거하고 nonce/hash 방식으로 교체하거나, 제거 불가 사유가 stride-lite.md에 문서화된다. | 관련: `app/main.py` CSP 헤더 / stride-lite.md Information Disclosure 통제 |
+| RISK-013 | P1 | X-Forwarded-For 프록시 체인 첫 홉 신뢰 취약 | todo | unassigned | 2026-04-16 | TRUST_PROXY_HEADERS=true 환경에서 신뢰된 프록시 IP가 삽입한 마지막 홉을 기준으로 클라이언트 IP를 결정하거나, 운영 가이드에 위험 조건이 명시된다. | 관련: `app/dependencies.py:55-61` / 조건: TRUST_PROXY_HEADERS=true 환경에서만 유효 |
+| RISK-014 | P1 | 업로드 MIME 검증에 application/octet-stream 허용 | todo | unassigned | 2026-04-16 | ALLOWED_CONTENT_TYPES에서 application/octet-stream을 제거하거나, 매직 바이트 검증(RISK-015)으로 대체해 MIME 우회를 차단한다. | 관련: `app/services/upload_service.py:22` |
+| RISK-015 | P1 | Excel·FGB 업로드 파일 매직 바이트 검증 없음 | todo | unassigned | 2026-04-16 | 파서 호출 전 파일 시그니처(xlsx: PK\x03\x04, fgb: fgb\x09 등)를 검증하고 불일치 시 400 오류를 반환한다. | 관련: `app/services/upload_service.py`, `app/services/cadastral_fgb_service.py` |
+| RISK-016 | P1 | 누락 보안 헤더 (HSTS·Referrer-Policy·Permissions-Policy) | todo | unassigned | 2026-04-16 | Strict-Transport-Security, Referrer-Policy: strict-origin-when-cross-origin, Permissions-Policy 헤더가 추가된다. | 관련: `app/main.py` 보안 헤더 미들웨어 |
+| RISK-017 | P2 | 관리자 통계 event_type 파라미터 화이트리스트 미검증 | todo | unassigned | 2026-05-15 | event_type 파라미터가 허용 값 목록(예: all, click, view 등)에 대한 Enum 검증을 거친 뒤 서비스로 전달된다. | 관련: `app/routers/admin.py` 이벤트 내보내기 엔드포인트 |
+| RISK-018 | P2 | .env 파일 쓰기 시 파일 잠금 없음 | todo | unassigned | 2026-05-15 | 설정 저장 시 파일 잠금(fcntl.flock 또는 임시파일+rename 원자적 교체)을 적용해 동시 쓰기로 인한 파일 손상을 방지한다. | 관련: `app/services/admin_settings_service.py:119-151` |
 
 ## 주간 리뷰 로그
 - 2026-02-23 | reviewer: team | 초기 백로그 문서 생성 및 5개 리스크 등록 | 다음 액션: RISK-001, RISK-002 우선 설계안 작성
@@ -125,3 +134,5 @@
 - 2026-03-09 | reviewer: team | 추가 완화로 피처 레이어 반영을 ID 기반 diff 갱신으로 전환하고, 0건 검색 시 상세 패널만 정리해 선택 해제 중복 전체 재렌더를 제거 | 다음 액션: 0건 검색 직후 UI 입력(줌/팬/커서) 반응성과 Long Task 길이 비교 계측
 - 2026-03-10 | reviewer: team | `/siyu`에 MapLibre 기반 렌더 어댑터를 도입하고 `/file2map`·`/photo2map`는 OpenLayers를 유지하는 경로 분리 1차 전환을 적용 | 다음 액션: 2차 전환(`/file2map`, `/photo2map`)의 사진 오버레이 기능 동등성 기준과 회귀 테스트 범위 확정
 - 2026-03-11 | reviewer: team | SQLite `parcel_render_item` 렌더 인덱스를 추가하고 `/api/cadastral/highlights` 계약을 `items[{pnu, geometry, lod, bbox, center}]` 최소 구조로 전환, `POST /admin/upload/cadastral-fgb` 성공 시 인덱스를 즉시 재생성하도록 연결 | 다음 액션: 대용량 FGB 기준 startup 재생성 시간과 worker 폴백 발생률을 관측해 후속 RTree/공간 DB 전환 필요성 판단
+- 2026-03-16 | reviewer: team | stride-lite.md 대비 app/ 코드 보안 감사 결과 9개 미등록 취약 항목(RISK-010~018)을 우선순위 백로그에 추가 | 다음 액션: RISK-010·011(P0) 설계안 우선 작성
+- 2026-03-16 | reviewer: team | RISK-010 완료 — `_check_password_complexity()` 헬퍼로 8자 이상 + 3종 이상 조건 검증 적용, 단위 6개·통합 3개 신규 테스트 전량 통과 | 다음 액션: RISK-011(P0) SECRET_KEY 강도 검증 구현

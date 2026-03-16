@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import pytest
+
 from app.services import admin_settings_service
+from app.services.admin_settings_service import _check_password_complexity
 
 
 def _read_env_lines(path: Path) -> list[str]:
@@ -57,3 +60,36 @@ def test_update_env_file_appends_missing_key_once(tmp_path: Path) -> None:
 
     lines = _read_env_lines(env_path)
     assert lines == ["APP_NAME=test", "CADASTRAL_MIN_RENDER_ZOOM=17"]
+
+
+# --- _check_password_complexity unit tests ---
+
+
+@pytest.mark.unit
+def test_complexity_rejects_too_short() -> None:
+    assert _check_password_complexity("Ab1!") is not None
+
+
+@pytest.mark.unit
+def test_complexity_rejects_one_type() -> None:
+    assert _check_password_complexity("aaaaaaaa") is not None
+
+
+@pytest.mark.unit
+def test_complexity_rejects_two_types() -> None:
+    assert _check_password_complexity("aaaBBBBB") is not None
+
+
+@pytest.mark.unit
+def test_complexity_accepts_three_types() -> None:
+    assert _check_password_complexity("aaaaBBBB1") is None
+
+
+@pytest.mark.unit
+def test_complexity_accepts_four_types() -> None:
+    assert _check_password_complexity("aaaaBBB1!") is None
+
+
+@pytest.mark.unit
+def test_complexity_accepts_special_no_digit() -> None:
+    assert _check_password_complexity("aaaa!!!AAA") is None

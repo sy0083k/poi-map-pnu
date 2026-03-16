@@ -200,6 +200,21 @@ def apply_settings_update(
     update_env_file(config.BASE_DIR, cleaned)
 
 
+def _check_password_complexity(password: str) -> str | None:
+    """복잡도 미충족 시 오류 메시지 반환, 통과 시 None."""
+    if len(password) < 8:
+        return "새 비밀번호는 8자 이상이어야 합니다."
+    categories = [
+        any(c.isupper() for c in password),
+        any(c.islower() for c in password),
+        any(c.isdigit() for c in password),
+        any(not c.isalnum() for c in password),
+    ]
+    if sum(categories) < 3:
+        return "새 비밀번호는 대문자·소문자·숫자·특수문자 중 3종 이상을 포함해야 합니다."
+    return None
+
+
 def apply_password_update(
     request: Request,
     *,
@@ -217,8 +232,9 @@ def apply_password_update(
     if new_password != new_password_confirm:
         raise HTTPException(status_code=400, detail="새 비밀번호가 일치하지 않습니다.")
 
-    if len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="새 비밀번호는 8자 이상이어야 합니다.")
+    complexity_error = _check_password_complexity(new_password)
+    if complexity_error:
+        raise HTTPException(status_code=400, detail=complexity_error)
 
     config = request.app.state.config
     if not bcrypt.checkpw(current_password.encode("utf-8"), config.ADMIN_PW_HASH.encode("utf-8")):
