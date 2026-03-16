@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 After completing any task that modifies repository files, suggest an appropriate git commit title in the final response.
-저장소 파일 변경에는 코드와 문서 변경을 모두 포함한다.
+Repository file changes include both code changes and documentation changes.
 
 ## Mandatory Pre-Check
 
@@ -54,12 +54,12 @@ curl http://127.0.0.1:8000/health
 python create_hash.py
 ```
 
-**Shapefile → FlatGeobuf 변환 (ogr2ogr 필요):**
+**Shapefile → FlatGeobuf conversion (requires ogr2ogr):**
 ```bash
 ogr2ogr -f FlatGeobuf \
   -t_srs EPSG:3857 \
-  data/LSMD_CONT_LDREG_<지역코드>_<연월>.fgb \
-  <원본_shp_경로>/<파일명>.shp
+  data/LSMD_CONT_LDREG_<region-code>_<year-month>.fgb \
+  <source-shp-path>/<filename>.shp
 ```
 
 ## Architecture
@@ -75,7 +75,7 @@ Strict three-layer separation — **MUST** be maintained:
 | Repository | `app/repositories/` | All DB/SQL access |
 | Client | `app/clients/` | All external API calls (VWorld, etc.) |
 
-Config lives in `app/core/` and is loaded from environment variables only. `app/main.py` is the FastAPI entry point — it mounts routes, sets session/security headers, and serves Jinja2 templates. Admin 경로: `/admin/login`, `/admin/upload/city` (Excel), `/admin/upload/cadastral-fgb` (FGB → 완료 즉시 render cache 재구축).
+Config lives in `app/core/` and is loaded from environment variables only. `app/main.py` is the FastAPI entry point — it mounts routes, sets session/security headers, and serves Jinja2 templates. Admin routes: `/admin/login`, `/admin/upload/city` (Excel), `/admin/upload/cadastral-fgb` (FGB → render cache is rebuilt immediately on completion).
 
 **API contract:** `/api/v1/*` is an alias for `/api/*` and must remain equivalent. Any field/status-code change requires reviewing both.
 
@@ -131,13 +131,13 @@ When modifying features, update the corresponding docs:
 | Security controls | `docs/stride-lite.md` |
 | User/ops summary | `README.MD` |
 | Hub links | `docs/index.md` |
-| Risks/improvements | `docs/TODO.MD` — 상태(`todo/doing/blocked/done`), 목표일, 리뷰 로그 최신화 필수 |
+| Risks/improvements | `docs/TODO.MD` — status (`todo/doing/blocked/done`), target date, and review log must be kept up to date |
 
 ## Operational Notes
 
-- `.env` 변경은 서버 재시작 없이 반영되지 않는다. 변경 작업 설명에 재시작 필요 여부를 명시한다.
-- 로그인 실패 횟수 및 이벤트 레이트리밋은 인메모리 기반이다. 다중 인스턴스 배포 시 인스턴스 간 공유되지 않는다.
-- Admin FGB 업로드(`/admin/upload/cadastral-fgb`)는 완료 즉시 서버 측 render cache를 재구축한다.
+- `.env` changes do not take effect without a server restart. Always state whether a restart is required when describing a change.
+- Login failure counts and event rate limits are in-memory. They are not shared across instances in multi-instance deployments.
+- Admin FGB upload (`/admin/upload/cadastral-fgb`) rebuilds the server-side render cache immediately on completion.
 
 ## Testing Requirements
 
