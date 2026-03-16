@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+After completing any task that modifies code, suggest an appropriate git commit title.
+
 ## Mandatory Pre-Check
 
 Before planning or implementing any change, read `docs/engineering-guidelines.md` first. It is the single source of truth for architecture rules, coding style, and security invariants. When responding to PRs, state whether the change complies with guidelines and note any conflicts.
