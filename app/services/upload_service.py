@@ -135,6 +135,7 @@ def _validate_upload_request(
 
     _validate_upload_file_size(file=file, request_id=request_id, max_upload_size_mb=max_upload_size_mb)
     _validate_upload_content_type(file=file)
+    _validate_excel_magic_bytes(file=file, filename=filename)
     return filename
 
 
@@ -155,6 +156,19 @@ def _validate_upload_content_type(*, file: UploadFile) -> None:
     content_type = (file.content_type or "").lower()
     if content_type and content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다.")
+
+
+_XLSX_MAGIC = b'PK\x03\x04'
+_XLS_MAGIC  = b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
+
+
+def _validate_excel_magic_bytes(*, file: UploadFile, filename: str) -> None:
+    header = file.file.read(8)
+    file.file.seek(0)
+    if filename.endswith(".xlsx") and not header[:4] == _XLSX_MAGIC:
+        raise HTTPException(status_code=400, detail="파일 시그니처가 올바르지 않습니다.")
+    if filename.endswith(".xls") and not header[:8] == _XLS_MAGIC:
+        raise HTTPException(status_code=400, detail="파일 시그니처가 올바르지 않습니다.")
 
 
 def _read_upload_dataframe(*, file: UploadFile, filename: str, requested_sheet: str) -> pd.DataFrame:

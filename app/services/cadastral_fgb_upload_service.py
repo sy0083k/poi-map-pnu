@@ -118,6 +118,11 @@ def _validate_fgb_file(file_path: Path) -> None:
     except ImportError as exc:
         raise HTTPException(status_code=500, detail="flatgeobuf 의존성이 설치되어 있지 않습니다.") from exc
 
+    with file_path.open("rb") as fh:
+        header = fh.read(4)
+    if header[:3] != b'fgb':
+        raise HTTPException(status_code=400, detail="유효한 FlatGeobuf 파일이 아닙니다: 파일 시그니처 불일치")
+
     try:
         with file_path.open("rb") as handle:
             reader = fgb.Reader(handle)

@@ -134,3 +134,37 @@ def test_cadastral_fgb_upload_rejects_non_fgb_extension(tmp_path: Path) -> None:
         cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, csrf_token="csrf", file=file)
 
     assert exc.value.status_code == 400
+
+
+def test_cadastral_fgb_upload_rejects_wrong_magic_bytes(
+    monkeypatch: MonkeyPatch, tmp_path: Path
+) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    old_file = data_dir / "old.fgb"
+    old_file.write_bytes(b"old")
+
+    request = _make_request(base_dir=tmp_path, configured_path="data/old.fgb")
+    file = _upload_file("new.fgb", b"NOTFGB\x00\x00")
+
+    monkeypatch.setattr(
+        cadastral_fgb_upload_service.admin_settings_service,
+        "update_env_file",
+        lambda *_: None,
+    )
+    monkeypatch.setattr(
+        cadastral_fgb_upload_service.parcel_render_build_service,
+        "rebuild_render_items_for_path",
+        lambda **_: None,
+    )
+    monkeypatch.setattr(
+        cadastral_fgb_upload_service, "clear_cached_responses", lambda: None
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        cadastral_fgb_upload_service.handle_cadastral_fgb_upload(
+            request, csrf_token="csrf", file=file
+        )
+
+    assert exc.value.status_code == 400
+    assert old_file.exists()

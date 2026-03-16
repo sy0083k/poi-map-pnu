@@ -57,7 +57,7 @@ def test_upload_service_success(
         init_test_db(conn)
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(
-        "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "upload.xlsx", b'PK\x03\x04' + b'\x00' * 20, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
     df = pd.DataFrame(
@@ -91,7 +91,7 @@ def test_upload_service_success_city_theme(
         init_test_db(conn)
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(
-        "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "upload.xlsx", b'PK\x03\x04' + b'\x00' * 20, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
     df = pd.DataFrame(
@@ -169,13 +169,39 @@ def test_upload_service_rejects_bad_content_type(
     assert exc.value.status_code == 400
 
 
+def test_upload_service_rejects_wrong_magic_bytes_xlsx(build_app: Any, db_path: Any) -> None:
+    app = build_app()
+    request = _make_request(app, csrf_token="csrf")
+    file = _make_upload_file(
+        "bad.xlsx", b"NOT_A_ZIP" + b"\x00" * 10,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    with pytest.raises(HTTPException) as exc:
+        upload_service.handle_excel_upload(
+            request=request, background_tasks=BackgroundTasks(), csrf_token="csrf", file=file
+        )
+    assert exc.value.status_code == 400
+
+
+def test_upload_service_rejects_wrong_magic_bytes_xls(build_app: Any, db_path: Any) -> None:
+    app = build_app()
+    request = _make_request(app, csrf_token="csrf")
+    file = _make_upload_file(
+        "bad.xls", b"NOT_OLE2" + b"\x00" * 10,
+        "application/vnd.ms-excel"
+    )
+    with pytest.raises(HTTPException) as exc:
+        upload_service.handle_excel_upload(
+            request=request, background_tasks=BackgroundTasks(), csrf_token="csrf", file=file
+        )
+    assert exc.value.status_code == 400
 def test_upload_service_missing_columns(
     build_app: Any, monkeypatch: MonkeyPatch, db_path: Any
 ) -> None:
     app = build_app()
     request = _make_request(app, csrf_token="csrf")
     file = _make_upload_file(
-        "upload.xlsx", b"dummy", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "upload.xlsx", b'PK\x03\x04' + b'\x00' * 20, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     df = pd.DataFrame({"소재지": ["addr"]})
     monkeypatch.setattr(pd, "ExcelFile", lambda *_args, **_kwargs: DummyExcelFile(sheet_names=["목록"]))
