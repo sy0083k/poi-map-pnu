@@ -222,11 +222,8 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     }
     updateNavigation();
     await reloadCadastralLayers(highlightDeps);
-    if (trackEvent) {
-      const topVisibleIndex = findMinVisiblePnuIndex(deps.state.getCurrentItems());
-      if (topVisibleIndex !== null) {
-        deps.listPanel.scrollTo(topVisibleIndex, { alignToTop: true });
-      }
+    if (trackEvent && sortedItems.length > 0) {
+      await selectItem(0, { shouldFit: true, clickSource: "filter_auto_select" });
     }
   };
 
