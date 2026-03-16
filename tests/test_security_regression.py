@@ -131,7 +131,7 @@ async def test_logout_rejects_missing_csrf(async_client: httpx.AsyncClient) -> N
 @pytest.mark.anyio
 async def test_admin_rejects_cross_app_namespace_session_cookie(app_env: dict[str, str]) -> None:
     env = dict(app_env)
-    env["SECRET_KEY"] = "shared-secret-key-for-test"
+    env["SECRET_KEY"] = "shared-secret-key-for-test-padded!"
     env["SESSION_COOKIE_NAME"] = "session"
     env["SESSION_NAMESPACE"] = "poi_map_pnu"
 

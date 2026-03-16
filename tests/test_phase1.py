@@ -48,7 +48,7 @@ class ConfigTests(unittest.TestCase):
         config.get_settings.cache_clear()
         with temp_env(
             {
-                "SECRET_KEY": "secret",
+                "SECRET_KEY": "a" * 32,
                 "VWORLD_WMTS_KEY": "key",
                 "ADMIN_ID": "admin",
                 "ADMIN_PW_HASH": "plaintext-password",
@@ -56,6 +56,36 @@ class ConfigTests(unittest.TestCase):
         ):
             with self.assertRaises(config.SettingsError):
                 config.get_settings()
+
+    def test_short_secret_key_rejected(self) -> None:
+        from app.core import config
+
+        config.get_settings.cache_clear()
+        with temp_env(
+            {
+                "SECRET_KEY": "tooshort",
+                "VWORLD_WMTS_KEY": "key",
+                "ADMIN_ID": "admin",
+                "ADMIN_PW_HASH": "$2b$12$MGjgBz6IZSV2boORoUbbQeLqG11Nry5H75zvbYOpJWfMaucKkVSZ6",
+            }
+        ):
+            with self.assertRaises(config.SettingsError):
+                config.get_settings()
+
+    def test_sufficient_secret_key_accepted(self) -> None:
+        from app.core import config
+
+        config.get_settings.cache_clear()
+        with temp_env(
+            {
+                "SECRET_KEY": "a" * 32,
+                "VWORLD_WMTS_KEY": "key",
+                "ADMIN_ID": "admin",
+                "ADMIN_PW_HASH": "$2b$12$MGjgBz6IZSV2boORoUbbQeLqG11Nry5H75zvbYOpJWfMaucKkVSZ6",
+            }
+        ):
+            settings = config.get_settings()
+            assert settings.secret_key == "a" * 32
 
 
 class AppSmokeTests(unittest.TestCase):
@@ -69,7 +99,7 @@ class AppSmokeTests(unittest.TestCase):
             "CADASTRAL_FGB_CRS": "EPSG:3857",
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": "$2b$12$uYvkCs.waU3zAbFG8sM4xONVkRuA6xk//0A8I1yKTPfUFihhsN0.q",
-            "SECRET_KEY": "test-secret-key",
+            "SECRET_KEY": "test-secret-key-padded-to-32chars!",
             "ALLOWED_IPS": "127.0.0.1/32,::1/128",
             "SESSION_HTTPS_ONLY": "false",
         }

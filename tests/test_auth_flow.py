@@ -45,7 +45,7 @@ class AuthFlowTests(unittest.TestCase):
             "VWORLD_WMTS_KEY": "test-key",
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": ADMIN_PASSWORD_HASH,
-            "SECRET_KEY": "test-secret-key",
+            "SECRET_KEY": "test-secret-key-padded-to-32chars!",
             "ALLOWED_IPS": "127.0.0.1/32",
             "SESSION_HTTPS_ONLY": "false",
             "LOGIN_MAX_ATTEMPTS": "2",
@@ -100,7 +100,7 @@ class AuthFlowTests(unittest.TestCase):
             "VWORLD_WMTS_KEY": "test-key",
             "ADMIN_ID": "admin",
             "ADMIN_PW_HASH": ADMIN_PASSWORD_HASH,
-            "SECRET_KEY": "test-secret-key",
+            "SECRET_KEY": "test-secret-key-padded-to-32chars!",
             "ALLOWED_IPS": "127.0.0.1/32",
             "SESSION_HTTPS_ONLY": "false",
         }

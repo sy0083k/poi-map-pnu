@@ -63,7 +63,7 @@ def app_env() -> dict[str, str]:
         "CADASTRAL_MIN_RENDER_ZOOM": "15",
         "ADMIN_ID": "admin",
         "ADMIN_PW_HASH": "$2b$12$MGjgBz6IZSV2boORoUbbQeLqG11Nry5H75zvbYOpJWfMaucKkVSZ6",
-        "SECRET_KEY": "test-secret-key",
+        "SECRET_KEY": "test-secret-key-padded-to-32chars!",
         "ALLOWED_IPS": "127.0.0.1/32,::1/128",
         "SESSION_HTTPS_ONLY": "false",
         "MAX_UPLOAD_ROWS": "10",

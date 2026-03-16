@@ -130,6 +130,17 @@ def _validate_admin_hash(hash_value: str) -> str:
     return hash_value
 
 
+_SECRET_KEY_MIN_LEN = 32
+
+
+def _validate_secret_key(value: str) -> str:
+    if len(value) < _SECRET_KEY_MIN_LEN:
+        raise SettingsError(
+            f"SECRET_KEY must be at least {_SECRET_KEY_MIN_LEN} characters long."
+        )
+    return value
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     base_dir = Path(__file__).resolve().parents[2]
@@ -169,7 +180,7 @@ def get_settings() -> Settings:
         cadastral_min_render_zoom=cadastral_min_render_zoom,
         admin_id=_get_required_env("ADMIN_ID"),
         admin_pw_hash=_validate_admin_hash(_get_required_env("ADMIN_PW_HASH")),
-        secret_key=_get_required_env("SECRET_KEY"),
+        secret_key=_validate_secret_key(_get_required_env("SECRET_KEY")),
         session_cookie_name=os.getenv("SESSION_COOKIE_NAME", "poi_map_pnu_session").strip()
         or "poi_map_pnu_session",
         session_namespace=os.getenv("SESSION_NAMESPACE", "poi_map_pnu").strip() or "poi_map_pnu",

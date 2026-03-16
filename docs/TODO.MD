@@ -37,7 +37,7 @@
 | RISK-008 | P1 | 확장 웹 로그(Referrer/UTM/디바이스) 보존·파기 정책 미정 | doing | team | 2026-03-14 | 수집 필드별 보존 기간/파기 절차/반출 통제 정책이 문서화되고 운영 점검 항목에 반영된다. 채널 분류 규칙과 개인정보 최소화(원문 referrer 미저장) 기준이 명시된다. | 관련: `app/services/web_stats_service.py`, `app/repositories/web_visit_repository.py`, `docs/maintenance.md` |
 | RISK-009 | P0 | Deploy 워크플로 마지막 단계 TODO 미구현 | done | team | 2026-03-07 | `.github/workflows/deploy.yml`이 수동 배포 트리거/품질 게이트/SSH+Compose 배포/헬스체크 실패 자동 롤백을 포함해 실행 가능한 상태가 된다. | 관련: `.github/workflows/deploy.yml`, `README.MD`, `docs/maintenance.md` |
 | RISK-010 | P0 | 관리자 비밀번호 복잡도 정책 미구현 | done | team | 2026-03-16 | 비밀번호 변경 시 최소 8자 + 대·소문자·숫자·특수문자 중 3종 이상 조건을 검증하고 관련 단위 테스트가 통과한다. | 관련: `app/services/admin_settings_service.py` — `_check_password_complexity()` 헬퍼 추가, 단위 6개·통합 3개 테스트 전량 통과 |
-| RISK-011 | P0 | SECRET_KEY 최소 강도 검증 없음 | todo | unassigned | 2026-03-30 | 서버 기동 시 SECRET_KEY가 32자 미만이면 기동을 차단하고 오류 메시지를 출력한다. | 관련: `app/core/config.py` — `_get_required_env("SECRET_KEY")` |
+| RISK-011 | P0 | SECRET_KEY 최소 강도 검증 없음 | done | team | 2026-03-16 | 서버 기동 시 SECRET_KEY가 32자 미만이면 기동을 차단하고 오류 메시지를 출력한다. | 관련: `app/core/config.py` — `_validate_secret_key()` 헬퍼 추가, 테스트 픽스처 전체 32자 이상으로 정비, 신규 테스트 2개 전량 통과 |
 | RISK-012 | P1 | CSP style-src unsafe-inline 허용 | todo | unassigned | 2026-04-16 | style-src에서 unsafe-inline을 제거하고 nonce/hash 방식으로 교체하거나, 제거 불가 사유가 stride-lite.md에 문서화된다. | 관련: `app/main.py` CSP 헤더 / stride-lite.md Information Disclosure 통제 |
 | RISK-013 | P1 | X-Forwarded-For 프록시 체인 첫 홉 신뢰 취약 | todo | unassigned | 2026-04-16 | TRUST_PROXY_HEADERS=true 환경에서 신뢰된 프록시 IP가 삽입한 마지막 홉을 기준으로 클라이언트 IP를 결정하거나, 운영 가이드에 위험 조건이 명시된다. | 관련: `app/dependencies.py:55-61` / 조건: TRUST_PROXY_HEADERS=true 환경에서만 유효 |
 | RISK-014 | P1 | 업로드 MIME 검증에 application/octet-stream 허용 | todo | unassigned | 2026-04-16 | ALLOWED_CONTENT_TYPES에서 application/octet-stream을 제거하거나, 매직 바이트 검증(RISK-015)으로 대체해 MIME 우회를 차단한다. | 관련: `app/services/upload_service.py:22` |
@@ -137,3 +137,4 @@
 - 2026-03-16 | reviewer: team | stride-lite.md 대비 app/ 코드 보안 감사 결과 9개 미등록 취약 항목(RISK-010~018)을 우선순위 백로그에 추가 | 다음 액션: RISK-010·011(P0) 설계안 우선 작성
 - 2026-03-16 | reviewer: team | RISK-010 완료 — `_check_password_complexity()` 헬퍼로 8자 이상 + 3종 이상 조건 검증 적용, 단위 6개·통합 3개 신규 테스트 전량 통과 | 다음 액션: RISK-011(P0) SECRET_KEY 강도 검증 구현
 - 2026-03-16 | reviewer: team | RISK-002 상태를 blocked으로 전환 — 현행 단일 인스턴스 배포 정책으로 인해 다중 인스턴스 레이트리밋 공유 문제가 발생하지 않음 | 다음 액션: 수평 확장 정책 전환 시 재개
+- 2026-03-16 | reviewer: team | RISK-011 완료 — `_validate_secret_key()` 헬퍼로 32자 미만 SECRET_KEY 기동 차단, 테스트 픽스처 전체 정비, 신규 테스트 2개 전량 통과 | 다음 액션: RISK-012(P1) CSP unsafe-inline 제거 검토
