@@ -152,7 +152,9 @@ def test_cadastral_highlight_service_applies_bbox_filter(db_path: Path) -> None:
     )
     assert len(response["items"]) == 1
     assert response["meta"]["bboxApplied"] is True
-    assert response["meta"]["bboxFiltered"] == 1
+    # SQL bbox filter excludes the out-of-range row before Python sees it;
+    # bboxFiltered reflects only the Python-level safety-net count (0 here).
+    assert response["meta"]["bboxFiltered"] == 0
 
 
 def test_cadastral_highlight_service_selects_mid_lod_for_wide_bbox(db_path: Path) -> None:
@@ -201,6 +203,53 @@ def test_iter_features_from_fgb_uses_reader_with_bbox(tmp_path: Path) -> None:
     )
     assert called["bbox"] == (-1.0, -1.0, 1.0, 1.0)
     assert len(features) == 1
+
+
+def test_build_filtered_response_includes_query_ms(db_path: Path) -> None:
+    from app.services import cadastral_highlight_service
+
+    _seed_render_items(db_path)
+    response = cadastral_highlight_service.build_filtered_geojson_response(
+        requested_pnus=["1111111111111111111"],
+        fgb_etag='W/"1-1"',
+        cadastral_crs="EPSG:3857",
+    )
+    assert "query_ms" in response["meta"]
+    assert isinstance(response["meta"]["query_ms"], float)
+
+
+def test_build_filtered_response_bbox_calls_bbox_sql(
+    monkeypatch: pytest.MonkeyPatch, db_path: Path
+) -> None:
+    from app.repositories import parcel_render_repository
+    from app.services import cadastral_highlight_service
+
+    _seed_render_items(db_path)
+    calls: list[dict[str, object]] = []
+    original_fn = parcel_render_repository.fetch_render_items_by_pnus_and_bbox
+
+    def _spy(conn, *, pnus, bbox_minx, bbox_miny, bbox_maxx, bbox_maxy):  # type: ignore[misc]
+        calls.append({"pnus": pnus, "bbox_minx": bbox_minx, "bbox_maxy": bbox_maxy})
+        return original_fn(
+            conn,
+            pnus=pnus,
+            bbox_minx=bbox_minx,
+            bbox_miny=bbox_miny,
+            bbox_maxx=bbox_maxx,
+            bbox_maxy=bbox_maxy,
+        )
+
+    monkeypatch.setattr(parcel_render_repository, "fetch_render_items_by_pnus_and_bbox", _spy)
+
+    cadastral_highlight_service.build_filtered_geojson_response(
+        requested_pnus=["1111111111111111111", "2222222222222222222"],
+        fgb_etag='W/"1-1"',
+        cadastral_crs="EPSG:3857",
+        bbox=(-1.0, -1.0, 20.0, 20.0),
+        bbox_crs="EPSG:3857",
+    )
+    assert len(calls) == 1
+    assert calls[0]["bbox_minx"] == -1.0
 
 
 def test_iter_features_from_fgb_falls_back_to_load(tmp_path: Path) -> None:

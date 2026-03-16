@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -23,6 +25,8 @@ from app.services.cadastral_highlight_geometry import (
     transform_bbox_to_crs,
     transform_geometry_to_wgs84,
 )
+
+logger = logging.getLogger(__name__)
 
 MAX_REQUEST_PNUS = 10000
 SUPPORTED_THEMES = {"city_owned", "national_public"}
@@ -90,7 +94,9 @@ def parse_debug_probe_bbox(raw_bbox: Any) -> tuple[float, float, float, float]:
     parts = [part.strip() for part in raw_bbox.split(",")]
     if len(parts) != 4:
         raise HTTPException(status_code=400, detail="bbox must be minX,minY,maxX,maxY")
-    return parse_bbox(parts)
+    result = parse_bbox(parts)
+    assert result is not None
+    return result
 
 
 def parse_debug_probe_limit(raw_limit: Any) -> int:
@@ -124,6 +130,32 @@ def get_filtered_highlights(
         raise HTTPException(status_code=404, detail="연속지적도 파일을 찾을 수 없습니다.")
 
     fgb_etag = build_file_etag(file_path)
+
+    with db_connection(row_factory=True) as _conn:
+        stored_etag = parcel_render_repository.fetch_source_etag(_conn)
+    if stored_etag is not None and stored_etag != fgb_etag:
+        logger.warning(
+            "parcel_render_item ETag mismatch: stored=%s current=%s",
+            stored_etag,
+            fgb_etag,
+        )
+        return {
+            "items": [],
+            "meta": {
+                "requested": len(requested_pnus),
+                "matched": 0,
+                "bboxApplied": bbox is not None,
+                "bboxFiltered": 0,
+                "source": "stale_index",
+                "staleIndex": True,
+                "sourceFgbEtag": fgb_etag,
+                "sourceCrs": cadastral_crs,
+                "responseCrs": cadastral_crs,
+                "geometryFormat": "geojson",
+                "query_ms": 0.0,
+            },
+        }
+
     cache_key = build_cache_key(
         theme=theme,
         pnus=requested_pnus,
@@ -248,8 +280,20 @@ def build_filtered_geojson_response(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    _t0 = time.perf_counter()
     with db_connection(row_factory=True) as conn:
-        rows = parcel_render_repository.fetch_render_items_by_pnus(conn, pnus=requested_pnus)
+        if source_bbox is not None:
+            rows = parcel_render_repository.fetch_render_items_by_pnus_and_bbox(
+                conn,
+                pnus=requested_pnus,
+                bbox_minx=source_bbox[0],
+                bbox_miny=source_bbox[1],
+                bbox_maxx=source_bbox[2],
+                bbox_maxy=source_bbox[3],
+            )
+        else:
+            rows = parcel_render_repository.fetch_render_items_by_pnus(conn, pnus=requested_pnus)
+    query_ms = (time.perf_counter() - _t0) * 1000
 
     lod = choose_lod(source_bbox=source_bbox, cadastral_crs=cadastral_crs)
     items: list[dict[str, Any]] = []
@@ -289,6 +333,7 @@ def build_filtered_geojson_response(
             "sourceCrs": cadastral_crs,
             "responseCrs": cadastral_crs,
             "geometryFormat": "geojson",
+            "query_ms": round(query_ms, 3),
         },
     }
 

@@ -132,6 +132,45 @@ def fetch_render_items_by_pnus(conn: sqlite3.Connection, *, pnus: Sequence[str])
     return list(cursor.fetchall())
 
 
+def fetch_render_items_by_pnus_and_bbox(
+    conn: sqlite3.Connection,
+    *,
+    pnus: Sequence[str],
+    bbox_minx: float,
+    bbox_miny: float,
+    bbox_maxx: float,
+    bbox_maxy: float,
+) -> list[sqlite3.Row]:
+    if not pnus:
+        return []
+    placeholders = ",".join("?" for _ in pnus)
+    cursor = conn.execute(
+        f"""
+        SELECT
+            pnu,
+            bbox_minx,
+            bbox_miny,
+            bbox_maxx,
+            bbox_maxy,
+            center_x,
+            center_y,
+            geom_geojson_full,
+            geom_geojson_mid,
+            geom_geojson_low,
+            source_fgb_etag,
+            source_crs
+        FROM {TABLE_NAME}
+        WHERE pnu IN ({placeholders})
+          AND bbox_maxx >= ?
+          AND bbox_minx <= ?
+          AND bbox_maxy >= ?
+          AND bbox_miny <= ?
+        """,
+        (*tuple(pnus), bbox_minx, bbox_maxx, bbox_miny, bbox_maxy),
+    )
+    return list(cursor.fetchall())
+
+
 def _create_table(cursor: sqlite3.Cursor, table_name: str) -> None:
     cursor.execute(
         f"""

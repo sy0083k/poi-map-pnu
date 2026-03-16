@@ -146,6 +146,49 @@
 5. 브라우저 장기 사용 세션에서 IndexedDB 캐시 정리(만료/최대건수)가 정상 동작하는지 확인
 6. `/siyu`에서 동일 조건 검색 반복 시 메인 스레드 프리징이 악화되지 않는지(특히 0건 결과) 확인
 
+## 하이라이트 성능 한계 (RISK-003)
+
+### 개요
+`/api/cadastral/highlights` 응답 속도와 `parcel_render_item` 재빌드 타이밍이 서버 로그 및 응답 메타 필드로 계측된다.
+
+### `query_ms` — DB 조회 시간
+응답 `meta.query_ms` 필드에 SQLite 조회 소요 시간(ms, 소수점 3자리)이 포함된다.
+
+```json
+{ "meta": { "query_ms": 12.345, ... } }
+```
+
+- `bbox` 있음: `WHERE pnu IN (...) AND bbox_maxx >= ? AND bbox_minx <= ? AND bbox_maxy >= ? AND bbox_miny <= ?` — `idx_parcel_render_item_bbox_x/y` 인덱스 활용
+- `bbox` 없음: `WHERE pnu IN (...)` 조회
+
+### `build_ms` / `commit_ms` — 재빌드 타이밍
+FGB 업로드 성공 또는 앱 시작 시 재빌드가 실행되며 서버 로그에 다음 형식으로 기록된다.
+
+```
+INFO parcel_render.rebuild row_count=12345 build_ms=4200.0 commit_ms=800.0
+```
+
+로그 수집 방법: 서버 로그에서 `parcel_render.rebuild` 문자열을 검색한다.
+
+### `staleIndex: true` — ETag 불일치 감지
+파일 교체 후 `parcel_render_item` 재빌드가 완료되기 전 사이에 요청이 도달하면 응답에 `meta.staleIndex: true`가 포함된다.
+
+```json
+{ "items": [], "meta": { "source": "stale_index", "staleIndex": true, ... } }
+```
+
+**운영 대응 절차:**
+1. `staleIndex: true` 응답이 지속되면 서버 로그에서 `parcel_render.rebuild` 완료 기록 확인
+2. 재빌드가 실행되지 않았다면 `/admin/upload/cadastral-fgb`를 통해 FGB를 재업로드하거나 앱을 재시작한다
+3. 재빌드 완료 후 정상 응답(`meta.source == "parcel_render_item"`)으로 자동 복귀한다
+4. 클라이언트는 `items == []` 응답을 워커 폴백 신호로 처리하므로 사용자 표시는 FlatGeobuf 워커 경로로 계속 동작한다
+
+### 환경변수 튜닝
+| 변수 | 기본값 | 설명 |
+|---|---|---|
+| `HIGHLIGHT_CACHE_TTL_SECONDS` | 300 | 서버 메모리 캐시 TTL(초) |
+| `HIGHLIGHT_CACHE_MAX_ENTRIES` | 500 | 서버 메모리 캐시 최대 엔트리 수 |
+
 ## 배포 전 체크리스트
 1. `python -m compileall -q app tests`
 2. `mypy app tests create_hash.py`

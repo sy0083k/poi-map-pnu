@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import time
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -11,6 +13,8 @@ from app.repositories import parcel_render_repository
 from app.services import cadastral_fgb_service, cadastral_highlight_service
 from app.services.cadastral_highlight_cache import build_file_etag
 from app.services.cadastral_highlight_geometry import collect_points, geometry_bounds
+
+logger = logging.getLogger(__name__)
 
 MID_SIMPLIFY_STEP = 2
 LOW_SIMPLIFY_STEP = 4
@@ -81,6 +85,7 @@ def rebuild_render_items_for_path(
     if not file_path.exists() or not file_path.is_file():
         raise FileNotFoundError(f"FGB file not found: {file_path}")
 
+    _t_build = time.perf_counter()
     rows = list(
         _build_render_rows(
             file_path=file_path,
@@ -89,12 +94,21 @@ def rebuild_render_items_for_path(
             cadastral_crs=cadastral_crs,
         )
     )
+    build_ms = (time.perf_counter() - _t_build) * 1000
+
+    _t_commit = time.perf_counter()
     with db_connection() as conn:
         parcel_render_repository.init_schema(conn)
         parcel_render_repository.prepare_staging_table(conn)
         parcel_render_repository.bulk_insert_staging(conn, rows)
         parcel_render_repository.swap_staging_table(conn)
         conn.commit()
+    commit_ms = (time.perf_counter() - _t_commit) * 1000
+
+    logger.info(
+        "parcel_render.rebuild",
+        extra={"row_count": len(rows), "build_ms": round(build_ms, 1), "commit_ms": round(commit_ms, 1)},
+    )
     return len(rows)
 
 
