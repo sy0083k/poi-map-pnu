@@ -2,12 +2,27 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-10
+최종 수정일: 2026-03-16
 
 ## 시스템 개요
 관심 필지 지도는 FastAPI + SQLite + Vite 기반 애플리케이션이다.
 지도 엔진은 단계적 전환 중이며 `/siyu`는 MapLibre, `/file2map`·`/photo2map`은 OpenLayers를 사용한다.
 지도 경계 데이터는 외부 WFS가 아니라 FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)을 사용한다.
+
+## Config Hot-Reload
+
+관리자 설정/비밀번호 변경 후 재시작 없이 즉시 반영된다.
+
+**체인:** `.env` 파일 쓰기 → `_reload_dotenv()` (override=True) → `get_settings.cache_clear()` → `get_settings()` (새 `Settings` 반환) → `Config(new_s)` 인스턴스 생성 → `app.state.config` 교체 → `LoginAttemptLimiter` 파라미터 갱신.
+
+**호출 경로:** `POST /admin/settings` 또는 `POST /admin/password` 성공 직후 라우터에서 `request.app.state.refresh_config(request.app)` 호출.
+
+**재시작이 필요한 설정 (hot-reload 불가):**
+| 설정 | 사유 |
+|---|---|
+| `SECRET_KEY` | `SessionMiddleware`에 기동 시 바인딩됨 |
+| `SESSION_COOKIE_NAME` | 동일 — `SessionMiddleware` 인스턴스에 기동 시 바인딩됨 |
+| `SESSION_HTTPS_ONLY` | `app.state.config`는 갱신되지만 `SessionMiddleware`의 Secure 쿠키 동작은 재시작 전까지 변경되지 않음 |
 
 ## 레이어 구성
 - 라우터: `app/routers/*`

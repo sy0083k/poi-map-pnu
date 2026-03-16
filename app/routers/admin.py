@@ -123,6 +123,7 @@ async def update_settings(
         settings_password=settings_password,
         updates=updates,
     )
+    request.app.state.refresh_config(request.app)
     request_id = getattr(request.state, "request_id", "-")
     client_ip = request.client.host if request.client else "unknown"
     logger.info(
@@ -153,6 +154,7 @@ async def update_password(
         new_password=new_password,
         new_password_confirm=new_password_confirm,
     )
+    request.app.state.refresh_config(request.app)
     request_id = getattr(request.state, "request_id", "-")
     client_ip = request.client.host if request.client else "unknown"
     logger.info(

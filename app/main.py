@@ -16,6 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth_security import LoginAttemptLimiter
 from app.core import get_settings
+from app.core.config import Settings
 from app.db.connection import db_connection
 from app.exceptions import http_exception_handler, unhandled_exception_handler
 from app.logging_utils import RequestIdFilter, configure_logging
@@ -124,39 +125,53 @@ templates.env.globals["vite_assets"] = lambda entry: vite_assets(entry, settings
 
 
 class Config:
-    APP_NAME = settings.app_name
-    CENTER_LON = settings.map_center_lon
-    CENTER_LAT = settings.map_center_lat
-    DEFAULT_ZOOM = settings.map_default_zoom
-    VWORLD_WMTS_KEY = settings.vworld_wmts_key
-    CADASTRAL_FGB_PATH = settings.cadastral_fgb_path
-    CADASTRAL_PMTILES_URL = settings.cadastral_pmtiles_url
-    CADASTRAL_FGB_PNU_FIELD = settings.cadastral_fgb_pnu_field
-    CADASTRAL_FGB_CRS = settings.cadastral_fgb_crs
-    CADASTRAL_MIN_RENDER_ZOOM = settings.cadastral_min_render_zoom
-    BASE_DIR = settings.base_dir
-    ADMIN_ID = settings.admin_id
-    ADMIN_PW_HASH = settings.admin_pw_hash
-    SESSION_COOKIE_NAME = settings.session_cookie_name
-    SESSION_NAMESPACE = settings.session_namespace
-    ALLOWED_IP_NETWORKS = settings.allowed_ip_networks
-    MAX_UPLOAD_SIZE_MB = settings.max_upload_size_mb
-    MAX_UPLOAD_ROWS = settings.max_upload_rows
-    LOGIN_MAX_ATTEMPTS = settings.login_max_attempts
-    LOGIN_COOLDOWN_SECONDS = settings.login_cooldown_seconds
-    SESSION_HTTPS_ONLY = settings.session_https_only
-    TRUST_PROXY_HEADERS = settings.trust_proxy_headers
-    TRUSTED_PROXY_NETWORKS = settings.trusted_proxy_networks
-    UPLOAD_SHEET_NAME = settings.upload_sheet_name
+    def __init__(self, s: Settings) -> None:
+        self.APP_NAME = s.app_name
+        self.CENTER_LON = s.map_center_lon
+        self.CENTER_LAT = s.map_center_lat
+        self.DEFAULT_ZOOM = s.map_default_zoom
+        self.VWORLD_WMTS_KEY = s.vworld_wmts_key
+        self.CADASTRAL_FGB_PATH = s.cadastral_fgb_path
+        self.CADASTRAL_PMTILES_URL = s.cadastral_pmtiles_url
+        self.CADASTRAL_FGB_PNU_FIELD = s.cadastral_fgb_pnu_field
+        self.CADASTRAL_FGB_CRS = s.cadastral_fgb_crs
+        self.CADASTRAL_MIN_RENDER_ZOOM = s.cadastral_min_render_zoom
+        self.BASE_DIR = s.base_dir
+        self.ADMIN_ID = s.admin_id
+        self.ADMIN_PW_HASH = s.admin_pw_hash
+        self.SESSION_COOKIE_NAME = s.session_cookie_name
+        self.SESSION_NAMESPACE = s.session_namespace
+        self.ALLOWED_IP_NETWORKS = s.allowed_ip_networks
+        self.MAX_UPLOAD_SIZE_MB = s.max_upload_size_mb
+        self.MAX_UPLOAD_ROWS = s.max_upload_rows
+        self.LOGIN_MAX_ATTEMPTS = s.login_max_attempts
+        self.LOGIN_COOLDOWN_SECONDS = s.login_cooldown_seconds
+        self.SESSION_HTTPS_ONLY = s.session_https_only
+        self.TRUST_PROXY_HEADERS = s.trust_proxy_headers
+        self.TRUSTED_PROXY_NETWORKS = s.trusted_proxy_networks
+        self.UPLOAD_SHEET_NAME = s.upload_sheet_name
 
 
-app.state.config = Config()
+def refresh_app_config(app: FastAPI) -> None:
+    """관리자 설정 저장 후 in-memory 즉시 반영. 라우터에서 app.state.refresh_config(app)으로 호출."""
+    from app.core import reload_settings
+
+    new_s = reload_settings()
+    app.state.config = Config(new_s)
+    limiter: LoginAttemptLimiter = app.state.login_limiter
+    limiter.max_attempts = new_s.login_max_attempts
+    limiter.cooldown_seconds = new_s.login_cooldown_seconds
+    logger.info("app config hot-reloaded", extra={"event": "admin.config.reloaded"})
+
+
+app.state.config = Config(settings)
 app.state.templates = templates
 app.state.login_limiter = LoginAttemptLimiter(
     max_attempts=settings.login_max_attempts,
     cooldown_seconds=settings.login_cooldown_seconds,
 )
 app.state.event_rate_limiter = SlidingWindowRateLimiter()
+app.state.refresh_config = refresh_app_config
 
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])

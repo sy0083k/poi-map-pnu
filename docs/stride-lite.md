@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-09
+최종 수정일: 2026-03-16
 
 ## 범위
 - 공개 API: `/api/config`, `/api/cadastral/fgb`, `/api/cadastral/highlights`, `/api/lands`, `/api/lands/list`, `/api/file2map/upload/parse`, `/api/events`, `/api/web-events`, `/api/v1/*`
@@ -27,6 +27,8 @@
 ### Tampering
 - 위협: FGB 파일 변조
 - 통제: 운영 파일 권한/배포 절차/무결성 점검 + 관리자 업로드(`POST /admin/upload/cadastral-fgb`)의 내부망/세션/CSRF 검증 + FlatGeobuf 파서 검증 + `parcel_render_item` 재생성 실패 시 기존 인덱스 유지
+- 위협: 설정 hot-reload를 통한 보안 설정 변조
+- 통제: `POST /admin/settings` 및 `POST /admin/password`는 내부망 + 세션 + CSRF + 현재 비밀번호 검증 후에만 실행됨. `SECRET_KEY` 변경은 hot-reload 범위 외(`SessionMiddleware` 재시작 필요). `SESSION_HTTPS_ONLY` 변경은 `app.state.config`에만 반영되고 실행 중인 `SessionMiddleware`의 Secure 쿠키 플래그는 재시작 전까지 적용되지 않음 — HTTPS 비활성화가 즉시 반영되지 않아 보안 수준이 유지됨.
 
 ### Information Disclosure
 - 위협: 비밀 설정 노출

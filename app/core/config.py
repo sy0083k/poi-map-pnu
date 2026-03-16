@@ -141,6 +141,34 @@ def _validate_secret_key(value: str) -> str:
     return value
 
 
+def _reload_dotenv(base_dir: Path) -> None:
+    """기존 env 값을 override하며 .env를 다시 읽는다."""
+    env_path = base_dir / ".env"
+    if not env_path.exists():
+        return
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(dotenv_path=env_path, override=True)
+        return
+    except Exception:
+        pass
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ[key.strip()] = value.strip().strip('"').strip("'")
+
+
+def reload_settings() -> "Settings":
+    """기동 후 .env 변경을 즉시 반영한다. 라우터 계층에서만 호출할 것."""
+    base_dir = Path(__file__).resolve().parents[2]
+    _reload_dotenv(base_dir)
+    get_settings.cache_clear()
+    return get_settings()
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     base_dir = Path(__file__).resolve().parents[2]

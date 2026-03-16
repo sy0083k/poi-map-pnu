@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-11  
-최종 수정일: 2026-03-10
+최종 수정일: 2026-03-16
 
 ## 환경 변수
 ### 필수
@@ -18,6 +18,28 @@
 - `CADASTRAL_MIN_RENDER_ZOOM`
 - `ALLOWED_IPS`, `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`
 - `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`, `SESSION_HTTPS_ONLY`
+
+## 설정 Hot-Reload 운영 절차
+
+### 즉시 반영되는 설정 (재시작 불필요)
+관리자 UI(`/admin/`)에서 저장하면 `.env` 파일에 기록된 후 `refresh_app_config()`가 자동 호출되어 실행 중인 프로세스에 즉시 반영된다.
+
+- `APP_NAME`, `VWORLD_WMTS_KEY`, `CADASTRAL_FGB_PATH`, `CADASTRAL_FGB_PNU_FIELD`, `CADASTRAL_FGB_CRS`, `CADASTRAL_MIN_RENDER_ZOOM`
+- `ALLOWED_IPS`, `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`
+- `MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`, `UPLOAD_SHEET_NAME`
+- `LOGIN_MAX_ATTEMPTS`, `LOGIN_COOLDOWN_SECONDS` — 변경 후 새 요청부터 반영됨. 이미 차단된 IP 는 기존 차단 만료 시각까지 유지됨.
+- `ADMIN_ID`, `ADMIN_PW_HASH` — 비밀번호 변경 성공 직후 다음 로그인 시도부터 반영됨.
+
+### 재시작이 필요한 설정
+| 설정 | 사유 |
+|---|---|
+| `SECRET_KEY` | `SessionMiddleware`에 기동 시 바인딩됨. 변경 후 재시작하면 기존 세션 쿠키가 모두 무효화됨. |
+| `SESSION_COOKIE_NAME` | 동일 — `SessionMiddleware` 인스턴스에 기동 시 바인딩됨. |
+| `SESSION_HTTPS_ONLY` | `app.state.config`는 hot-reload되지만 `SessionMiddleware`의 Secure 쿠키 플래그는 재시작 전까지 변경되지 않음. HTTPS 전환/해제 시 반드시 재시작할 것. |
+
+### `.env` 수동 편집 주의사항
+- 관리자 UI 외 `.env`를 직접 편집한 경우, 서버를 재시작해야 반영된다(hot-reload는 관리자 저장 시에만 실행됨).
+- `.env` 편집 중 문법 오류(잘못된 bcrypt 해시, 잘못된 IP CIDR 등)가 있을 경우 `reload_settings()` 호출 시 `SettingsError`가 발생해 저장이 거부된다. 이 경우 서버는 기존 설정을 유지한다.
 
 ## 주기적 점검
 - FlatGeobuf 파일 존재/권한/크기 점검

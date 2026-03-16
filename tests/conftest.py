@@ -46,6 +46,7 @@ TEST_MARKER_BY_FILE: dict[str, str] = {
     "test_validators.py": "unit",
     "test_web_stats_service.py": "unit",
     "test_web_visit_repository_split.py": "unit",
+    "test_config_reload.py": "unit",
 }
 
 
@@ -79,6 +80,8 @@ def build_app(app_env: dict[str, str]) -> Callable[[], FastAPI]:
             config.get_settings.cache_clear()
             app_main = importlib.import_module("app.main")
             app_main = importlib.reload(app_main)
+            # Disable hot-reload in tests to prevent side effects from monkeypatched services
+            app_main.app.state.refresh_config = lambda _: None
             return app_main.app
 
     return _build

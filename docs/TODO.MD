@@ -2,7 +2,7 @@
 
 프로젝트: 관심 필지 지도 (POI Map PNU)  
 작성일: 2026-02-23  
-최종 수정일: 2026-03-16  
+최종 수정일: 2026-03-16 (RISK-001 done)  
 운영 주기: 매주 1회 (월요일 기준)
 
 ## 목적
@@ -27,7 +27,7 @@
 ## 우선순위 백로그
 | id | priority | title | status | owner | target_date | success_criteria | notes |
 |---|---|---|---|---|---|---|---|
-| RISK-001 | P0 | 설정 변경 즉시 반영 불가 | todo | unassigned | 2026-03-09 | 관리자 설정/비밀번호 변경 후 재시작 없이도 반영 전략이 문서화되고 구현/운영 절차가 확정된다. | 관련: `app/core/config.py`, `app/main.py` |
+| RISK-001 | P0 | 설정 변경 즉시 반영 불가 | done | team | 2026-03-16 | 관리자 설정/비밀번호 변경 후 재시작 없이도 반영 전략이 문서화되고 구현/운영 절차가 확정된다. | `_reload_dotenv()` + `reload_settings()` + `refresh_app_config()` 구현. `Config` 클래스 속성 → 인스턴스 속성 전환. `POST /admin/settings` 및 `POST /admin/password` 성공 직후 `app.state.refresh_config(app)` 호출로 즉시 반영. `SECRET_KEY`/`SESSION_COOKIE_NAME` 변경은 재시작 필요(SessionMiddleware 기동 시 바인딩). `SESSION_HTTPS_ONLY` hot-reload 제한 사항 문서화. |
 | RISK-002 | P0 | 인메모리 제한기 다중 인스턴스 한계 | blocked | team | - | 로그인/이벤트 레이트리밋이 멀티 인스턴스 환경에서 일관 동작하도록 공유 스토어 전략이 확정된다. | **차단 사유:** 현행 배포 정책이 단일 인스턴스로 고정되어 있어 다중 인스턴스 시나리오가 발생하지 않음. **해소 조건:** 수평 확장(다중 인스턴스) 배포 정책으로 전환 결정 시 Redis 등 외부 공유 스토어 기반 레이트리밋으로 교체한다. 관련: `app/auth_security.py`, `app/rate_limit.py` |
 | RISK-003 | P1 | FlatGeobuf 뷰포트 로딩 내구성/성능 검증 부족 | doing | team | 2026-03-12 | 파일 교체/대용량 뷰포트 이동 시에도 지도 렌더링이 안정적으로 동작하고 성능 한계가 문서화된다. | 관련: `frontend/src/map/cadastral-fgb-layer.ts`, `app/services/cadastral_fgb_service.py` / 2026-03-06: Web Worker 파싱 + IndexedDB 캐시(`theme+pnuSetHash+ETag`) + `/api/cadastral/fgb` ETag 반영 / 2026-03-08: `/api/cadastral/highlights` 서버 필터링 API(클라이언트 워커 폴백 유지) 1단계 적용 / 2026-03-08: 2단계로 `/api/cadastral/highlights`에 `bbox+bboxCrs` 부분 응답 확장 및 캐시 키(`bbox` 포함) 반영 / 2026-03-08: 서버 로더를 `flatgeobuf.Reader(..., bbox=...)` 우선 + `load(..., bbox=...)` 폴백으로 전환해 전체 로드 회피 적용 / 2026-03-08: 캐시 전략 3단계로 키 버전 `v2`(bbox 2자리 정규화 + CRS) 적용, 서버 LRU/TTL 제어(`HIGHLIGHT_CACHE_*`), IndexedDB v2 만료/용량 정리 정책 반영 / 2026-03-10: `/siyu?debugFgb=1` + `/api/cadastral/debug-probe`를 추가해 검색 흐름과 분리된 원본 FGB probe overlay 검증 경로를 마련 / 2026-03-11: SQLite `parcel_render_item` 렌더 인덱스를 도입해 `/api/cadastral/highlights` 기본 경로를 FGB 재스캔에서 `PNU IN (...)` 조회로 전환하고, FGB 업로드 성공 시 인덱스를 즉시 재생성하도록 변경 |
 | RISK-004 | P1 | 공개 다운로드 응답 메모리 사용량 리스크 | done | team | 2026-03-05 | 공개 다운로드 기능 제거로 관련 응답 메모리 리스크가 소거된다. | 관련 코드(`app/services/public_download_service.py`, `/api/public-download`, `/admin/public-download/*`) 제거 완료 |
@@ -138,3 +138,4 @@
 - 2026-03-16 | reviewer: team | RISK-010 완료 — `_check_password_complexity()` 헬퍼로 8자 이상 + 3종 이상 조건 검증 적용, 단위 6개·통합 3개 신규 테스트 전량 통과 | 다음 액션: RISK-011(P0) SECRET_KEY 강도 검증 구현
 - 2026-03-16 | reviewer: team | RISK-002 상태를 blocked으로 전환 — 현행 단일 인스턴스 배포 정책으로 인해 다중 인스턴스 레이트리밋 공유 문제가 발생하지 않음 | 다음 액션: 수평 확장 정책 전환 시 재개
 - 2026-03-16 | reviewer: team | RISK-011 완료 — `_validate_secret_key()` 헬퍼로 32자 미만 SECRET_KEY 기동 차단, 테스트 픽스처 전체 정비, 신규 테스트 2개 전량 통과 | 다음 액션: RISK-012(P1) CSP unsafe-inline 제거 검토
+- 2026-03-16 | reviewer: team | RISK-001 완료 — `_reload_dotenv()` + `reload_settings()` 추가, `Config` 클래스 속성→인스턴스 속성 전환, `refresh_app_config()` + `app.state.refresh_config` 등록, `POST /admin/settings`·`POST /admin/password` 성공 직후 즉시 반영. `SECRET_KEY`/`SESSION_COOKIE_NAME` 변경은 재시작 필요(SessionMiddleware 바인딩). `SESSION_HTTPS_ONLY` hot-reload 제한 문서화 | 다음 액션: RISK-012(P1) CSP unsafe-inline 제거 검토
