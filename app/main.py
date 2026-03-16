@@ -106,6 +106,9 @@ async def add_security_headers(
         "font-src 'self' data: https://fonts.gstatic.com; "
         "img-src 'self' data: blob: https://api.vworld.kr https://xdworld.vworld.kr;"
     )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
     return response
 
 

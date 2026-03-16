@@ -2,7 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-After completing any task that modifies code, suggest an appropriate git commit title.
+After completing any task that modifies repository files, suggest an appropriate git commit title in the final response.
+저장소 파일 변경에는 코드와 문서 변경을 모두 포함한다.
 
 ## Mandatory Pre-Check
 

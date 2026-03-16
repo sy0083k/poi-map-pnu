@@ -29,3 +29,13 @@ async def test_public_pages_include_csp_worker_src_for_maplibre(async_client: ht
     assert "worker-src 'self' blob:" in csp
     assert "img-src 'self' data: blob:" in csp
     assert "script-src 'self' https://cdn.jsdelivr.net https://esm.sh https://api.vworld.kr;" in csp
+
+
+@pytest.mark.anyio
+async def test_security_headers_present_on_public_page(async_client: httpx.AsyncClient) -> None:
+    page = await async_client.get("/siyu")
+    assert page.status_code == 200
+    assert page.headers.get("Strict-Transport-Security") == "max-age=31536000; includeSubDomains"
+    assert page.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+    assert "geolocation=()" in page.headers.get("Permissions-Policy", "")
+    assert "camera=()" in page.headers.get("Permissions-Policy", "")

@@ -42,6 +42,7 @@
 - 통제: 업로드 초기화 버튼 제공, 민감 데이터 업로드 금지 운영 가이드
 - 위협: `/photo2map` 우하단 미리보기 패널/이미지 뷰어와 우상단 토지 상세 패널에 업로드 정보가 표시되어 공용 단말에서 노출될 수 있음
 - 통제: 공용 단말 사용 지양, 작업 후 마커 초기화 및 브라우저 세션 종료 운영 가이드
+- 통제: Strict-Transport-Security(max-age=31536000; includeSubDomains), Referrer-Policy(strict-origin-when-cross-origin), Permissions-Policy(geolocation/microphone/camera/payment/usb 차단)로 전송 계층 보호 및 브라우저 기능 노출 최소화
 
 ### Denial of Service
 - 위협: 대용량 요청/이벤트 남용
