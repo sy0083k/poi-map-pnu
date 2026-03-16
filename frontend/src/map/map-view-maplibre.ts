@@ -1224,6 +1224,26 @@ export function createMapLibreMapView(elements: MapViewElements) {
     return true;
   };
 
+  const panToItemCenter = async (index: number): Promise<void> => {
+    if (!map) {
+      return;
+    }
+    let record = featureRecordsById.get(index) ?? null;
+    if (!record) {
+      record = await loadSelectionRecord(index);
+    }
+    if (!record?.bbox) {
+      return;
+    }
+    const [minX, minY, maxX, maxY] = record.bbox;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    window.requestAnimationFrame(() => {
+      if (!map) return;
+      map.easeTo({ center: [cx, cy], duration: 300 });
+    });
+  };
+
   const fitToFeatures = (): void => {
     if (!map) {
       return;
@@ -1371,6 +1391,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
     },
     setHighlightDebugInfo,
     setVisibleItems,
+    panToItemCenter,
     selectFeatureByIndex,
     setFeatureClickHandler: (handler: (payload: FeatureClickPayload) => void): void => {
       onFeatureClick = handler;

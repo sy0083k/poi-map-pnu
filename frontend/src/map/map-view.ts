@@ -179,6 +179,26 @@ export function createMapView(elements: MapViewElements) {
     return true;
   };
 
+  const panToItemCenter = async (index: number): Promise<void> => {
+    if (!map || !featureLayers) {
+      return;
+    }
+    const feature = featureLayers.getFeatureById(index);
+    if (!feature) {
+      return;
+    }
+    const geometry = feature.getGeometry();
+    if (!geometry) {
+      return;
+    }
+    const extent = geometry.getExtent();
+    const center = getCenter(extent);
+    window.requestAnimationFrame(() => {
+      if (!map) return;
+      map.getView().animate({ center, duration: 300 });
+    });
+  };
+
   const fitToFeatures = (): void => {
     if (!map || !featureLayers) {
       return;
@@ -260,6 +280,7 @@ export function createMapView(elements: MapViewElements) {
     loadDebugProbe,
     setHighlightDebugInfo,
     setVisibleItems: (_items: LandListItem[]): void => {},
+    panToItemCenter,
     selectFeatureByIndex,
     setFeatureClickHandler: (handler: (payload: FeatureClickPayload) => void): void => { onFeatureClick = handler; },
     setMoveEndHandler: (handler: (() => void) | null): void => { onMoveEnd = handler; },
