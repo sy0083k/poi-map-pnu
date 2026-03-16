@@ -1094,6 +1094,7 @@ export function createMapLibreMapView(elements: MapViewElements) {
   const setVisibleItems = (items: LandListItem[]): void => {
     currentItemsByIndex.clear();
     currentIndexByPnu.clear();
+    featureRecordsById.clear();
     currentVisiblePnus = [];
     items.forEach((item, index) => {
       currentItemsByIndex.set(index, item);
