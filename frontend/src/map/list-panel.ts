@@ -168,6 +168,7 @@ export function createListPanel(elements: ListPanelElements) {
 
     setupVirtualContainer();
     elements.listContainer.scrollTop = 0;
+    poolNodes.forEach((node) => { delete node.dataset.renderedIndex; });
     paintVisiblePool();
   };
 
