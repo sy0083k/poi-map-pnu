@@ -69,11 +69,13 @@ async def upload_city_excel(
 @router.post("/upload/cadastral-fgb", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
 async def upload_cadastral_fgb(
     request: Request,
+    background_tasks: BackgroundTasks,
     csrf_token: str = Form(default=""),
     file: UploadFile = File(...),  # noqa: B008
 ):
     return cadastral_fgb_upload_service.handle_cadastral_fgb_upload(
         request,
+        background_tasks=background_tasks,
         csrf_token=csrf_token,
         file=file,
     )

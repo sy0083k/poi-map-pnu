@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 
@@ -78,7 +78,12 @@ def test_cadastral_fgb_upload_success_replaces_path_and_deletes_previous(monkeyp
         lambda **kwargs: rebuild_calls.append(kwargs) or 1,
     )
 
-    payload = cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, csrf_token="csrf", file=file)
+    bg = BackgroundTasks()
+    payload = cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, background_tasks=bg, csrf_token="csrf", file=file)
+
+    # execute background tasks synchronously to verify rebuild is scheduled
+    for task in bg.tasks:
+        task.func(*task.args, **task.kwargs)
 
     assert payload["success"] is True
     assert payload["appliedPath"] == "data/new-cadastral.fgb"
@@ -118,7 +123,7 @@ def test_cadastral_fgb_upload_keeps_previous_file_on_validation_failure(
     )
 
     with pytest.raises(HTTPException) as exc:
-        cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, csrf_token="csrf", file=file)
+        cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, background_tasks=BackgroundTasks(), csrf_token="csrf", file=file)
 
     assert exc.value.status_code == 400
     assert old_file.exists()
@@ -131,7 +136,7 @@ def test_cadastral_fgb_upload_rejects_non_fgb_extension(tmp_path: Path) -> None:
     file = _upload_file("invalid.xlsx", b"bad")
 
     with pytest.raises(HTTPException) as exc:
-        cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, csrf_token="csrf", file=file)
+        cadastral_fgb_upload_service.handle_cadastral_fgb_upload(request, background_tasks=BackgroundTasks(), csrf_token="csrf", file=file)
 
     assert exc.value.status_code == 400
 
@@ -163,7 +168,7 @@ def test_cadastral_fgb_upload_rejects_wrong_magic_bytes(
 
     with pytest.raises(HTTPException) as exc:
         cadastral_fgb_upload_service.handle_cadastral_fgb_upload(
-            request, csrf_token="csrf", file=file
+            request, background_tasks=BackgroundTasks(), csrf_token="csrf", file=file
         )
 
     assert exc.value.status_code == 400

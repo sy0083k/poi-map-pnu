@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, HTTPException, Request, UploadFile
 
 from app.dependencies import validate_csrf_token
 from app.services import admin_settings_service, cadastral_fgb_service, parcel_render_build_service
 from app.services.cadastral_highlight_cache import clear_cached_responses
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_CONTENT_TYPES = {
     "application/octet-stream",  # FGB has no registered MIME type; actual validation is done via magic bytes
@@ -22,6 +25,7 @@ MAX_UPLOAD_SIZE_BYTES = 1024 * 1024 * 1024  # 1GB
 def handle_cadastral_fgb_upload(
     request: Request,
     *,
+    background_tasks: BackgroundTasks,
     csrf_token: str,
     file: UploadFile,
 ) -> dict[str, Any]:
@@ -47,12 +51,6 @@ def handle_cadastral_fgb_upload(
         if old_path.exists() and old_path.is_file():
             shutil.copy2(old_path, backup_path)
         os.replace(temp_path, final_path)
-        parcel_render_build_service.rebuild_render_items_for_path(
-            file_path=final_path,
-            source_path=final_path.relative_to(Path(config.BASE_DIR)).as_posix(),
-            pnu_field=config.CADASTRAL_FGB_PNU_FIELD,
-            cadastral_crs=config.CADASTRAL_FGB_CRS,
-        )
 
         applied_relative_path = final_path.relative_to(Path(config.BASE_DIR)).as_posix()
         admin_settings_service.update_env_file(config.BASE_DIR, {"CADASTRAL_FGB_PATH": applied_relative_path})
@@ -64,10 +62,18 @@ def handle_cadastral_fgb_upload(
         if backup_path.exists():
             backup_path.unlink(missing_ok=True)
 
+        background_tasks.add_task(
+            _rebuild_render_items_background,
+            file_path=final_path,
+            source_path=applied_relative_path,
+            pnu_field=config.CADASTRAL_FGB_PNU_FIELD,
+            cadastral_crs=config.CADASTRAL_FGB_CRS,
+        )
+
         stat = final_path.stat()
         return {
             "success": True,
-            "message": "연속지적도 FGB 파일이 교체되어 즉시 반영되었습니다.",
+            "message": "연속지적도 FGB 파일이 교체되었습니다. 렌더 캐시는 백그라운드에서 재구성 중입니다.",
             "appliedPath": applied_relative_path,
             "fileSizeBytes": stat.st_size,
             "appliedAt": str(stat.st_mtime_ns),
@@ -133,6 +139,24 @@ def _validate_fgb_file(file_path: Path) -> None:
                 pass
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"유효한 FlatGeobuf 파일이 아닙니다: {exc}") from exc
+
+
+def _rebuild_render_items_background(
+    *,
+    file_path: Path,
+    source_path: str,
+    pnu_field: str,
+    cadastral_crs: str,
+) -> None:
+    try:
+        parcel_render_build_service.rebuild_render_items_for_path(
+            file_path=file_path,
+            source_path=source_path,
+            pnu_field=pnu_field,
+            cadastral_crs=cadastral_crs,
+        )
+    except Exception:
+        logger.exception("parcel_render.rebuild_background_failed", extra={"source_path": source_path})
 
 
 def _restore_backup_file(*, backup_path: Path, final_path: Path, old_path: Path) -> None:
