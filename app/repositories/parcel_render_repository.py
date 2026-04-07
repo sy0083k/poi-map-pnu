@@ -26,10 +26,7 @@ def prepare_staging_table(conn: sqlite3.Connection) -> None:
     _create_table(cursor, STAGING_TABLE_NAME)
 
 
-def bulk_insert_staging(conn: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> None:
-    cursor = conn.cursor()
-    cursor.executemany(
-        f"""
+_INSERT_SQL = f"""
         INSERT INTO {STAGING_TABLE_NAME} (
             pnu,
             bbox_minx,
@@ -69,9 +66,25 @@ def bulk_insert_staging(conn: sqlite3.Connection, rows: Iterable[dict[str, Any]]
             :source_crs,
             CURRENT_TIMESTAMP
         )
-        """,
-        list(rows),
-    )
+        """
+
+_CHUNK_SIZE = 200
+
+
+def bulk_insert_staging(conn: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
+    cursor = conn.cursor()
+    total = 0
+    chunk: list[dict[str, Any]] = []
+    for row in rows:
+        chunk.append(row)
+        if len(chunk) >= _CHUNK_SIZE:
+            cursor.executemany(_INSERT_SQL, chunk)
+            total += len(chunk)
+            chunk = []
+    if chunk:
+        cursor.executemany(_INSERT_SQL, chunk)
+        total += len(chunk)
+    return total
 
 
 def swap_staging_table(conn: sqlite3.Connection) -> None:

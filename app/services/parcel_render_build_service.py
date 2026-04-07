@@ -85,31 +85,28 @@ def rebuild_render_items_for_path(
     if not file_path.exists() or not file_path.is_file():
         raise FileNotFoundError(f"FGB file not found: {file_path}")
 
-    _t_build = time.perf_counter()
-    rows = list(
-        _build_render_rows(
-            file_path=file_path,
-            source_path=source_path,
-            pnu_field=pnu_field,
-            cadastral_crs=cadastral_crs,
-        )
-    )
-    build_ms = (time.perf_counter() - _t_build) * 1000
-
-    _t_commit = time.perf_counter()
+    _t_total = time.perf_counter()
     with db_connection() as conn:
         parcel_render_repository.init_schema(conn)
         parcel_render_repository.prepare_staging_table(conn)
-        parcel_render_repository.bulk_insert_staging(conn, rows)
+        row_count = parcel_render_repository.bulk_insert_staging(
+            conn,
+            _build_render_rows(
+                file_path=file_path,
+                source_path=source_path,
+                pnu_field=pnu_field,
+                cadastral_crs=cadastral_crs,
+            ),
+        )
         parcel_render_repository.swap_staging_table(conn)
         conn.commit()
-    commit_ms = (time.perf_counter() - _t_commit) * 1000
+    total_ms = (time.perf_counter() - _t_total) * 1000
 
     logger.info(
         "parcel_render.rebuild",
-        extra={"row_count": len(rows), "build_ms": round(build_ms, 1), "commit_ms": round(commit_ms, 1)},
+        extra={"row_count": row_count, "total_ms": round(total_ms, 1)},
     )
-    return len(rows)
+    return row_count
 
 
 def _build_render_rows(
