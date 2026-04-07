@@ -126,35 +126,42 @@ def get_filtered_highlights(
         base_dir=base_dir,
         configured_path=configured_path,
     )
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="연속지적도 파일을 찾을 수 없습니다.")
-
-    fgb_etag = build_file_etag(file_path)
+    fgb_present = file_path.exists() and file_path.is_file()
 
     with db_connection(row_factory=True) as _conn:
         stored_etag = parcel_render_repository.fetch_source_etag(_conn)
-    if stored_etag is not None and stored_etag != fgb_etag:
-        logger.warning(
-            "parcel_render_item ETag mismatch: stored=%s current=%s",
-            stored_etag,
-            fgb_etag,
-        )
-        return {
-            "items": [],
-            "meta": {
-                "requested": len(requested_pnus),
-                "matched": 0,
-                "bboxApplied": bbox is not None,
-                "bboxFiltered": 0,
-                "source": "stale_index",
-                "staleIndex": True,
-                "sourceFgbEtag": fgb_etag,
-                "sourceCrs": cadastral_crs,
-                "responseCrs": cadastral_crs,
-                "geometryFormat": "geojson",
-                "query_ms": 0.0,
-            },
-        }
+        has_render_data = parcel_render_repository.count_rows(_conn) > 0
+
+    if not fgb_present and not has_render_data:
+        raise HTTPException(status_code=404, detail="연속지적도 파일을 찾을 수 없습니다.")
+
+    if fgb_present:
+        fgb_etag = build_file_etag(file_path)
+        if stored_etag is not None and stored_etag != fgb_etag:
+            logger.warning(
+                "parcel_render_item ETag mismatch: stored=%s current=%s",
+                stored_etag,
+                fgb_etag,
+            )
+            return {
+                "items": [],
+                "meta": {
+                    "requested": len(requested_pnus),
+                    "matched": 0,
+                    "bboxApplied": bbox is not None,
+                    "bboxFiltered": 0,
+                    "source": "stale_index",
+                    "staleIndex": True,
+                    "sourceFgbEtag": fgb_etag,
+                    "sourceCrs": cadastral_crs,
+                    "responseCrs": cadastral_crs,
+                    "geometryFormat": "geojson",
+                    "query_ms": 0.0,
+                },
+            }
+    else:
+        logger.warning("fgb file missing but serving from parcel_render_item: path=%s", file_path)
+        fgb_etag = stored_etag or ""
 
     cache_key = build_cache_key(
         theme=theme,
