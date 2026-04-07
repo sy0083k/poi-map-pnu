@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import sys
@@ -52,11 +53,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         web_visit_repository.init_web_visit_schema(conn)
         parcel_render_repository.init_schema(conn)
         conn.commit()
-    parcel_render_build_service.ensure_render_items_current(
-        base_dir=settings.base_dir,
-        configured_path=settings.cadastral_fgb_path,
-        pnu_field=settings.cadastral_fgb_pnu_field,
-        cadastral_crs=settings.cadastral_fgb_crs,
+    asyncio.create_task(
+        asyncio.to_thread(
+            parcel_render_build_service.ensure_render_items_current,
+            base_dir=settings.base_dir,
+            configured_path=settings.cadastral_fgb_path,
+            pnu_field=settings.cadastral_fgb_pnu_field,
+            cadastral_crs=settings.cadastral_fgb_crs,
+        )
     )
     yield
 
