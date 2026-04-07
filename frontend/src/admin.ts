@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const csrfInput = requireElement("csrfToken", HTMLInputElement);
   const uploadCityButton = document.getElementById("uploadBtnCity");
   const uploadFgbButton = document.getElementById("uploadBtnFgb");
+  const uploadPmtilesButton = document.getElementById("uploadBtnPmtiles");
   const settingsForm = document.getElementById("settingsForm");
   const refreshStatsButton = document.getElementById("refreshStatsBtn");
 
@@ -33,6 +34,18 @@ document.addEventListener("DOMContentLoaded", () => {
         endpoint: "/admin/upload/cadastral-fgb",
         emptyFileMessage: "연속지적도 FGB 파일을 선택해주세요.",
         loadingMessage: "연속지적도 FGB 파일 업로드 중..."
+      });
+    });
+  }
+
+  if (uploadPmtilesButton && csrfInput) {
+    uploadPmtilesButton.addEventListener("click", () => {
+      void handleThemeUpload(csrfInput.value, {
+        fileInputId: "pmtilesFile",
+        statusId: "statusPmtiles",
+        endpoint: "/admin/upload/cadastral-pmtiles",
+        emptyFileMessage: "PMTiles 파일을 선택해주세요.",
+        loadingMessage: "PMTiles 파일 업로드 중..."
       });
     });
   }

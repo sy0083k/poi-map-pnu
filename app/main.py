@@ -136,6 +136,7 @@ class Config:
         self.VWORLD_WMTS_KEY = s.vworld_wmts_key
         self.CADASTRAL_FGB_PATH = s.cadastral_fgb_path
         self.CADASTRAL_PMTILES_URL = s.cadastral_pmtiles_url
+        self.CADASTRAL_PMTILES_PATH = s.cadastral_pmtiles_path
         self.CADASTRAL_FGB_PNU_FIELD = s.cadastral_fgb_pnu_field
         self.CADASTRAL_FGB_CRS = s.cadastral_fgb_crs
         self.CADASTRAL_MIN_RENDER_ZOOM = s.cadastral_min_render_zoom

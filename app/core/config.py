@@ -23,6 +23,7 @@ class Settings:
     vworld_wmts_key: str
     cadastral_fgb_path: str
     cadastral_pmtiles_url: str
+    cadastral_pmtiles_path: str
     cadastral_fgb_pnu_field: str
     cadastral_fgb_crs: str
     cadastral_min_render_zoom: int
@@ -203,6 +204,11 @@ def get_settings() -> Settings:
             "/api/cadastral/pmtiles",
         ).strip()
         or "/api/cadastral/pmtiles",
+        cadastral_pmtiles_path=os.getenv(
+            "CADASTRAL_PMTILES_PATH",
+            "data/seosan_land.pmtiles",
+        ).strip()
+        or "data/seosan_land.pmtiles",
         cadastral_fgb_pnu_field=os.getenv("CADASTRAL_FGB_PNU_FIELD", "PNU").strip() or "PNU",
         cadastral_fgb_crs=cadastral_fgb_crs,
         cadastral_min_render_zoom=cadastral_min_render_zoom,

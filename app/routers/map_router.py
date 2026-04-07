@@ -41,7 +41,7 @@ def create_router() -> APIRouter:
         config = request.app.state.config
         return cadastral_fgb_service.build_pmtiles_file_response(
             base_dir=config.BASE_DIR,
-            configured_path="data/seosan_land.pmtiles",
+            configured_path=config.CADASTRAL_PMTILES_PATH,
             range_header=request.headers.get("range"),
         )
 

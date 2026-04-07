@@ -24,6 +24,7 @@ from app.logging_utils import RequestIdFilter
 from app.services import (
     admin_settings_service,
     cadastral_fgb_upload_service,
+    cadastral_pmtiles_upload_service,
     stats_service,
     upload_service,
 )
@@ -76,6 +77,19 @@ async def upload_cadastral_fgb(
     return cadastral_fgb_upload_service.handle_cadastral_fgb_upload(
         request,
         background_tasks=background_tasks,
+        csrf_token=csrf_token,
+        file=file,
+    )
+
+
+@router.post("/upload/cadastral-pmtiles", dependencies=[Depends(check_internal_network), Depends(require_authenticated)])
+async def upload_cadastral_pmtiles(
+    request: Request,
+    csrf_token: str = Form(default=""),
+    file: UploadFile = File(...),  # noqa: B008
+):
+    return cadastral_pmtiles_upload_service.handle_cadastral_pmtiles_upload(
+        request,
         csrf_token=csrf_token,
         file=file,
     )

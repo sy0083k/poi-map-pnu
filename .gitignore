@@ -39,3 +39,4 @@ static/dist/
 .agent-memory/
 
 *.fgb
+*.pmtiles
