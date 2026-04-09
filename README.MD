@@ -34,8 +34,6 @@ cp .env.example .env
 
 필수 환경 변수:
 - `VWORLD_WMTS_KEY`
-- `CADASTRAL_FGB_PATH`
-- `CADASTRAL_PMTILES_URL`
 - `ADMIN_ID`
 - `ADMIN_PW_HASH`
 - `SECRET_KEY`
@@ -51,11 +49,16 @@ python create_hash.py
 - `SESSION_COOKIE_NAME`, `SESSION_NAMESPACE`
 - `MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_ROWS`
 - `LOGIN_MAX_ATTEMPTS`, `LOGIN_COOLDOWN_SECONDS`
-- `CADASTRAL_FGB_PNU_FIELD`, `CADASTRAL_FGB_CRS`, `CADASTRAL_MIN_RENDER_ZOOM`
-- `CADASTRAL_PMTILES_URL`
+- `CADASTRAL_FGB_PATH`, `CADASTRAL_FGB_PNU_FIELD`, `CADASTRAL_FGB_CRS`, `CADASTRAL_MIN_RENDER_ZOOM`
+- `CADASTRAL_PMTILES_URL`, `CADASTRAL_PMTILES_PATH`
 - `TRUST_PROXY_HEADERS`, `TRUSTED_PROXY_IPS`
 - `UPLOAD_SHEET_NAME`
 - `HIGHLIGHT_CACHE_TTL_SECONDS`, `HIGHLIGHT_CACHE_MAX_ENTRIES`
+
+PMTiles 관련 설정:
+- `CADASTRAL_PMTILES_URL`: `/siyu` 런타임이 사용할 PMTiles 접근 URL입니다. 미설정 시 기본값은 `/api/cadastral/pmtiles`입니다.
+- `CADASTRAL_PMTILES_PATH`: 서버가 참조하는 PMTiles 파일 경로입니다. 미설정 시 기본값은 `data/seosan_land.pmtiles`입니다.
+- `CADASTRAL_FGB_PATH`: 서버가 참조하는 연속지적도 FlatGeobuf 파일 경로입니다. 운영 파일 경로를 바꾸려면 이 값을 설정합니다.
 
 지도 초기 화면에서 연속지적도를 바로 표시하려면 `MAP_DEFAULT_ZOOM >= CADASTRAL_MIN_RENDER_ZOOM` 조건을 만족해야 합니다.
 
