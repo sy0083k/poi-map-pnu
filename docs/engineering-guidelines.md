@@ -41,6 +41,8 @@
 - `MUST`: 네트워크 실패 시 사용자에게 이해 가능한 오류 메시지를 제공한다.
 - `MUST`: API 호출 유틸(`frontend/src/http.ts`)을 통해 타임아웃/오류 정규화를 재사용한다.
 - `MUST`: 지도 페이지는 `frontend/src/map.ts` 오케스트레이션 + `frontend/src/map/*` 기능 모듈 구조를 유지한다.
+- `SHOULD`: 지도/검색/필터/폼/상태 메시지 UI 변경 전 `docs/design-reference-nsw.md`를 참고해 공공 지도 서비스의 접근성, 반응형, 컴포넌트 일관성 기준을 점검한다.
+- `SHOULD`: 외부 디자인 시스템 패키지 도입은 전체 CSS/전역 초기화 방식이 아니라 필요한 패턴과 컴포넌트를 선별하고, 라이선스/CSP/빌드/전역 스타일 충돌을 별도 검토한 뒤 진행한다.
 - `SHOULD`: UI 상태 처리와 비즈니스 로직을 함수 단위로 분리한다.
 - `SHOULD`: 서버 계약(API 필드명/타입)에 맞춘 타입 정의를 유지한다.
 - `AVOID`: 페이지 스크립트에서 중복된 fetch/에러 처리 로직을 복붙하는 패턴.
@@ -80,5 +82,6 @@
 - 다른 문서에는 상세 규칙을 복제하지 않고 링크만 유지한다.
 - 기능 변경 시 관련 문서(`architecture.md`, `maintenance.md`, `stride-lite.md`)를 함께 갱신한다.
 - API/환경변수/운영 절차 변경 시 `README.MD`와 `docs/index.md`의 링크/요약도 함께 갱신한다.
+- UI/UX 참고 기준이나 외부 디자인 시스템 도입 검토 기준 변경 시 `docs/design-reference-nsw.md`와 `docs/index.md`를 함께 갱신한다.
 - `docs/refactoring-strategy.md`는 아카이브 문서이며 현행 실행 기준으로 사용하지 않는다.
 - 분기별(또는 주요 릴리스 전) 기준 문서 최신성 점검을 권장한다.

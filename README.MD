@@ -380,6 +380,7 @@ project-root/
 - 유지보수: `docs/maintenance.md`
 - 보안 위협 모델: `docs/stride-lite.md`
 - 엔지니어링 기준: `docs/engineering-guidelines.md`
+- UI/UX 참고 자료: `docs/design-reference-nsw.md`
 - 리스크/개선 TODO: `docs/TODO.MD`
 
 ## 📄 라이선스

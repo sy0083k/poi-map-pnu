@@ -12,6 +12,7 @@
 5. 어떤 보안 위협을 관리하는가: [`stride-lite.md`](stride-lite.md)
 6. 어떤 리스크를 우선 개선하는가: [`TODO.MD`](TODO.MD)
 7. 어떻게 소개/시연하는가: [`video-intro-storyboard.md`](video-intro-storyboard.md)
+8. 어떤 UI/UX 참고 자료를 활용하는가: [`design-reference-nsw.md`](design-reference-nsw.md)
 
 ## 현행 기준 요약
 - 지도 데이터 소스: FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)
@@ -73,8 +74,10 @@
 - 운영/절차 변경: `docs/maintenance.md`
 - 보안 통제 변경: `docs/stride-lite.md`
 - 사용자/운영 요약: `README.MD`
+- UI/UX 참고 기준 또는 외부 디자인 시스템 도입 검토 기준 변경: `docs/design-reference-nsw.md`
 - 리스크/개선 항목 영향: `docs/TODO.MD`
 
 ## Archive / 참고 문서
+- `design-reference-nsw.md`: NSW Design System 기반 UI/UX 참고 자료(현행 강제 규칙은 `engineering-guidelines.md`)
 - `refactoring-strategy.md`: 아카이브 문서(현행 운영 기준 아님)
 - `reports/*`: 단계별 점검 보고서 보관용 문서(현행 운영 기준 아님)
