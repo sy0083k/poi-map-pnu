@@ -62,3 +62,5 @@
 - `/photo2map`: `Maps`, `List items`, `Media`, `Dialog`, `Buttons`
 - `/admin`: `Forms`, `Tables`, `Status labels`, `Pagination`, `In-page alert`
 
+## 관련 문서
+- 현재 UI에 이 참고 기준을 적용한 개선 후보: `docs/ui-ux-improvement-proposals.md`

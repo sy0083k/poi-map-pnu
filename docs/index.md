@@ -13,6 +13,7 @@
 6. 어떤 리스크를 우선 개선하는가: [`TODO.MD`](TODO.MD)
 7. 어떻게 소개/시연하는가: [`video-intro-storyboard.md`](video-intro-storyboard.md)
 8. 어떤 UI/UX 참고 자료를 활용하는가: [`design-reference-nsw.md`](design-reference-nsw.md)
+9. 어떤 UI/UX 개선 후보가 있는가: [`ui-ux-improvement-proposals.md`](ui-ux-improvement-proposals.md)
 
 ## 현행 기준 요약
 - 지도 데이터 소스: FlatGeobuf 파일(`data/LSMD_CONT_LDREG_44210_202512.fgb`)
@@ -79,5 +80,6 @@
 
 ## Archive / 참고 문서
 - `design-reference-nsw.md`: NSW Design System 기반 UI/UX 참고 자료(현행 강제 규칙은 `engineering-guidelines.md`)
+- `ui-ux-improvement-proposals.md`: NSW Design System 참고 기준을 현재 UI에 적용한 개선 후보 목록
 - `refactoring-strategy.md`: 아카이브 문서(현행 운영 기준 아님)
 - `reports/*`: 단계별 점검 보고서 보관용 문서(현행 운영 기준 아님)
