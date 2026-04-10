@@ -114,7 +114,7 @@ async function bootstrap(): Promise<void> {
   });
 
   const layoutControls = setupLayoutControls({
-    sidebarHandle: dom.sidebarHandle,
+    dockTansakBtn: dom.dockTansakBtn,
     mobileSearchFab: dom.mobileSearchFab,
     mobileSearchCloseBtn: dom.mobileSearchCloseBtn,
     mobileSearchBtn: dom.mobileSearchBtn,

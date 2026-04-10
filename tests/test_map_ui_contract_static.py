@@ -8,11 +8,14 @@ def test_topbar_and_filter_css_contract() -> None:
     assert_contains_all(
         css_text,
         [
-            "--topbar-menu-anchor-x: var(--sidebar-width);",
+            "--icon-sidebar-width: 48px;",
+            "--topbar-menu-anchor-x: var(--icon-sidebar-width);",
             "left: var(--topbar-menu-anchor-x);",
-            'content: "<";',
-            'content: ">";',
-            '#sidebar-handle[aria-expanded="false"]::after',
+            "body.dock-open {",
+            "#icon-sidebar {",
+            ".icon-sidebar-btn {",
+            ".icon-sidebar-btn[aria-pressed=\"true\"] {",
+            "body.dock-open #sidebar {",
             ".compact-filter-row {",
             "display: grid;",
             "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);",

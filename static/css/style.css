@@ -7,7 +7,8 @@ body {
     overflow: hidden;
     --topbar-height: 56px;
     --sidebar-width: 350px;
-    --topbar-menu-anchor-x: var(--sidebar-width);
+    --icon-sidebar-width: 48px;
+    --topbar-menu-anchor-x: var(--icon-sidebar-width);
     --filter-input-height: 33px;
     --filter-control-height: var(--filter-input-height);
     --filter-col-gap: 8px;
@@ -111,8 +112,7 @@ body.photo-panel-open {
 
 .menu-trigger:focus-visible,
 .topbar-link:focus-visible,
-.menu-item:focus-visible,
-#sidebar-handle:focus-visible {
+.menu-item:focus-visible {
     outline: 2px solid #ffffff;
     outline-offset: 2px;
 }
@@ -184,10 +184,6 @@ body.photo-panel-open {
 /* Keep Viewer.js lightbox above app overlays/handles. */
 .viewer-container {
     z-index: 110000 !important;
-}
-
-body.viewer-open #sidebar-handle {
-    pointer-events: none;
 }
 
 #app-shell {
@@ -331,22 +327,79 @@ body.viewer-open #sidebar-handle {
     overflow-wrap: anywhere;
 }
 
-#sidebar-handle {
-    display: none;
+body.dock-open {
+    --topbar-menu-anchor-x: calc(var(--icon-sidebar-width) + var(--sidebar-width));
+}
+
+/* ── 아이콘 사이드바 ── */
+#icon-sidebar {
+    width: var(--icon-sidebar-width);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    z-index: 200;
+    gap: 4px;
+}
+
+.icon-sidebar-btn {
+    width: 40px;
+    height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #374151;
+    padding: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.icon-sidebar-btn:hover {
+    background: #f3f4f6;
+}
+
+.icon-sidebar-btn[aria-pressed="true"] {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.icon-sidebar-label {
+    font-size: 0.6rem;
+    line-height: 1;
+    font-weight: 500;
 }
 
 /* 사이드바 레이아웃 */
-#sidebar { 
+#sidebar {
+    width: 0;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    z-index: 10;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    border-right: none;
+    transition: width 0.22s ease, min-width 0.22s ease, opacity 0.18s ease;
+}
+
+body.dock-open #sidebar {
     width: var(--sidebar-width);
     min-width: var(--sidebar-width);
-    height: 100%;
-    border-right: 1px solid #ccc; 
-    display: flex; 
-    flex-direction: column; 
-    background: #fff; 
-    z-index: 10; 
+    opacity: 1;
+    pointer-events: auto;
     overflow: hidden;
-    transition: width 0.22s ease, min-width 0.22s ease, transform 0.22s ease, opacity 0.22s ease;
+    border-right: 1px solid #ccc;
 }
 
 #filter-section { flex-shrink: 0; padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
@@ -1334,7 +1387,7 @@ body.photo-panel-open #land-info-panel {
         background: rgba(255, 255, 255, 0.5);
     }
 
-    #sidebar-handle {
+    #icon-sidebar {
         display: none !important;
     }
 
@@ -1522,59 +1575,6 @@ body.photo-panel-open #land-info-panel {
         display: none !important;
     }
 
-    #sidebar-handle {
-        display: block;
-        position: absolute;
-        left: calc(var(--sidebar-width) + 2px);
-        top: 50%;
-        transform: translateY(-50%);
-        width: 22px;
-        height: 84px;
-        border: 1px solid #5cb5c5;
-        border-radius: 999px;
-        background: linear-gradient(180deg, #39c3d8 0%, #25adbf 100%);
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.24);
-        cursor: pointer;
-        z-index: 10025;
-    }
-
-    #sidebar-handle::after {
-        content: "<";
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        color: rgba(255, 255, 255, 0.98);
-        font-size: 13px;
-        font-weight: 700;
-        line-height: 1;
-    }
-
-    #sidebar-handle:hover {
-        filter: brightness(1.06);
-    }
-
-    #sidebar-handle[aria-expanded="false"]::after {
-        content: ">";
-    }
-
-    #sidebar-handle:focus-visible {
-        outline: 2px solid #ffffff;
-        outline-offset: 2px;
-    }
-
-    body.sidebar-collapsed #sidebar {
-        width: 0;
-        min-width: 0;
-        transform: translateX(-100%);
-        opacity: 0;
-        border-right: none;
-        pointer-events: none;
-    }
-
-    body.sidebar-collapsed #sidebar-handle {
-        left: 8px;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

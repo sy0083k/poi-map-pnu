@@ -3,10 +3,10 @@ type MobileViewState = "home" | "search" | "results";
 const MOBILE_MEDIA_QUERY = "(max-width: 768px)";
 const DESKTOP_MEDIA_QUERY = "(min-width: 769px)";
 const MOBILE_HISTORY_KEY = "mobileMapViewState";
-const SIDEBAR_COLLAPSED_STORAGE_KEY = "sidebarCollapsed";
+const DOCK_OPEN_STORAGE_KEY = "dockOpen";
 
 type SetupLayoutControlsOptions = {
-  sidebarHandle: Element | null;
+  dockTansakBtn: HTMLButtonElement | null;
   mobileSearchFab: Element | null;
   mobileSearchCloseBtn: Element | null;
   mobileSearchBtn: Element | null;
@@ -30,7 +30,7 @@ function readMobileViewState(value: unknown): MobileViewState | null {
 }
 
 export function setupLayoutControls(options: SetupLayoutControlsOptions): {
-  applySidebarCollapsed: (collapsed: boolean, persist?: boolean) => void;
+  applyDock: (open: boolean, persist?: boolean) => void;
   maybeInitMobileHistory: () => void;
   setMobileState: (nextState: MobileViewState, pushHistory?: boolean) => void;
 } {
@@ -63,41 +63,39 @@ export function setupLayoutControls(options: SetupLayoutControlsOptions): {
     applyMobileClass();
   };
 
-  const applySidebarCollapsed = (collapsed: boolean, persist = true): void => {
-    if (!window.matchMedia(DESKTOP_MEDIA_QUERY).matches) {
-      document.body.classList.remove("sidebar-collapsed");
-      return;
-    }
-    document.body.classList.toggle("sidebar-collapsed", collapsed);
-    if (options.sidebarHandle instanceof HTMLButtonElement) {
-      options.sidebarHandle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-      options.sidebarHandle.setAttribute("aria-label", collapsed ? "사이드 메뉴 펼치기" : "사이드 메뉴 접기");
+  const applyDock = (open: boolean, persist = true): void => {
+    document.body.classList.toggle("dock-open", open);
+    if (options.dockTansakBtn) {
+      options.dockTansakBtn.setAttribute("aria-pressed", String(open));
+      options.dockTansakBtn.setAttribute(
+        "aria-label",
+        open ? "탐색 패널 닫기" : "탐색 패널 열기"
+      );
     }
     if (persist) {
       try {
-        localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, collapsed ? "true" : "false");
+        localStorage.setItem(DOCK_OPEN_STORAGE_KEY, String(open));
       } catch {
         // Ignore storage failures.
       }
     }
-    window.setTimeout(() => {
-      options.onDesktopResize();
-    }, 240);
+    if (!open) {
+      window.setTimeout(() => {
+        options.onDesktopResize();
+      }, 240);
+    }
   };
 
-  const toggleSidebar = (): void => {
-    const collapsed = !document.body.classList.contains("sidebar-collapsed");
-    applySidebarCollapsed(collapsed);
-  };
+  const toggleDock = (): void => applyDock(!document.body.classList.contains("dock-open"));
 
-  options.sidebarHandle?.addEventListener("click", toggleSidebar);
-  options.sidebarHandle?.addEventListener("keydown", (event) => {
+  options.dockTansakBtn?.addEventListener("click", toggleDock);
+  options.dockTansakBtn?.addEventListener("keydown", (event) => {
     if (!(event instanceof KeyboardEvent)) {
       return;
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      toggleSidebar();
+      toggleDock();
     }
   });
 
@@ -149,29 +147,29 @@ export function setupLayoutControls(options: SetupLayoutControlsOptions): {
 
   window.matchMedia(DESKTOP_MEDIA_QUERY).addEventListener("change", () => {
     if (window.matchMedia(DESKTOP_MEDIA_QUERY).matches) {
-      let shouldCollapse = false;
+      let storedOpen = false;
       try {
-        shouldCollapse = localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+        storedOpen = localStorage.getItem(DOCK_OPEN_STORAGE_KEY) === "true";
       } catch {
-        shouldCollapse = false;
+        storedOpen = false;
       }
-      applySidebarCollapsed(shouldCollapse, false);
+      applyDock(storedOpen, false);
     } else {
-      applySidebarCollapsed(false, false);
+      document.body.classList.remove("dock-open");
     }
     options.onDesktopResize();
   });
 
   return {
-    applySidebarCollapsed,
+    applyDock,
     maybeInitMobileHistory,
     setMobileState
   };
 }
 
-export function readInitialSidebarCollapsed(): boolean {
+export function readInitialDockOpen(): boolean {
   try {
-    return localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+    return localStorage.getItem(DOCK_OPEN_STORAGE_KEY) === "true";
   } catch {
     return false;
   }

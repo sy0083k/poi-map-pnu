@@ -1,6 +1,6 @@
 import { HttpError, fetchJson } from "../http";
 import { bootstrapPersistedPhotoOverlay } from "./persisted-photo-overlay";
-import { readInitialSidebarCollapsed } from "./layout-controls";
+import { readInitialDockOpen } from "./layout-controls";
 import { asThemeType, getThemeFromPathname, replaceThemeHistory } from "./theme-routing";
 
 import type { SetupFile2MapUploadResult } from "./local-upload";
@@ -30,7 +30,7 @@ type InitDeps = {
     setOriginalItems: (items: any[]) => void;
   };
   layoutControls: {
-    applySidebarCollapsed: (collapsed: boolean, saveState: boolean) => void;
+    applyDock: (open: boolean, saveState: boolean) => void;
     maybeInitMobileHistory: () => void;
     setMobileState: (state: "home" | "search" | "results", pushHistory?: boolean) => void;
   };
@@ -60,7 +60,7 @@ export async function initializeLandMapPage(deps: InitDeps): Promise<void> {
     }
     await deps.mapView.loadDebugProbe(config, deps.setMapStatus);
 
-    deps.layoutControls.applySidebarCollapsed(readInitialSidebarCollapsed(), false);
+    deps.layoutControls.applyDock(readInitialDockOpen(), false);
 
     const initialTheme =
       asThemeType(document.body.dataset.initialTheme || "") ??

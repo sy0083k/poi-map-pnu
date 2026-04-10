@@ -30,7 +30,7 @@ export type LandMapDomElements = {
   resultsSummaryResetButton: HTMLButtonElement | null;
   resultsSummaryDownloadButton: HTMLButtonElement | null;
   uiToast: HTMLElement | null;
-  sidebarHandle: HTMLElement | null;
+  dockTansakBtn: HTMLButtonElement | null;
   menuBasemapTrigger: HTMLElement | null;
   menuThemeTrigger: HTMLElement | null;
   file2mapUploadInput: HTMLInputElement | null;
@@ -71,7 +71,7 @@ export function queryLandMapDomElements(): LandMapDomElements {
     resultsSummaryResetButton: document.getElementById("btn-reset-filters") as HTMLButtonElement | null,
     resultsSummaryDownloadButton: document.getElementById("btn-download-all") as HTMLButtonElement | null,
     uiToast: document.getElementById("ui-toast"),
-    sidebarHandle: document.getElementById("sidebar-handle"),
+    dockTansakBtn: document.getElementById("btn-dock-탐색") as HTMLButtonElement | null,
     menuBasemapTrigger: document.getElementById("menu-basemap-trigger"),
     menuThemeTrigger: document.getElementById("menu-theme-trigger"),
     file2mapUploadInput: document.getElementById("file2map-upload-input") as HTMLInputElement | null,
