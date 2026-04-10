@@ -194,10 +194,6 @@
                 >
             </div>
             <button id="btn-search">조건에 맞는 토지 찾기</button>
-            <div class="action-cluster" role="group" aria-label="검색 옵션 작업">
-                <button id="btn-reset-filters" class="btn-secondary" type="button">필터 조건 초기화</button>
-                <button id="btn-download-all" class="btn-secondary" type="button">필터 결과 다운로드</button>
-            </div>
         </div>
         <section id="results-summary-bar" class="results-summary-bar" aria-label="검색 결과 요약" aria-live="polite">
             <div class="results-summary-main">
@@ -206,6 +202,11 @@
             </div>
             <div id="results-summary-chips" class="results-summary-chips" aria-label="적용된 검색 조건">
                 <span class="results-summary-chip">전체 조건</span>
+            </div>
+            <p id="results-summary-message" class="results-summary-message" role="status">검색 조건을 입력하거나 목록을 불러오세요.</p>
+            <div id="results-summary-actions" class="results-summary-actions" role="group" aria-label="검색 결과 작업">
+                <button id="btn-reset-filters" class="btn-secondary results-summary-action" type="button" disabled>조건 초기화</button>
+                <button id="btn-download-all" class="btn-secondary results-summary-action" type="button" disabled>필터 결과 다운로드</button>
             </div>
         </section>
         <div id="list-container" class="sidebar-list-container">

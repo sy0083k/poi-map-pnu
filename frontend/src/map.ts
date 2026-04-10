@@ -65,7 +65,10 @@ async function bootstrap(): Promise<void> {
     resultsSummaryBar: dom.resultsSummaryBar,
     resultsSummaryCount: dom.resultsSummaryCount,
     resultsSummaryChips: dom.resultsSummaryChips,
-    resultsSummaryDownload: dom.resultsSummaryDownload
+    resultsSummaryDownload: dom.resultsSummaryDownload,
+    resultsSummaryMessage: dom.resultsSummaryMessage,
+    resultsSummaryResetButton: dom.resultsSummaryResetButton,
+    resultsSummaryDownloadButton: dom.resultsSummaryDownloadButton
   });
 
   const filters = createFilters({

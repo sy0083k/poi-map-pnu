@@ -12,6 +12,9 @@ type ListPanelElements = {
   resultsSummaryCount: HTMLElement | null;
   resultsSummaryChips: HTMLElement | null;
   resultsSummaryDownload: HTMLElement | null;
+  resultsSummaryMessage: HTMLElement | null;
+  resultsSummaryResetButton: HTMLButtonElement | null;
+  resultsSummaryDownloadButton: HTMLButtonElement | null;
 };
 
 const snapHeights = {
@@ -213,6 +216,8 @@ export function createListPanel(elements: ListPanelElements) {
       return;
     }
 
+    elements.resultsSummaryBar.dataset.status = summary.status;
+
     const countText = `${summary.themeLabel} 검색 결과 ${summary.resultCount.toLocaleString()}건`;
     if (elements.resultsSummaryCount instanceof HTMLElement) {
       elements.resultsSummaryCount.textContent = countText;
@@ -221,6 +226,11 @@ export function createListPanel(elements: ListPanelElements) {
     if (elements.resultsSummaryDownload instanceof HTMLElement) {
       elements.resultsSummaryDownload.textContent = summary.downloadAvailable ? "다운로드 가능" : "다운로드할 결과 없음";
       elements.resultsSummaryDownload.classList.toggle("is-disabled", !summary.downloadAvailable);
+      if (summary.downloadReason) {
+        elements.resultsSummaryDownload.setAttribute("title", summary.downloadReason);
+      } else {
+        elements.resultsSummaryDownload.removeAttribute("title");
+      }
     }
 
     if (elements.resultsSummaryChips instanceof HTMLElement) {
@@ -232,6 +242,25 @@ export function createListPanel(elements: ListPanelElements) {
         chipEl.textContent = chip.value ? `${chip.label}: ${chip.value}` : chip.label;
         elements.resultsSummaryChips?.appendChild(chipEl);
       });
+    }
+
+    if (elements.resultsSummaryMessage instanceof HTMLElement) {
+      elements.resultsSummaryMessage.textContent = summary.message;
+    }
+
+    const disableAllActions = summary.actionsDisabled === true;
+    if (elements.resultsSummaryResetButton instanceof HTMLButtonElement) {
+      elements.resultsSummaryResetButton.disabled = disableAllActions || !summary.resetAvailable;
+    }
+    if (elements.resultsSummaryDownloadButton instanceof HTMLButtonElement) {
+      elements.resultsSummaryDownloadButton.disabled = disableAllActions || !summary.downloadAvailable;
+      if (summary.downloadReason) {
+        elements.resultsSummaryDownloadButton.setAttribute("aria-describedby", "results-summary-message");
+        elements.resultsSummaryDownloadButton.setAttribute("title", summary.downloadReason);
+      } else {
+        elements.resultsSummaryDownloadButton.removeAttribute("aria-describedby");
+        elements.resultsSummaryDownloadButton.removeAttribute("title");
+      }
     }
   };
 

@@ -68,11 +68,18 @@ export type ResultsSummaryChip = {
   value?: string;
 };
 
+export type ResultsSummaryStatus = "idle" | "loading" | "ready" | "empty" | "blocked" | "error";
+
 export type ResultsSummaryState = {
+  status: ResultsSummaryStatus;
   themeLabel: string;
   resultCount: number;
   filters: ResultsSummaryChip[];
+  message: string;
   downloadAvailable: boolean;
+  downloadReason?: string;
+  resetAvailable: boolean;
+  actionsDisabled?: boolean;
 };
 
 export type MapEventPayload =

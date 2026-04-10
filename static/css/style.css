@@ -530,6 +530,16 @@ body.file2map-mode #mobile-property-manager-group {
     box-shadow: 0 4px 10px rgba(44, 62, 80, 0.28);
 }
 .btn-secondary:active { transform: translateY(1px); }
+.btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+    filter: grayscale(0.25);
+    box-shadow: none;
+}
+.btn-secondary:disabled:hover {
+    filter: grayscale(0.25);
+    box-shadow: none;
+}
 #btn-reset-filters { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
 #btn-download-all { background: linear-gradient(180deg, #4da6d9 0%, #3b8fc0 100%); }
 #file2map-upload-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }
@@ -577,6 +587,15 @@ body.file2map-mode #mobile-property-manager-group {
     color: #6b7280;
 }
 
+.results-summary-bar[data-status="loading"] .results-summary-download {
+    color: #1d4ed8;
+}
+
+.results-summary-bar[data-status="blocked"] .results-summary-download,
+.results-summary-bar[data-status="error"] .results-summary-download {
+    color: #b45309;
+}
+
 .results-summary-chips {
     display: flex;
     flex-wrap: wrap;
@@ -594,6 +613,35 @@ body.file2map-mode #mobile-property-manager-group {
     font-size: 0.78rem;
     line-height: 1.2;
     overflow-wrap: anywhere;
+}
+
+.results-summary-message {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.results-summary-bar[data-status="empty"] .results-summary-message,
+.results-summary-bar[data-status="blocked"] .results-summary-message {
+    color: #92400e;
+}
+
+.results-summary-bar[data-status="error"] .results-summary-message {
+    color: #b91c1c;
+}
+
+.results-summary-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+}
+
+.results-summary-action {
+    min-height: 36px;
+    padding: 8px;
+    font-size: 0.82rem;
 }
 
 /* 리스트 영역 */
@@ -1256,6 +1304,17 @@ body.photo-panel-open #land-info-panel {
     body.mobile-results #results-summary-bar {
         display: grid;
         border-radius: 18px 18px 0 0;
+        gap: 6px;
+        padding: 9px 12px;
+    }
+
+    body.mobile-results .results-summary-message {
+        font-size: 0.74rem;
+    }
+
+    body.mobile-results .results-summary-action {
+        min-height: 34px;
+        padding: 7px;
     }
 
     body.mobile-results #list-container { flex: 1; }

@@ -8,7 +8,16 @@ import type { ListPanel } from "./list-panel";
 import type { MapView } from "./map-view";
 import type { MapStateStore } from "./state";
 import type { Telemetry } from "./telemetry";
-import type { LandClickSource, LandFeatureCollection, LandListItem, MapConfig, ResultsSummaryChip, ThemeType } from "./types";
+import type {
+  LandClickSource,
+  LandFeatureCollection,
+  LandListItem,
+  MapConfig,
+  ResultsSummaryChip,
+  ResultsSummaryState,
+  ResultsSummaryStatus,
+  ThemeType
+} from "./types";
 
 type SelectOptions = {
   shouldFit: boolean;
@@ -86,12 +95,47 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     return chips;
   };
 
-  const updateResultsSummary = (items: LandListItem[], values = deps.filters.getValues()): void => {
+  const hasActiveFilters = (values: FilterValues): boolean => buildFilterChips(values).length > 0;
+
+  const getDefaultSummaryMessage = (status: ResultsSummaryStatus, resultCount: number): string => {
+    if (status === "loading") {
+      return "검색 결과를 불러오는 중입니다.";
+    }
+    if (status === "empty") {
+      return "조건에 맞는 결과가 없습니다. 조건을 줄이거나 초기화하세요.";
+    }
+    if (status === "blocked") {
+      return "다음 작업이 필요합니다.";
+    }
+    if (status === "error") {
+      return "검색 결과를 불러오지 못했습니다.";
+    }
+    if (resultCount > 0) {
+      return "현재 조건의 결과가 목록과 지도에 반영되었습니다.";
+    }
+    return "검색 조건을 입력하거나 목록을 불러오세요.";
+  };
+
+  const updateResultsSummary = (
+    items: LandListItem[],
+    values = deps.filters.getValues(),
+    overrides: Partial<Omit<ResultsSummaryState, "themeLabel" | "resultCount" | "filters" | "resetAvailable">> = {}
+  ): void => {
+    const activeFilters = hasActiveFilters(values);
+    const inferredStatus: ResultsSummaryStatus = items.length > 0 ? "ready" : activeFilters ? "empty" : "idle";
+    const status = overrides.status ?? inferredStatus;
+    const downloadAvailable = overrides.downloadAvailable ?? (items.length > 0 && status === "ready");
+    const downloadReason = overrides.downloadReason ?? (downloadAvailable ? undefined : "다운로드할 검색 결과가 없습니다.");
     deps.listPanel.updateResultsSummary({
+      status,
       themeLabel: deps.getThemeLabel(deps.state.getCurrentTheme()),
       resultCount: items.length,
       filters: buildFilterChips(values),
-      downloadAvailable: items.length > 0
+      message: overrides.message ?? getDefaultSummaryMessage(status, items.length),
+      downloadAvailable,
+      downloadReason,
+      resetAvailable: activeFilters,
+      actionsDisabled: overrides.actionsDisabled
     });
   };
 
@@ -214,6 +258,13 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     const values = deps.filters.getValues();
     const currentTheme = deps.state.getCurrentTheme();
     const shouldUseServerFilters = currentTheme === serverFilterTheme && !overrideItemsByTheme.has(currentTheme);
+    updateResultsSummary(deps.state.getCurrentItems(), values, {
+      status: "loading",
+      message: "검색 조건을 적용하는 중입니다.",
+      downloadAvailable: false,
+      downloadReason: "검색 결과를 불러오는 중입니다.",
+      actionsDisabled: true
+    });
     const filteredItems = await loadServerFilteredItems({
       deps: {
         loadLandListItems: deps.loadLandListItems,
@@ -245,7 +296,12 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
           deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
         }
         deps.setMapStatus(`재산관리관 다중 검출: ${uniqueManagers.join(", ")}. 정확한 재산관리관을 입력하세요.`, "#1d4ed8");
-        updateResultsSummary([], values);
+        updateResultsSummary([], values, {
+          status: "blocked",
+          message: `재산관리관이 ${uniqueManagers.length}개 검출되었습니다. 정확한 재산관리관을 입력하세요.`,
+          downloadAvailable: false,
+          downloadReason: "재산관리관 조건을 더 정확히 입력해야 다운로드할 수 있습니다."
+        });
         return;
       }
     }
@@ -290,7 +346,12 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.listPanel.clear();
       deps.mapView.clearInfoPanel();
       updateNavigation();
-      updateResultsSummary([]);
+      updateResultsSummary([], deps.filters.getValues(), {
+        status: "blocked",
+        message: "파일을 적용하면 검색 결과와 다운로드 대상이 표시됩니다.",
+        downloadAvailable: false,
+        downloadReason: "파일을 먼저 적용해야 다운로드할 수 있습니다."
+      });
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
       uploadedHighlightDatasetKey = "empty";
       if (config) {
@@ -302,6 +363,13 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
     }
     try {
       deps.listPanel.setStatus(`${themeLabel} 목록을 불러오는 중입니다...`);
+      updateResultsSummary(deps.state.getCurrentItems(), deps.filters.getValues(), {
+        status: "loading",
+        message: `${themeLabel} 목록을 불러오는 중입니다.`,
+        downloadAvailable: false,
+        downloadReason: "목록 로딩이 끝난 뒤 다운로드할 수 있습니다.",
+        actionsDisabled: true
+      });
 
       let accumulated: LandListItem[] = [];
       let firstPageDone = false;
@@ -344,6 +412,12 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       const fallbackMessage = error instanceof HttpError ? `${themeLabel} 목록 로딩 실패: ${error.message} (하이라이트 없이 표시됩니다.)` : `${themeLabel} 목록 로딩에 실패했습니다. 하이라이트 없이 표시합니다.`;
       deps.listPanel.setStatus(fallbackMessage, "#b45309");
       deps.setMapStatus(fallbackMessage, "#b45309");
+      updateResultsSummary([], deps.filters.getValues(), {
+        status: "error",
+        message: fallbackMessage,
+        downloadAvailable: false,
+        downloadReason: "목록 로딩 오류가 해결된 뒤 다운로드할 수 있습니다."
+      });
     }
   };
 

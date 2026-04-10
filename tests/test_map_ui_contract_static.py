@@ -53,8 +53,15 @@ def test_overlay_css_contract() -> None:
             ".results-summary-main {",
             ".results-summary-chips {",
             ".results-summary-chip {",
+            ".results-summary-message {",
+            ".results-summary-actions {",
+            ".results-summary-action {",
             ".results-summary-download.is-disabled {",
+            '.results-summary-bar[data-status="loading"] .results-summary-download',
+            '.results-summary-bar[data-status="blocked"] .results-summary-download',
+            '.results-summary-bar[data-status="error"] .results-summary-message',
             "body.mobile-results #results-summary-bar {",
+            "body.mobile-results .results-summary-action {",
         ],
     )
 
