@@ -663,6 +663,45 @@ body.file2map-mode #mobile-property-manager-group {
     font-size: 0.82rem;
 }
 
+.results-summary-bar[data-status="ready"] {
+    gap: 5px;
+    padding: 7px 12px;
+}
+
+.results-summary-bar[data-status="ready"] .results-summary-message {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.results-summary-bar[data-status="ready"] .results-summary-chips {
+    max-height: 44px;
+    overflow-y: auto;
+    gap: 4px;
+    overscroll-behavior: contain;
+}
+
+.results-summary-bar[data-status="ready"] .results-summary-chip {
+    padding: 3px 6px;
+    font-size: 0.75rem;
+}
+
+.results-summary-bar[data-status="ready"] .results-summary-actions {
+    gap: 6px;
+}
+
+.results-summary-bar[data-status="ready"] .results-summary-action {
+    min-height: 30px;
+    padding: 6px;
+    font-size: 0.78rem;
+}
+
 /* 리스트 영역 */
 #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; position: relative; }
 .list-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
@@ -1347,6 +1386,21 @@ body.photo-panel-open #land-info-panel {
     body.mobile-results .results-summary-action {
         min-height: 34px;
         padding: 7px;
+    }
+
+    body.mobile-results .results-summary-bar[data-status="ready"] {
+        gap: 4px;
+        padding: 7px 10px;
+    }
+
+    body.mobile-results .results-summary-bar[data-status="ready"] .results-summary-chips {
+        max-height: 42px;
+    }
+
+    body.mobile-results .results-summary-bar[data-status="ready"] .results-summary-action {
+        min-height: 30px;
+        padding: 6px;
+        font-size: 0.76rem;
     }
 
     body.mobile-results #list-container { flex: 1; }
