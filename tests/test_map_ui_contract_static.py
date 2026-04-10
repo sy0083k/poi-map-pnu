@@ -49,6 +49,10 @@ def test_overlay_css_contract() -> None:
             "#photo-load-btn {",
             "#photo-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }",
             ".sidebar-empty-message {",
+            "button.list-item {",
+            "button.list-item:focus-visible {",
+            ".list-item-selected-label {",
+            ".list-item.selected .list-item-selected-label {",
             ".results-summary-bar {",
             ".results-summary-main {",
             ".results-summary-chips {",
@@ -74,6 +78,24 @@ def test_overlay_css_contract() -> None:
             'body.mobile-results .results-summary-bar[data-status="ready"] {',
             'body.mobile-results .results-summary-bar[data-status="ready"] .results-summary-action {',
             "body.mobile-results .results-summary-action {",
+        ],
+    )
+
+
+def test_land_list_item_accessibility_contract() -> None:
+    list_panel_ts = Path("frontend/src/map/list-panel.ts").read_text(encoding="utf-8")
+    assert_contains_all(
+        list_panel_ts,
+        [
+            'let poolNodes: HTMLButtonElement[] = [];',
+            'const row = document.createElement("button");',
+            'row.type = "button";',
+            'row.className = "list-item list-item-button";',
+            'row.setAttribute("aria-selected", "false");',
+            'row.setAttribute("aria-selected", isSelected ? "true" : "false");',
+            'row.setAttribute("aria-label"',
+            'selectedLabel.className = "list-item-selected-label";',
+            'selectedLabel.textContent = "선택됨";',
         ],
     )
 

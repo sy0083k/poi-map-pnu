@@ -33,7 +33,7 @@ export function createListPanel(elements: ListPanelElements) {
   let onItemClickCb: (index: number) => void = () => {};
   let selectedIndex = -1;
   let measuredItemHeight = 57;
-  let poolNodes: HTMLDivElement[] = [];
+  let poolNodes: HTMLButtonElement[] = [];
   let isPoolInitialized = false;
   let resizeObserver: ResizeObserver | null = null;
   let spacer: HTMLDivElement | null = null;
@@ -41,11 +41,12 @@ export function createListPanel(elements: ListPanelElements) {
 
   const measureItemHeight = (): number => {
     if (!elements.listContainer) return 57;
-    const probe = document.createElement("div");
-    probe.className = "list-item";
+    const probe = document.createElement("button");
+    probe.type = "button";
+    probe.className = "list-item list-item-button";
     probe.style.visibility = "hidden";
     probe.style.position = "absolute";
-    probe.innerHTML = "<strong>측정</strong><br><small>지목 | 100㎡</small>";
+    probe.innerHTML = '<strong>측정</strong><br><small>지목 | 100㎡</small><span class="list-item-selected-label">선택됨</span>';
     elements.listContainer.appendChild(probe);
     const h = probe.getBoundingClientRect().height;
     elements.listContainer.removeChild(probe);
@@ -63,17 +64,26 @@ export function createListPanel(elements: ListPanelElements) {
       if (!row) continue;
       if (dataIdx >= allItems.length) {
         row.style.display = "none";
+        row.setAttribute("aria-selected", "false");
+        row.removeAttribute("aria-label");
         continue;
       }
       row.style.display = "";
       row.style.top = `${dataIdx * measuredItemHeight}px`;
       row.dataset.index = String(dataIdx);
-      row.classList.toggle("selected", dataIdx === selectedIndex);
+      const isSelected = dataIdx === selectedIndex;
+      row.classList.toggle("selected", isSelected);
+      row.setAttribute("aria-selected", isSelected ? "true" : "false");
       if (row.dataset.renderedIndex !== String(dataIdx)) {
         row.dataset.renderedIndex = String(dataIdx);
-        (row.querySelector("strong") as HTMLElement).textContent = allItems[dataIdx].address || "";
+        const item = allItems[dataIdx];
+        const address = item.address || "";
+        const landType = item.land_type || "";
+        const area = item.area || "";
+        row.setAttribute("aria-label", `${address}, ${landType}, 면적 ${area}㎡`);
+        (row.querySelector("strong") as HTMLElement).textContent = address;
         (row.querySelector("small") as HTMLElement).textContent =
-          `${allItems[dataIdx].land_type || ""} | ${allItems[dataIdx].area || ""}㎡`;
+          `${landType} | ${area}㎡`;
       }
     }
   };
@@ -87,8 +97,10 @@ export function createListPanel(elements: ListPanelElements) {
     elements.listContainer.appendChild(spacer);
 
     for (let i = 0; i < POOL_SIZE; i++) {
-      const row = document.createElement("div");
-      row.className = "list-item";
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "list-item list-item-button";
+      row.setAttribute("aria-selected", "false");
       row.style.position = "absolute";
       row.style.left = "0";
       row.style.right = "0";
@@ -97,9 +109,13 @@ export function createListPanel(elements: ListPanelElements) {
       const title = document.createElement("strong");
       const br = document.createElement("br");
       const desc = document.createElement("small");
+      const selectedLabel = document.createElement("span");
+      selectedLabel.className = "list-item-selected-label";
+      selectedLabel.textContent = "선택됨";
       row.appendChild(title);
       row.appendChild(br);
       row.appendChild(desc);
+      row.appendChild(selectedLabel);
 
       row.addEventListener("click", () => {
         const idx = Number(row.dataset.index);

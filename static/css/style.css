@@ -704,9 +704,46 @@ body.file2map-mode #mobile-property-manager-group {
 
 /* 리스트 영역 */
 #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; position: relative; }
-.list-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
+.list-item {
+    box-sizing: border-box;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+button.list-item {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid #eee;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
 .list-item:hover { background: #f1f4f6; }
 .list-item.selected { background: #e3f2fd; border-left: 4px solid #3498db; }
+button.list-item:focus-visible {
+    outline: 2px solid #111827;
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 2px #ffffff;
+}
+.list-item-selected-label {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    padding: 2px 5px;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    color: #1d4ed8;
+    background: #eff6ff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    visibility: hidden;
+}
+.list-item.selected .list-item-selected-label {
+    visibility: visible;
+}
 .photo-list {
     list-style: none;
     margin: 0;
