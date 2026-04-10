@@ -575,27 +575,6 @@ body.file2map-mode #mobile-property-manager-group {
     line-height: 1.25;
 }
 
-.results-summary-download {
-    flex: 0 0 auto;
-    color: #166534;
-    font-size: 0.78rem;
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.results-summary-download.is-disabled {
-    color: #6b7280;
-}
-
-.results-summary-bar[data-status="loading"] .results-summary-download {
-    color: #1d4ed8;
-}
-
-.results-summary-bar[data-status="blocked"] .results-summary-download,
-.results-summary-bar[data-status="error"] .results-summary-download {
-    color: #b45309;
-}
-
 .results-summary-chips {
     display: flex;
     flex-wrap: wrap;

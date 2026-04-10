@@ -26,7 +26,6 @@ export type LandMapDomElements = {
   resultsSummaryBar: HTMLElement | null;
   resultsSummaryCount: HTMLElement | null;
   resultsSummaryChips: HTMLElement | null;
-  resultsSummaryDownload: HTMLElement | null;
   resultsSummaryMessage: HTMLElement | null;
   resultsSummaryResetButton: HTMLButtonElement | null;
   resultsSummaryDownloadButton: HTMLButtonElement | null;
@@ -68,7 +67,6 @@ export function queryLandMapDomElements(): LandMapDomElements {
     resultsSummaryBar: document.getElementById("results-summary-bar"),
     resultsSummaryCount: document.getElementById("results-summary-count"),
     resultsSummaryChips: document.getElementById("results-summary-chips"),
-    resultsSummaryDownload: document.getElementById("results-summary-download"),
     resultsSummaryMessage: document.getElementById("results-summary-message"),
     resultsSummaryResetButton: document.getElementById("btn-reset-filters") as HTMLButtonElement | null,
     resultsSummaryDownloadButton: document.getElementById("btn-download-all") as HTMLButtonElement | null,

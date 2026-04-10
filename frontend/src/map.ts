@@ -65,7 +65,6 @@ async function bootstrap(): Promise<void> {
     resultsSummaryBar: dom.resultsSummaryBar,
     resultsSummaryCount: dom.resultsSummaryCount,
     resultsSummaryChips: dom.resultsSummaryChips,
-    resultsSummaryDownload: dom.resultsSummaryDownload,
     resultsSummaryMessage: dom.resultsSummaryMessage,
     resultsSummaryResetButton: dom.resultsSummaryResetButton,
     resultsSummaryDownloadButton: dom.resultsSummaryDownloadButton

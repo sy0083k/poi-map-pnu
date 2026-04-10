@@ -11,7 +11,6 @@ type ListPanelElements = {
   resultsSummaryBar: HTMLElement | null;
   resultsSummaryCount: HTMLElement | null;
   resultsSummaryChips: HTMLElement | null;
-  resultsSummaryDownload: HTMLElement | null;
   resultsSummaryMessage: HTMLElement | null;
   resultsSummaryResetButton: HTMLButtonElement | null;
   resultsSummaryDownloadButton: HTMLButtonElement | null;
@@ -237,16 +236,6 @@ export function createListPanel(elements: ListPanelElements) {
     const countText = `${summary.themeLabel} 검색 결과 ${summary.resultCount.toLocaleString()}건`;
     if (elements.resultsSummaryCount instanceof HTMLElement) {
       elements.resultsSummaryCount.textContent = countText;
-    }
-
-    if (elements.resultsSummaryDownload instanceof HTMLElement) {
-      elements.resultsSummaryDownload.textContent = summary.downloadAvailable ? "다운로드 가능" : "다운로드할 결과 없음";
-      elements.resultsSummaryDownload.classList.toggle("is-disabled", !summary.downloadAvailable);
-      if (summary.downloadReason) {
-        elements.resultsSummaryDownload.setAttribute("title", summary.downloadReason);
-      } else {
-        elements.resultsSummaryDownload.removeAttribute("title");
-      }
     }
 
     if (elements.resultsSummaryChips instanceof HTMLElement) {
