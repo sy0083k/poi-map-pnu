@@ -49,6 +49,12 @@ def test_overlay_css_contract() -> None:
             "#photo-load-btn {",
             "#photo-clear-btn { background: linear-gradient(180deg, #6f879c 0%, #596f82 100%); }",
             ".sidebar-empty-message {",
+            ".results-summary-bar {",
+            ".results-summary-main {",
+            ".results-summary-chips {",
+            ".results-summary-chip {",
+            ".results-summary-download.is-disabled {",
+            "body.mobile-results #results-summary-bar {",
         ],
     )
 
@@ -128,7 +134,10 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
 
 def test_lands_list_client_sends_theme_query() -> None:
     client_ts = Path("frontend/src/map/lands-list-client.ts").read_text(encoding="utf-8")
-    assert "export async function loadAllLandListItems(theme: ThemeType, filters?: FilterValues)" in client_ts
+    assert "export async function loadAllLandListItems(" in client_ts
+    assert "theme: ThemeType," in client_ts
+    assert "filters?: FilterValues," in client_ts
+    assert "onPage?: (pageItems: LandListItem[]) => void" in client_ts
     assert 'const query = new URLSearchParams({ limit: "500", theme });' in client_ts
     assert 'query.set("propertyUsage", filters.propertyUsageTerm);' in client_ts
 

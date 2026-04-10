@@ -542,6 +542,60 @@ body.file2map-mode #mobile-property-manager-group {
     margin: 0;
 }
 
+.results-summary-bar {
+    flex-shrink: 0;
+    display: grid;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #ddd;
+    background: #ffffff;
+}
+
+.results-summary-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+#results-summary-count {
+    color: #111827;
+    font-size: 0.9rem;
+    line-height: 1.25;
+}
+
+.results-summary-download {
+    flex: 0 0 auto;
+    color: #166534;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.results-summary-download.is-disabled {
+    color: #6b7280;
+}
+
+.results-summary-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.results-summary-chip {
+    max-width: 100%;
+    padding: 4px 7px;
+    border: 1px solid #d7dee7;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
 /* 리스트 영역 */
 #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; position: relative; }
 .list-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
@@ -1197,6 +1251,11 @@ body.photo-panel-open #land-info-panel {
 
     body.mobile-results #filter-section {
         display: none;
+    }
+
+    body.mobile-results #results-summary-bar {
+        display: grid;
+        border-radius: 18px 18px 0 0;
     }
 
     body.mobile-results #list-container { flex: 1; }

@@ -23,6 +23,10 @@ export type LandMapDomElements = {
   mapStatusCloseButton: HTMLButtonElement | null;
   mapLegend: HTMLElement | null;
   mapLegendCloseButton: HTMLElement | null;
+  resultsSummaryBar: HTMLElement | null;
+  resultsSummaryCount: HTMLElement | null;
+  resultsSummaryChips: HTMLElement | null;
+  resultsSummaryDownload: HTMLElement | null;
   uiToast: HTMLElement | null;
   sidebarHandle: HTMLElement | null;
   menuBasemapTrigger: HTMLElement | null;
@@ -58,6 +62,10 @@ export function queryLandMapDomElements(): LandMapDomElements {
     mapStatusCloseButton: document.getElementById("map-status-close") as HTMLButtonElement | null,
     mapLegend: document.getElementById("map-legend"),
     mapLegendCloseButton: document.getElementById("map-legend-close"),
+    resultsSummaryBar: document.getElementById("results-summary-bar"),
+    resultsSummaryCount: document.getElementById("results-summary-count"),
+    resultsSummaryChips: document.getElementById("results-summary-chips"),
+    resultsSummaryDownload: document.getElementById("results-summary-download"),
     uiToast: document.getElementById("ui-toast"),
     sidebarHandle: document.getElementById("sidebar-handle"),
     menuBasemapTrigger: document.getElementById("menu-basemap-trigger"),

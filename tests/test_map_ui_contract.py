@@ -32,6 +32,14 @@ async def test_root_page_navigation_and_filters_contract(async_client: httpx.Asy
             ">백지도<",
             'data-basemap="White"',
             ">필터 결과 다운로드<",
+            'id="results-summary-bar"',
+            'id="results-summary-count"',
+            'id="results-summary-download"',
+            'id="results-summary-chips"',
+            'aria-label="검색 결과 요약"',
+            'aria-label="적용된 검색 조건"',
+            ">다운로드할 결과 없음<",
+            ">전체 조건<",
             'id="property-manager-search"',
             'id="mobile-property-manager-search"',
             'id="property-usage-search"',
@@ -90,6 +98,9 @@ async def test_root_page_layout_order_contract(async_client: httpx.AsyncClient) 
     status_close_idx = res.text.index('id="map-status-close"')
     legend_idx = res.text.index('id="map-legend"')
     info_panel_idx = res.text.index('id="land-info-panel"')
+    summary_idx = res.text.index('id="results-summary-bar"')
+    list_idx = res.text.index('id="list-container"')
+    assert summary_idx < list_idx
     assert map_idx < status_idx < status_text_idx < status_close_idx < legend_idx < info_panel_idx
 
 
@@ -128,6 +139,10 @@ async def test_file2map_theme_page_contract(async_client: httpx.AsyncClient) -> 
             'id="file2map-upload-input"',
             'id="file2map-upload-btn"',
             'id="file2map-upload-clear-btn"',
+            'id="results-summary-bar"',
+            'id="results-summary-count"',
+            'id="results-summary-download"',
+            'id="results-summary-chips"',
             'id="photo-info-panel"',
         ],
     )
@@ -160,6 +175,7 @@ async def test_photo2map_theme_page_contract(async_client: httpx.AsyncClient) ->
         ],
     )
     assert 'id="map-legend"' not in photo.text
+    assert 'id="results-summary-bar"' not in photo.text
 
 
 @pytest.mark.anyio

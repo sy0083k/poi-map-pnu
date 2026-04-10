@@ -63,6 +63,18 @@ export type BaseType = "Base" | "White" | "Satellite" | "Hybrid";
 export type ThemeType = "national_public" | "city_owned";
 export type LandClickSource = "map_click" | "list_click" | "nav_prev" | "nav_next" | "filter_auto_select";
 
+export type ResultsSummaryChip = {
+  label: string;
+  value?: string;
+};
+
+export type ResultsSummaryState = {
+  themeLabel: string;
+  resultCount: number;
+  filters: ResultsSummaryChip[];
+  downloadAvailable: boolean;
+};
+
 export type MapEventPayload =
   | {
       eventType: "search";

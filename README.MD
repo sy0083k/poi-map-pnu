@@ -94,7 +94,7 @@ uvicorn app.main:app --reload
 |---|---|---|---|
 | 글로벌 헤더 | Global Navigation Header | 상위 메뉴(`시작/배경지도/주제도`)와 전역 이동 제공 | `#app-topbar`, `.topbar-menu` |
 | 애플리케이션 셸 | Application Shell | 지도/사이드바/패널을 포함하는 메인 레이아웃 컨테이너 | `#app-shell` |
-| 유틸리티 사이드바 | Utility Sidebar (Filter & Result Panel) | 필터 입력, 검색 결과 목록, 네비게이션(이전/다음) 제공 | `#sidebar`, `#filter-section`, `#list-container` |
+| 유틸리티 사이드바 | Utility Sidebar (Filter & Result Panel) | 필터 입력, 검색 결과 요약, 검색 결과 목록, 네비게이션(이전/다음) 제공 | `#sidebar`, `#filter-section`, `#results-summary-bar`, `#list-container` |
 | 지도 캔버스 | Primary Map Canvas | `/siyu`는 MapLibre, `/file2map`·`/photo2map`은 OpenLayers 기반 필지 시각화/상호작용 처리 | `#map` |
 | 지도 상태바 | Map Status Overlay | 하이라이트 준비/강조 건수/검증 메시지를 지도 상단 1줄로 표시하고 `X` 버튼으로 임시 닫기 지원 | `#map-status`, `#map-status-close` |
 | 상세 정보 패널 | Detail Information Panel | 선택 필지의 동적 속성/값 표시 | `#land-info-panel`, `#land-info-content` |
@@ -110,6 +110,7 @@ uvicorn app.main:app --reload
 
 ### 상태/상호작용 규칙
 - 모바일 UI 상태는 `mobile-home` → `mobile-search` → `mobile-results` 순으로 전환된다.
+- `/siyu`와 `/file2map`의 검색 결과 요약 바(`Results Summary Bar`)는 검색 결과 건수, 적용된 읽기 전용 필터 조건, 다운로드 가능 여부를 표시한다.
 - `/siyu`의 선택 필지는 기존 관리관 색을 유지한 halo + pulse outline 조합으로 강조되며, 동작 축소 환경에서는 정적 강조만 사용한다.
 - 상세 정보 패널(`Detail Information Panel`)은 초기 진입 시 숨김이며, `/siyu`에서는 지도 클릭 시에만 표시된다.
 - 헤더 메뉴(`Top-level Navigation Menu`)는 항목 간 짧은 구분 바로 시각적으로 분리된다.

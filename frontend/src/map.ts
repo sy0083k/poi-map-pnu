@@ -61,7 +61,11 @@ async function bootstrap(): Promise<void> {
     prevBtn: document.getElementById("prev-btn") as HTMLButtonElement | null,
     nextBtn: document.getElementById("next-btn") as HTMLButtonElement | null,
     sidebar: document.getElementById("sidebar"),
-    handle: document.querySelector(".mobile-handle")
+    handle: document.querySelector(".mobile-handle"),
+    resultsSummaryBar: dom.resultsSummaryBar,
+    resultsSummaryCount: dom.resultsSummaryCount,
+    resultsSummaryChips: dom.resultsSummaryChips,
+    resultsSummaryDownload: dom.resultsSummaryDownload
   });
 
   const filters = createFilters({

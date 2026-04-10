@@ -1,4 +1,5 @@
 import type { LandListItem } from "./types";
+import type { ResultsSummaryState } from "./types";
 
 type ListPanelElements = {
   listContainer: HTMLElement | null;
@@ -7,6 +8,10 @@ type ListPanelElements = {
   nextBtn: HTMLButtonElement | null;
   sidebar: HTMLElement | null;
   handle: Element | null;
+  resultsSummaryBar: HTMLElement | null;
+  resultsSummaryCount: HTMLElement | null;
+  resultsSummaryChips: HTMLElement | null;
+  resultsSummaryDownload: HTMLElement | null;
 };
 
 const snapHeights = {
@@ -203,6 +208,33 @@ export function createListPanel(elements: ListPanelElements) {
     setSelected(currentIndex);
   };
 
+  const updateResultsSummary = (summary: ResultsSummaryState): void => {
+    if (!(elements.resultsSummaryBar instanceof HTMLElement)) {
+      return;
+    }
+
+    const countText = `${summary.themeLabel} 검색 결과 ${summary.resultCount.toLocaleString()}건`;
+    if (elements.resultsSummaryCount instanceof HTMLElement) {
+      elements.resultsSummaryCount.textContent = countText;
+    }
+
+    if (elements.resultsSummaryDownload instanceof HTMLElement) {
+      elements.resultsSummaryDownload.textContent = summary.downloadAvailable ? "다운로드 가능" : "다운로드할 결과 없음";
+      elements.resultsSummaryDownload.classList.toggle("is-disabled", !summary.downloadAvailable);
+    }
+
+    if (elements.resultsSummaryChips instanceof HTMLElement) {
+      elements.resultsSummaryChips.replaceChildren();
+      const chips = summary.filters.length > 0 ? summary.filters : [{ label: "전체 조건" }];
+      chips.forEach((chip) => {
+        const chipEl = document.createElement("span");
+        chipEl.className = "results-summary-chip";
+        chipEl.textContent = chip.value ? `${chip.label}: ${chip.value}` : chip.label;
+        elements.resultsSummaryChips?.appendChild(chipEl);
+      });
+    }
+  };
+
   const scrollTo = (index: number, options?: { alignToTop?: boolean }): void => {
     if (!elements.listContainer) return;
     const container = elements.listContainer;
@@ -269,6 +301,7 @@ export function createListPanel(elements: ListPanelElements) {
     render,
     scrollTo,
     setStatus,
+    updateResultsSummary,
     updateNavigation
   };
 }

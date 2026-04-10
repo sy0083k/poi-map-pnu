@@ -3,12 +3,12 @@ import { downloadCurrentSearchResults as downloadSearchResults } from "./land-wo
 import { hasMultipleManagers, prepareUploadedHighlights, reloadCadastralLayers } from "./land-workflow-highlight";
 import { loadServerFilteredItems } from "./land-workflow-server-filter";
 import type { DownloadClient } from "./download-client";
-import type { Filters } from "./filters";
+import type { Filters, FilterValues } from "./filters";
 import type { ListPanel } from "./list-panel";
 import type { MapView } from "./map-view";
 import type { MapStateStore } from "./state";
 import type { Telemetry } from "./telemetry";
-import type { LandClickSource, LandFeatureCollection, LandListItem, MapConfig, ThemeType } from "./types";
+import type { LandClickSource, LandFeatureCollection, LandListItem, MapConfig, ResultsSummaryChip, ThemeType } from "./types";
 
 type SelectOptions = {
   shouldFit: boolean;
@@ -57,6 +57,42 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
 
   const updateNavigation = (): void => {
     deps.listPanel.updateNavigation(deps.state.getCurrentIndex(), deps.state.getCurrentItems().length);
+  };
+
+  const buildFilterChips = (values: FilterValues): ResultsSummaryChip[] => {
+    const chips: ResultsSummaryChip[] = [];
+    if (values.searchTerm !== "") {
+      chips.push({ label: "지역명·주소", value: values.searchTerm });
+    }
+    if (values.propertyUsageTerm !== "") {
+      chips.push({ label: "재산용도", value: values.propertyUsageTerm });
+    }
+    if (values.landTypeTerm !== "") {
+      chips.push({ label: "지목", value: values.landTypeTerm });
+    }
+    if (values.rawMinAreaInput !== "" || values.rawMaxAreaInput !== "") {
+      const minArea = values.rawMinAreaInput.trim();
+      const maxArea = values.rawMaxAreaInput.trim();
+      const areaLabel = minArea !== "" && maxArea !== ""
+        ? `${minArea}㎡~${maxArea}㎡`
+        : minArea !== ""
+          ? `최소 ${minArea}㎡`
+          : `최대 ${maxArea}㎡`;
+      chips.push({ label: "면적", value: areaLabel });
+    }
+    if (values.propertyManagerTerm !== "") {
+      chips.push({ label: "재산관리관", value: values.propertyManagerTerm });
+    }
+    return chips;
+  };
+
+  const updateResultsSummary = (items: LandListItem[], values = deps.filters.getValues()): void => {
+    deps.listPanel.updateResultsSummary({
+      themeLabel: deps.getThemeLabel(deps.state.getCurrentTheme()),
+      resultCount: items.length,
+      filters: buildFilterChips(values),
+      downloadAvailable: items.length > 0
+    });
   };
 
   const normalizePnuForSort = (raw: string): string => raw.replace(/\D/g, "");
@@ -209,6 +245,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
           deps.mapView.renderFeatures({ type: "FeatureCollection", features: [] }, { dataProjection: getRenderProjection() });
         }
         deps.setMapStatus(`재산관리관 다중 검출: ${uniqueManagers.join(", ")}. 정확한 재산관리관을 입력하세요.`, "#1d4ed8");
+        updateResultsSummary([], values);
         return;
       }
     }
@@ -221,6 +258,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.mapView.clearInfoPanel();
     }
     updateNavigation();
+    updateResultsSummary(sortedItems, values);
     await reloadCadastralLayers(highlightDeps);
     if (trackEvent && sortedItems.length > 0) {
       const topVisibleIndex = findMinVisiblePnuIndex(deps.state.getCurrentItems());
@@ -252,6 +290,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.listPanel.clear();
       deps.mapView.clearInfoPanel();
       updateNavigation();
+      updateResultsSummary([]);
       uploadedHighlightFeatures = { type: "FeatureCollection", features: [] };
       uploadedHighlightDatasetKey = "empty";
       if (config) {
@@ -276,6 +315,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
           void selectItem(idx, { shouldFit: true, clickSource: "list_click" }));
         deps.mapView.clearInfoPanel();
         updateNavigation();
+        updateResultsSummary(accumulated);
         if (!firstPageDone) {
           firstPageDone = true;
           void reloadCadastralLayers(highlightDeps);
@@ -292,6 +332,7 @@ export function createLandWorkflow(deps: LandWorkflowDeps) {
       deps.listPanel.render(sortedItems, (idx) => { void selectItem(idx, { shouldFit: true, clickSource: "list_click" }); });
       deps.mapView.clearInfoPanel();
       updateNavigation();
+      updateResultsSummary(sortedItems);
       await reloadCadastralLayers(highlightDeps);
       void prepareUploadedHighlights(highlightDeps, sortedItems);
     } catch (error) {
