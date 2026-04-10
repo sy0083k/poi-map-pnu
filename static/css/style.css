@@ -706,7 +706,8 @@ body.file2map-mode #mobile-property-manager-group {
 #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; position: relative; }
 .list-item {
     box-sizing: border-box;
-    padding: 15px;
+    min-height: 48px;
+    padding: 10px 14px;
     border-bottom: 1px solid #eee;
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
@@ -718,7 +719,14 @@ button.list-item {
     background: #fff;
     color: inherit;
     font: inherit;
+    line-height: 1.2;
     text-align: left;
+}
+.list-item strong {
+    line-height: 1.2;
+}
+.list-item small {
+    line-height: 1.2;
 }
 .list-item:hover { background: #f1f4f6; }
 .list-item.selected { background: #e3f2fd; border-left: 4px solid #3498db; }
@@ -1469,7 +1477,10 @@ body.photo-panel-open #land-info-panel {
     #btn-search { padding: 12px; font-size: 1rem; }
     .btn-secondary { padding: 12px; font-size: 0.95rem; }
     .nav-btn { padding: 12px; font-size: 0.95em; }
-    .list-item { padding: 16px; }
+    .list-item {
+        min-height: 48px;
+        padding: 10px 14px;
+    }
     .ol-zoom { display: none !important; }
 
     #land-info-panel {
