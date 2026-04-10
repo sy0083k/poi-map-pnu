@@ -7,7 +7,7 @@ body {
     overflow: hidden;
     --topbar-height: 56px;
     --sidebar-width: 350px;
-    --icon-sidebar-width: 48px;
+    --icon-sidebar-width: 96px;
     --topbar-menu-anchor-x: var(--icon-sidebar-width);
     --filter-input-height: 33px;
     --filter-control-height: var(--filter-input-height);
@@ -339,7 +339,7 @@ body.dock-open {
     flex-direction: column;
     align-items: center;
     padding: 8px 0;
-    background: #fff;
+    background: #f3f4f6;
     border-right: 1px solid #e5e7eb;
     z-index: 200;
     gap: 4px;

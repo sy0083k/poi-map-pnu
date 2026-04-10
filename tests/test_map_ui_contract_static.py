@@ -8,7 +8,7 @@ def test_topbar_and_filter_css_contract() -> None:
     assert_contains_all(
         css_text,
         [
-            "--icon-sidebar-width: 48px;",
+            "--icon-sidebar-width: 96px;",
             "--topbar-menu-anchor-x: var(--icon-sidebar-width);",
             "left: var(--topbar-menu-anchor-x);",
             "body.dock-open {",
