@@ -7,7 +7,7 @@ body {
     overflow: hidden;
     --topbar-height: 56px;
     --sidebar-width: 350px;
-    --icon-sidebar-width: 96px;
+    --icon-sidebar-width: 72px;
     --topbar-menu-anchor-x: var(--icon-sidebar-width);
     --filter-input-height: 33px;
     --filter-control-height: var(--filter-input-height);
@@ -399,6 +399,7 @@ body.dock-open #sidebar {
     opacity: 1;
     pointer-events: auto;
     overflow: hidden;
+    background: #fff;
     border-right: 1px solid #ccc;
 }
 
