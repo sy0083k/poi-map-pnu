@@ -239,7 +239,19 @@ export function createListPanel(elements: ListPanelElements) {
       chips.forEach((chip) => {
         const chipEl = document.createElement("span");
         chipEl.className = "results-summary-chip";
-        chipEl.textContent = chip.value ? `${chip.label}: ${chip.value}` : chip.label;
+        chipEl.setAttribute("aria-label", chip.value ? `적용된 조건: ${chip.label} ${chip.value}` : `적용된 조건: ${chip.label}`);
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "results-summary-chip-label";
+        labelEl.textContent = chip.value ? `${chip.label}:` : chip.label;
+        chipEl.appendChild(labelEl);
+
+        if (chip.value) {
+          const valueEl = document.createElement("span");
+          valueEl.className = "results-summary-chip-value";
+          valueEl.textContent = chip.value;
+          chipEl.appendChild(valueEl);
+        }
         elements.resultsSummaryChips?.appendChild(chipEl);
       });
     }

@@ -53,14 +53,20 @@ def test_overlay_css_contract() -> None:
             ".results-summary-main {",
             ".results-summary-chips {",
             ".results-summary-chip {",
+            ".results-summary-chip-label {",
+            ".results-summary-chip-value {",
             ".results-summary-message {",
             ".results-summary-actions {",
             ".results-summary-action {",
+            "white-space: normal;",
+            "word-break: break-word;",
             ".results-summary-download.is-disabled {",
             '.results-summary-bar[data-status="loading"] .results-summary-download',
             '.results-summary-bar[data-status="blocked"] .results-summary-download',
             '.results-summary-bar[data-status="error"] .results-summary-message',
             "body.mobile-results #results-summary-bar {",
+            "body.mobile-results .results-summary-chips {",
+            "max-height: 58px;",
             "body.mobile-results .results-summary-action {",
         ],
     )
@@ -137,6 +143,19 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
         ],
     )
     assert 'rawBasemap !== "Base"' in topbar_menu_ts
+
+
+def test_results_summary_chip_accessibility_contract() -> None:
+    list_panel_ts = Path("frontend/src/map/list-panel.ts").read_text(encoding="utf-8")
+    assert_contains_all(
+        list_panel_ts,
+        [
+            'chipEl.setAttribute("aria-label"',
+            "적용된 조건:",
+            'labelEl.className = "results-summary-chip-label";',
+            'valueEl.className = "results-summary-chip-value";',
+        ],
+    )
 
 
 def test_lands_list_client_sends_theme_query() -> None:

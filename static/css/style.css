@@ -604,6 +604,11 @@ body.file2map-mode #mobile-property-manager-group {
 }
 
 .results-summary-chip {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 3px;
+    min-width: 0;
     max-width: 100%;
     padding: 4px 7px;
     border: 1px solid #d7dee7;
@@ -612,7 +617,21 @@ body.file2map-mode #mobile-property-manager-group {
     color: #334155;
     font-size: 0.78rem;
     line-height: 1.2;
+    white-space: normal;
     overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.results-summary-chip-label {
+    flex: 0 0 auto;
+    font-weight: 700;
+}
+
+.results-summary-chip-value {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .results-summary-message {
@@ -1310,6 +1329,19 @@ body.photo-panel-open #land-info-panel {
 
     body.mobile-results .results-summary-message {
         font-size: 0.74rem;
+    }
+
+    body.mobile-results .results-summary-chips {
+        max-height: 58px;
+        overflow-y: auto;
+        gap: 4px;
+        overscroll-behavior: contain;
+    }
+
+    body.mobile-results .results-summary-chip {
+        padding: 3px 6px;
+        font-size: 0.74rem;
+        line-height: 1.18;
     }
 
     body.mobile-results .results-summary-action {
