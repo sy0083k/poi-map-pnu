@@ -1,10 +1,8 @@
-import type { BaseType, ThemeType } from "./types";
+import type { ThemeType } from "./types";
 
 type SetupTopbarMenusOptions = {
-  menuBasemapTrigger: Element | null;
   menuThemeTrigger: Element | null;
   onThemeSelected: (theme: ThemeType) => void;
-  onBasemapSelected: (baseType: BaseType) => void;
   showToast: (message: string) => void;
 };
 
@@ -13,7 +11,6 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
   syncThemeMenuActiveState: (theme: ThemeType) => void;
 } {
   const menuTriggers = [
-    options.menuBasemapTrigger instanceof HTMLButtonElement ? options.menuBasemapTrigger : null,
     options.menuThemeTrigger instanceof HTMLButtonElement ? options.menuThemeTrigger : null
   ];
 
@@ -57,17 +54,6 @@ export function setupTopbarMenus(options: SetupTopbarMenusOptions): {
         return;
       }
       options.onThemeSelected(rawTheme);
-      closeAllMenus();
-    });
-  });
-
-  document.querySelectorAll<HTMLElement>(".menu-item[data-basemap]").forEach((item) => {
-    item.addEventListener("click", () => {
-      const rawBasemap = item.dataset.basemap || "";
-      if (rawBasemap !== "Base" && rawBasemap !== "White" && rawBasemap !== "Satellite" && rawBasemap !== "Hybrid") {
-        return;
-      }
-      options.onBasemapSelected(rawBasemap);
       closeAllMenus();
     });
   });

@@ -377,6 +377,91 @@ body.dock-open {
     font-weight: 500;
 }
 
+/* ── 아이콘 사이드바 플로팅 패널 ── */
+.icon-panel {
+    display: none;
+    position: absolute;
+    left: var(--icon-sidebar-width);
+    top: 0;
+    width: 200px;
+    height: 100%;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.12);
+    z-index: 150;
+    overflow: hidden;
+}
+
+body.basemap-panel-open #panel-basemap {
+    display: flex;
+}
+
+.icon-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 12px 8px;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.icon-panel-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.icon-panel-close-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 1rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.icon-panel-close-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.basemap-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.basemap-list li {
+    margin: 0;
+    padding: 0;
+}
+
+.basemap-option {
+    width: 100%;
+    text-align: left;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #1f2937;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.basemap-option:hover {
+    background: #eef4fa;
+}
+
+.basemap-option.is-active {
+    background: #ddeaf7;
+    font-weight: 700;
+}
+
 /* 사이드바 레이아웃 */
 #sidebar {
     width: 0;
@@ -1389,6 +1474,10 @@ body.photo-panel-open #land-info-panel {
     }
 
     #icon-sidebar {
+        display: none !important;
+    }
+
+    #panel-basemap {
         display: none !important;
     }
 

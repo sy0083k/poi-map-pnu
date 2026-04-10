@@ -16,6 +16,10 @@ def test_topbar_and_filter_css_contract() -> None:
             ".icon-sidebar-btn {",
             ".icon-sidebar-btn[aria-pressed=\"true\"] {",
             "body.dock-open #sidebar {",
+            ".icon-panel {",
+            "body.basemap-panel-open #panel-basemap {",
+            ".basemap-option {",
+            ".basemap-option.is-active {",
             ".compact-filter-row {",
             "display: grid;",
             "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);",
@@ -129,7 +133,7 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
             'dom.mapLegendCloseButton?.addEventListener("click", () => {',
             "legendController.dismissLegend();",
             "pushThemeHistory(theme);",
-            'layerType === "White"',
+            'rawBasemap === "White"',
         ],
     )
     assert "clearPropertyManagerInputs();" not in map_ts
@@ -174,7 +178,7 @@ def test_map_navigation_contract_by_module_boundaries() -> None:
             "window.location.assign(target);",
         ],
     )
-    assert 'rawBasemap !== "Base"' in topbar_menu_ts
+    assert 'rawBasemap !== "Base"' in map_ts
 
 
 def test_results_summary_chip_accessibility_contract() -> None:

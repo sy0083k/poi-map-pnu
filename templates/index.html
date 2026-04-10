@@ -36,7 +36,38 @@
         </svg>
         <span class="icon-sidebar-label">탐색</span>
       </button>
+      <button
+        id="btn-basemap"
+        class="icon-sidebar-btn"
+        type="button"
+        aria-pressed="false"
+        aria-label="배경지도 패널 열기"
+        aria-controls="panel-basemap"
+        title="배경지도"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polygon points="3 6 12 3 21 6 12 9 3 6"/>
+          <polyline points="3 12 12 9 21 12"/>
+          <polyline points="3 18 12 15 21 18"/>
+        </svg>
+        <span class="icon-sidebar-label">배경지도</span>
+      </button>
     </nav>
+    <div id="panel-basemap" class="icon-panel" role="dialog"
+         aria-label="배경지도" aria-hidden="true">
+      <div class="icon-panel-header">
+        <span class="icon-panel-title">배경지도</span>
+        <button id="btn-basemap-close" class="icon-panel-close-btn"
+                type="button" aria-label="배경지도 패널 닫기">✕</button>
+      </div>
+      <ul class="basemap-list" role="listbox" aria-label="배경지도 선택">
+        <li><button class="basemap-option" type="button" role="option" data-basemap="Base">일반지도</button></li>
+        <li><button class="basemap-option" type="button" role="option" data-basemap="White">백지도</button></li>
+        <li><button class="basemap-option" type="button" role="option" data-basemap="Satellite">영상지도</button></li>
+        <li><button class="basemap-option" type="button" role="option" data-basemap="Hybrid">하이브리드</button></li>
+      </ul>
+    </div>
     {% if map_mode != "photo" %}
     <button id="mobile-search-fab" class="mobile-icon-btn" type="button" aria-label="검색 열기">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

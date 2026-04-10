@@ -136,7 +136,6 @@ async function bootstrap(): Promise<void> {
   let syncThemeMenuActiveState = (_theme: "national_public" | "city_owned"): void => {};
 
   const topbarMenus = setupTopbarMenus({
-    menuBasemapTrigger: dom.menuBasemapTrigger,
     menuThemeTrigger: dom.menuThemeTrigger,
     onThemeSelected: (theme) => {
       const targetPath = getThemePath(theme);
@@ -161,14 +160,55 @@ async function bootstrap(): Promise<void> {
       void workflow.loadThemeData(theme);
       showToast(`${getThemeLabel(theme)} 레이어로 전환했습니다.`);
     },
-    onBasemapSelected: (layerType: BaseType) => {
-      activeMapView.changeLayer(layerType);
-      const label = layerType === "Base" ? "일반지도" : layerType === "White" ? "백지도" : layerType === "Satellite" ? "영상지도" : "하이브리드";
-      showToast(`${label}로 변경했습니다.`);
-    },
     showToast
   });
   syncThemeMenuActiveState = topbarMenus.syncThemeMenuActiveState;
+
+  // ── 배경지도 패널 ──
+  const applyBasemapPanel = (open: boolean): void => {
+    document.body.classList.toggle("basemap-panel-open", open);
+    dom.basemapPanelBtn?.setAttribute("aria-pressed", String(open));
+    dom.basemapPanelBtn?.setAttribute(
+      "aria-label",
+      open ? "배경지도 패널 닫기" : "배경지도 패널 열기"
+    );
+    document.getElementById("panel-basemap")?.setAttribute("aria-hidden", String(!open));
+  };
+
+  dom.basemapPanelBtn?.addEventListener("click", () =>
+    applyBasemapPanel(!document.body.classList.contains("basemap-panel-open"))
+  );
+  document.getElementById("btn-basemap-close")?.addEventListener("click", () =>
+    applyBasemapPanel(false)
+  );
+
+  document.querySelectorAll<HTMLButtonElement>(".basemap-option[data-basemap]").forEach((item) => {
+    item.addEventListener("click", () => {
+      const rawBasemap = item.dataset.basemap ?? "";
+      if (rawBasemap !== "Base" && rawBasemap !== "White" && rawBasemap !== "Satellite" && rawBasemap !== "Hybrid") return;
+      activeMapView.changeLayer(rawBasemap as BaseType);
+      document.querySelectorAll<HTMLButtonElement>(".basemap-option").forEach((b) =>
+        b.classList.toggle("is-active", b === item)
+      );
+      const label = rawBasemap === "Base" ? "일반지도" : rawBasemap === "White" ? "백지도" : rawBasemap === "Satellite" ? "영상지도" : "하이브리드";
+      showToast(`${label}로 변경했습니다.`);
+      applyBasemapPanel(false);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!document.body.classList.contains("basemap-panel-open")) return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    const panel = document.getElementById("panel-basemap");
+    if (panel && !panel.contains(target) && !dom.basemapPanelBtn?.contains(target)) {
+      applyBasemapPanel(false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") applyBasemapPanel(false);
+  });
 
   bindLandMapEvents({
     mapView: activeMapView as typeof mapView,
