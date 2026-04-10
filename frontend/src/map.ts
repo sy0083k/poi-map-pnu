@@ -175,9 +175,18 @@ async function bootstrap(): Promise<void> {
     document.getElementById("panel-basemap")?.setAttribute("aria-hidden", String(!open));
   };
 
-  dom.basemapPanelBtn?.addEventListener("click", () =>
-    applyBasemapPanel(!document.body.classList.contains("basemap-panel-open"))
-  );
+  dom.basemapPanelBtn?.addEventListener("click", () => {
+    const isCurrentlyOpen = document.body.classList.contains("basemap-panel-open");
+    if (!isCurrentlyOpen) {
+      layoutControls.applyDock(false);
+    }
+    applyBasemapPanel(!isCurrentlyOpen);
+  });
+  dom.dockTansakBtn?.addEventListener("click", () => {
+    if (document.body.classList.contains("dock-open")) {
+      applyBasemapPanel(false);
+    }
+  });
   document.getElementById("btn-basemap-close")?.addEventListener("click", () =>
     applyBasemapPanel(false)
   );
